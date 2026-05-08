@@ -1,4 +1,4 @@
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
@@ -14,18 +14,25 @@ export function AppShell() {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-border bg-bg/80 backdrop-blur dark:border-border-dark dark:bg-bg-dark/80">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <BrandMark />
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <BrandMark />
+          </Link>
           {me.data && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                await signOut();
-                navigate("/sign-in");
-              }}
-            >
-              <LogOut className="h-4 w-4" /> Çıkış
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/bikes">Motosikletler</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  await signOut();
+                  navigate("/sign-in");
+                }}
+              >
+                <LogOut className="h-4 w-4" /> Çıkış
+              </Button>
+            </div>
           )}
         </div>
       </header>

@@ -8,6 +8,9 @@ import { MagicLinkSentPage } from "@/pages/MagicLinkSentPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { BikesPage } from "@/pages/BikesPage";
 import { BikeFormPage } from "@/pages/BikeFormPage";
+import { DashboardPage } from "@/pages/DashboardPage";
+import { DatedItemFormPage } from "@/pages/DatedItemFormPage";
+import { DatedItemDetailPage } from "@/pages/DatedItemDetailPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { useSession } from "@/lib/authClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -32,10 +35,17 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/bikes" replace /> },
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "dashboard", element: <DashboardPage /> },
       { path: "bikes", element: <BikesPage /> },
       { path: "bikes/new", element: <BikeFormPage /> },
       { path: "bikes/:id/edit", element: <BikeFormPage /> },
+      {
+        path: "bikes/:bikeId/dated-items/new",
+        element: <DatedItemFormPage mode="new" />,
+      },
+      { path: "dated-items/:id", element: <DatedItemDetailPage /> },
+      { path: "dated-items/:id/edit", element: <DatedItemFormPage mode="edit" /> },
     ],
   },
   { path: "*", element: <NotFoundPage /> },
