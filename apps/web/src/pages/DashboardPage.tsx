@@ -7,6 +7,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { StatusChip } from "@/components/StatusChip";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
+import { CaptureFab } from "@/components/CaptureFab";
 
 export function DashboardPage() {
   const dash = useDashboard();
@@ -44,6 +45,7 @@ export function DashboardPage() {
             <Plus className="h-4 w-4" /> Bir motosiklet ekle
           </Link>
         </Button>
+        <CaptureFab />
       </motion.div>
     );
   }
@@ -109,6 +111,7 @@ export function DashboardPage() {
           </Link>
         </Button>
       </div>
+      <CaptureFab bikeId={active.bike.id} />
     </div>
   );
 }
