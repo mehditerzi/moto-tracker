@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  background: theme(colors.bg.DEFAULT);
+  color: theme(colors.text.DEFAULT);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background: theme(colors.bg.dark);
+    color: theme(colors.text.dark);
+  }
+}
+
+body {
+  font-family: theme(fontFamily.sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
