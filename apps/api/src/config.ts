@@ -12,6 +12,10 @@ const Env = z.object({
   EMAIL_FROM: z.string().default("MotoTracker <noreply@example.com>"),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  UPLOADS_DIR: z.string().default("./data/uploads"),
+  OLLAMA_URL: z.string().url().default("http://localhost:11434"),
+  OLLAMA_VISION_MODEL: z.string().default("gemma3:4b"),
+  OCR_AUTO_APPLY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
 });
 
 export type AppEnv = z.infer<typeof Env>;
@@ -33,5 +37,6 @@ export const config: AppEnv =
         SESSION_SECRET: "test-secret-test-secret-test-secret",
         APP_BASE_URL: "http://localhost:8787",
         DATABASE_PATH: ":memory:",
+        UPLOADS_DIR: "/tmp/mototracker-test-uploads",
       })
     : loadConfig();
