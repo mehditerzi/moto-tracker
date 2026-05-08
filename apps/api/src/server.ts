@@ -5,6 +5,7 @@ import morgan from "morgan";
 import { config } from "./config.js";
 import { healthRouter } from "./routes/health.js";
 import { meRouter } from "./routes/me.js";
+import { bikesRouter } from "./routes/bikes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { getAuth } from "./auth/index.js";
 import { toNodeHandler } from "better-auth/node";
@@ -37,6 +38,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
 
   app.use("/api/health", healthRouter);
   app.use("/api/me", meRouter);
+  app.use("/api/bikes", bikesRouter);
 
   app.use(errorHandler);
   return app;
