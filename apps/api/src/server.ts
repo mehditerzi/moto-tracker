@@ -8,6 +8,7 @@ import { meRouter } from "./routes/me.js";
 import { bikesRouter } from "./routes/bikes.js";
 import { bikesNestedDatedRouter, datedItemsRouter } from "./routes/datedItems.js";
 import { dashboardRouter } from "./routes/dashboard.js";
+import { documentsRouter } from "./routes/documents.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { getAuth } from "./auth/index.js";
 import { toNodeHandler } from "better-auth/node";
@@ -44,6 +45,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/bikes", bikesNestedDatedRouter);
   app.use("/api/dated-items", datedItemsRouter);
   app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/documents", documentsRouter);
 
   app.use(errorHandler);
   return app;
