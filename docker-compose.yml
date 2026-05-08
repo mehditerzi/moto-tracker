@@ -16,6 +16,10 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-MotoTracker <noreply@example.com>}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma3:4b}
+      OCR_AUTO_APPLY_THRESHOLD: ${OCR_AUTO_APPLY_THRESHOLD:-0.7}
+      UPLOADS_DIR: /data/uploads
     volumes:
       - ./data:/data
     ports:
