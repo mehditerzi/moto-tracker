@@ -1,0 +1,41 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mototracker-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      DATABASE_PATH: /data/app.db
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      APP_BASE_URL: ${APP_BASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-MotoTracker <noreply@example.com>}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:8787:8787"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mototracker-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: mototracker-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TOKEN}
+    depends_on:
+      - api
