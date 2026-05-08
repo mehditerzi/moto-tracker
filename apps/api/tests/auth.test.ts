@@ -5,10 +5,11 @@ import { buildTestApp } from "./helpers/buildApp.js";
 describe("auth: email + password", () => {
   beforeEach(() => {});
 
-  it("rejects /me when not signed in", async () => {
+  it("returns 401 from /api/me when not signed in", async () => {
     const app = buildTestApp();
     const res = await request(app).get("/api/me");
-    expect(res.status).toBe(404); // /me not implemented yet -> wired in next task
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("unauthenticated");
   });
 
   it("can sign up a new user via /api/auth/sign-up/email", async () => {
