@@ -5,9 +5,10 @@ import morgan from "morgan";
 import { config } from "./config.js";
 import { healthRouter } from "./routes/health.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { getAuth } from "./auth/index.js";
+import { toNodeHandler } from "better-auth/node";
 
 export interface BuildAppOptions {
-  /** When true, skip request logging and CORS preflight noise (used in tests). */
   silent?: boolean;
 }
 
@@ -25,8 +26,11 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
     app.use(morgan("dev"));
   }
 
-  // BetterAuth handler will be mounted in Task 7 at /api/auth/*
-  // before express.json() because it consumes raw bodies for some routes.
+  // BetterAuth must mount BEFORE express.json so it can read raw bodies.
+  // Use a request-time handler so tests can reset the db between tests.
+  app.all("/api/auth/*", (req, res, next) => {
+    toNodeHandler(getAuth())(req, res, next);
+  });
 
   app.use(express.json({ limit: "1mb" }));
 
