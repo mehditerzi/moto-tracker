@@ -16,6 +16,15 @@ const Env = z.object({
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_VISION_MODEL: z.string().default("gemma3:4b"),
   OCR_AUTO_APPLY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:noreply@mototracker.app"),
+  CRON_TIMEZONE: z.string().default("Europe/Istanbul"),
+  CRON_HOUR: z.coerce.number().int().min(0).max(23).default(9),
+  CRON_ENABLED: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("true"),
 });
 
 export type AppEnv = z.infer<typeof Env>;
@@ -38,5 +47,6 @@ export const config: AppEnv =
         APP_BASE_URL: "http://localhost:8787",
         DATABASE_PATH: ":memory:",
         UPLOADS_DIR: "/tmp/mototracker-test-uploads",
+        CRON_ENABLED: "false",
       })
     : loadConfig();
