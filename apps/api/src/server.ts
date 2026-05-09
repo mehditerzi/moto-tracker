@@ -7,6 +7,8 @@ import { healthRouter } from "./routes/health.js";
 import { meRouter } from "./routes/me.js";
 import { bikesRouter } from "./routes/bikes.js";
 import { bikesNestedDatedRouter, datedItemsRouter } from "./routes/datedItems.js";
+import { bikesNestedMaintRouter, maintenanceItemsRouter } from "./routes/maintenanceItems.js";
+import { notificationPreferencesRouter } from "./routes/notificationPreferences.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -44,6 +46,9 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/bikes", bikesRouter);
   app.use("/api/bikes", bikesNestedDatedRouter);
   app.use("/api/dated-items", datedItemsRouter);
+  app.use("/api/bikes", bikesNestedMaintRouter);
+  app.use("/api/maintenance-items", maintenanceItemsRouter);
+  app.use("/api/notification-preferences", notificationPreferencesRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/documents", documentsRouter);
 
