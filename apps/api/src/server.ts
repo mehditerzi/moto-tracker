@@ -11,6 +11,7 @@ import { bikesNestedMaintRouter, maintenanceItemsRouter } from "./routes/mainten
 import { notificationPreferencesRouter } from "./routes/notificationPreferences.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
+import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { getAuth } from "./auth/index.js";
 import { toNodeHandler } from "better-auth/node";
@@ -51,6 +52,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/notification-preferences", notificationPreferencesRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/documents", documentsRouter);
+  app.use("/api/push", pushSubscriptionsRouter);
 
   app.use(errorHandler);
   return app;
