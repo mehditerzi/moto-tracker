@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
 import { CaptureFab } from "@/components/CaptureFab";
+import { MaintenancePanel } from "@/components/MaintenancePanel";
 
 export function DashboardPage() {
   const dash = useDashboard();
@@ -97,10 +98,7 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-border p-4 text-sm text-muted dark:border-border-dark dark:text-muted-dark">
-            <span>Bakım takibi yakında.</span>
-            <span className="text-xs uppercase tracking-wider opacity-60">Phase 4</span>
-          </div>
+          <MaintenancePanel bikeId={active.bike.id} />
         </motion.div>
       </AnimatePresence>
 

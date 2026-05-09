@@ -14,6 +14,8 @@ import { DatedItemDetailPage } from "@/pages/DatedItemDetailPage";
 import { DocumentCapturePage } from "@/pages/DocumentCapturePage";
 import { DocumentReviewPage } from "@/pages/DocumentReviewPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { SettingsPage } from "@/pages/SettingsPage";
+import { MaintenanceFormPage } from "@/pages/MaintenanceFormPage";
 import { useSession } from "@/lib/authClient";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -50,6 +52,15 @@ const router = createBrowserRouter([
       { path: "dated-items/:id/edit", element: <DatedItemFormPage mode="edit" /> },
       { path: "capture", element: <DocumentCapturePage /> },
       { path: "documents/:id/review", element: <DocumentReviewPage /> },
+      { path: "settings", element: <SettingsPage /> },
+      {
+        path: "bikes/:bikeId/maintenance/new",
+        element: <MaintenanceFormPage mode="new" />,
+      },
+      {
+        path: "bikes/:bikeId/maintenance/:id",
+        element: <MaintenanceFormPage mode="edit" />,
+      },
     ],
   },
   { path: "*", element: <NotFoundPage /> },
