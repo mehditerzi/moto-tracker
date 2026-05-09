@@ -1,12 +1,14 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/hooks/useMe";
 import { signOut } from "@/lib/authClient";
 
 export function AppShell() {
+  const { t } = useTranslation();
   const me = useMe();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,9 +20,12 @@ export function AppShell() {
             <BrandMark />
           </Link>
           {me.data && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/bikes">Motosikletler</Link>
+                <Link to="/bikes">{t("nav.bikes")}</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" aria-label={t("nav.settings")}>
+                <Link to="/settings"><Settings className="h-4 w-4" /></Link>
               </Button>
               <Button
                 variant="ghost"
@@ -30,7 +35,7 @@ export function AppShell() {
                   navigate("/sign-in");
                 }}
               >
-                <LogOut className="h-4 w-4" /> Çıkış
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           )}
