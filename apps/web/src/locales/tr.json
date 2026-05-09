@@ -1,0 +1,45 @@
+{
+  "brand": "MotoTracker",
+  "nav": { "bikes": "Motosikletler", "settings": "Ayarlar", "signOut": "Çıkış" },
+  "auth": {
+    "signIn": "Giriş yap",
+    "signUp": "Hesap oluştur",
+    "magicLink": "Sihirli bağlantı gönder",
+    "google": "Google ile giriş",
+    "welcomeBack": "Tekrar hoş geldin",
+    "newAccount": "Hesap oluştur",
+    "magicSent": "Bağlantı gönderildi"
+  },
+  "dashboard": {
+    "active": "Aktif motosiklet",
+    "empty": "Henüz motosiklet eklemedin",
+    "addBike": "Bir motosiklet ekle",
+    "manageBikes": "Motosikletleri yönet"
+  },
+  "items": {
+    "sigorta": "Sigorta",
+    "kasko": "Kasko",
+    "muayene": "Muayene",
+    "maintenance": "Bakım",
+    "addDate": "Tarih ekle",
+    "daysLeft": "gün kaldı",
+    "expired": "Geçti",
+    "renew": "Yenile",
+    "edit": "Düzenle",
+    "delete": "Sil"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "language": "Dil",
+    "tr": "Türkçe",
+    "en": "English",
+    "notifications": "Bildirimler",
+    "enableOnDevice": "Bu cihazda bildirim al",
+    "disableOnDevice": "Bu cihazda bildirimi kapat",
+    "sendTest": "Test bildirimi gönder",
+    "leadDays": "Hatırlatma günleri",
+    "iosHint": "iPhone'da bildirim almak için uygulamayı önce ana ekrana ekle.",
+    "signOut": "Çıkış"
+  },
+  "common": { "save": "Kaydet", "cancel": "İptal", "back": "Geri", "loading": "Yükleniyor..." }
+}

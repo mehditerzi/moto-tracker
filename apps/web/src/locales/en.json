@@ -1,0 +1,45 @@
+{
+  "brand": "MotoTracker",
+  "nav": { "bikes": "Bikes", "settings": "Settings", "signOut": "Sign out" },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "magicLink": "Send magic link",
+    "google": "Sign in with Google",
+    "welcomeBack": "Welcome back",
+    "newAccount": "Create account",
+    "magicSent": "Link sent"
+  },
+  "dashboard": {
+    "active": "Active bike",
+    "empty": "You haven't added a bike yet",
+    "addBike": "Add a bike",
+    "manageBikes": "Manage bikes"
+  },
+  "items": {
+    "sigorta": "Insurance",
+    "kasko": "Kasko",
+    "muayene": "Inspection",
+    "maintenance": "Maintenance",
+    "addDate": "Add date",
+    "daysLeft": "days left",
+    "expired": "Expired",
+    "renew": "Renew",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "tr": "Turkish",
+    "en": "English",
+    "notifications": "Notifications",
+    "enableOnDevice": "Enable on this device",
+    "disableOnDevice": "Disable on this device",
+    "sendTest": "Send test notification",
+    "leadDays": "Reminder days",
+    "iosHint": "On iPhone, install the app to your home screen first.",
+    "signOut": "Sign out"
+  },
+  "common": { "save": "Save", "cancel": "Cancel", "back": "Back", "loading": "Loading..." }
+}
