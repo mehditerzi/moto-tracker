@@ -36,8 +36,8 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
 
   // BetterAuth must mount BEFORE express.json so it can read raw bodies.
   // Use a request-time handler so tests can reset the db between tests.
-  app.all("/api/auth/*", (req, res, next) => {
-    toNodeHandler(getAuth())(req, res, next);
+  app.all("/api/auth/*", (req, res) => {
+    toNodeHandler(getAuth())(req, res);
   });
 
   app.use(express.json({ limit: "1mb" }));

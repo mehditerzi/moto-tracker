@@ -134,7 +134,7 @@ maintenanceItemsRouter.patch(
       notes: "notes",
     };
     const sets: string[] = [];
-    const values: (string | number | null)[] = [];
+    const values: (string | number | null | undefined)[] = [];
     for (const [k, col] of Object.entries(fieldMap)) {
       if (k in body) {
         sets.push(`${col} = ?`);
