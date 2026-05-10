@@ -6,11 +6,19 @@ import { getDb } from "../db/index.js";
 import { sendMagicLinkEmail } from "./email.js";
 
 function makeAuth() {
+  const isProd = config.NODE_ENV === "production";
+
   return betterAuth({
     database: getDb() as unknown as Database.Database,
     baseURL: config.APP_BASE_URL,
     trustedOrigins: [config.WEB_ORIGIN],
     secret: config.SESSION_SECRET,
+    advanced: {
+      defaultCookieAttributes: {
+        sameSite: isProd ? "none" : "lax",
+        secure: isProd,
+      },
+    },
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
