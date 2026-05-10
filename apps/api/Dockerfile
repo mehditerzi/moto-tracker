@@ -17,6 +17,7 @@ FROM base AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /out ./
+COPY --from=build /repo/apps/api/src/db/migrations ./dist/db/migrations
 EXPOSE 8787
 VOLUME ["/data"]
 ENV DATABASE_PATH=/data/app.db
