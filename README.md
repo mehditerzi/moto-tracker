@@ -46,12 +46,25 @@ pnpm --filter @mototracker/api test
    - `WEB_ORIGIN` (your Vercel URL)
    - `APP_BASE_URL` (your tunnel URL)
    - `SESSION_SECRET` (32+ random chars)
+   - `BETTER_AUTH_SECRET` (32+ random chars)
    - `CLOUDFLARED_TOKEN`
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
    - optional: `RESEND_API_KEY`, `GOOGLE_CLIENT_ID/SECRET`
 4. **Compose up.** `docker compose up -d`
 5. **Pull the OCR model.** `docker exec mototracker-ollama ollama pull gemma4`
 6. **Run migrations.** First boot auto-runs them via the entrypoint; on later upgrades: `docker exec mototracker-api node dist/db/migrate.js`.
+
+### Fast setup on a new device (ngrok + Vercel)
+
+~~~bash
+./scripts/bootstrap-deploy-env.sh
+docker compose up -d --build api
+docker compose exec api node dist/db/migrate.js
+~~~
+
+The script writes `.env` with generated secrets and VAPID keys. Then set Vercel env vars:
+- `VITE_API_URL=<your APP_BASE_URL>`
+- `VITE_VAPID_PUBLIC_KEY=<generated VAPID_PUBLIC_KEY>`
 
 ## Frontend deploy (Vercel)
 
