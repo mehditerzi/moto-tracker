@@ -62,7 +62,7 @@ A multi-user, self-hosted PWA that tracks each motorcycle's **Muayene**, **Sigor
 | DB | SQLite (`better-sqlite3`, WAL mode), single file at `/data/app.db` |
 | Auth | BetterAuth (email/password + magic link + Google OAuth) |
 | Email | Resend (or any SMTP) — magic links only |
-| OCR | Ollama HTTP API; vision model name is env-configurable, default `gemma3:4b` |
+| OCR | Ollama HTTP API; vision model name is env-configurable, default `gemma4` |
 | Cron | node-cron, daily at 09:00 `Europe/Istanbul` |
 | Push | `web-push` (VAPID) |
 | File uploads | multer → disk; max 10 MB; converted/compressed via sharp before storage |
@@ -227,7 +227,7 @@ CREATE TABLE notification_sent (
 3. Server kicks an in-process worker (a simple async queue with concurrency 1; Ollama isn't designed for parallel calls on a single GPU/CPU).
 4. Worker calls Ollama:
    - Endpoint: `POST {OLLAMA_URL}/api/generate`
-   - Model: `OLLAMA_VISION_MODEL` (default `gemma3:4b`)
+   - Model: `OLLAMA_VISION_MODEL` (default `gemma4`)
    - Prompt asks for strict JSON: `{ doc_type, plate, dates: { sigorta_expires_on?, kasko_expires_on?, muayene_expires_on?, ruhsat_*? }, confidence }` — dates as ISO `YYYY-MM-DD`.
    - Image passed via `images: [<base64>]`.
    - `format: "json"` enabled so Ollama returns parsed JSON.
