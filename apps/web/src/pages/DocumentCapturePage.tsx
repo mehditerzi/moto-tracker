@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Image as ImageIcon } from "lucide-react";
+import { Camera, FileText, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUploadDocument } from "@/hooks/useDocuments";
@@ -65,6 +65,13 @@ export function DocumentCapturePage() {
                   onClick={() => cameraInput.current?.click()}
                 >
                   <Camera className="h-4 w-4" /> Kamera ile çek
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => cameraInput.current?.click()}
+                >
+                  <FileText className="h-4 w-4" /> Ruhsat çek
                 </Button>
                 <Button
                   type="button"
