@@ -122,7 +122,7 @@ bikesRouter.patch(
       color: "color",
     };
     const sets: string[] = [];
-    const values: (string | number | null)[] = [];
+    const values: (string | number | null | undefined)[] = [];
     for (const [key, col] of Object.entries(fieldMap)) {
       if (key in body) {
         sets.push(`${col} = ?`);
