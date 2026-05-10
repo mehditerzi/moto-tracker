@@ -9,6 +9,7 @@ COPY packages ./packages
 COPY apps/api ./apps/api
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @mototracker/shared build
 RUN pnpm --filter @mototracker/api build
 RUN pnpm --filter @mototracker/api deploy --prod /out
 
