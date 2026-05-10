@@ -4,7 +4,7 @@ Self-hosted PWA that tracks motorcycle Sigorta / Kasko / Muayene / Bakım expiry
 
 - **Frontend** (`apps/web`): React + Vite + Tailwind + vite-plugin-pwa, deployed to Vercel.
 - **Backend** (`apps/api`): Node + Express + better-sqlite3 + BetterAuth + node-cron + web-push, self-hosted via Docker.
-- **OCR**: Ollama vision model (e.g. `gemma3:4b`) running on the same host as the API.
+- **OCR**: Ollama vision model (e.g. `gemma4`) running on the same host as the API.
 - **Edge**: Cloudflare Tunnel exposes the API at `api.<your-domain>` over HTTPS.
 
 See `docs/superpowers/specs/2026-05-08-mototracker-design.md` for the full design.
@@ -50,7 +50,7 @@ pnpm --filter @mototracker/api test
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
    - optional: `RESEND_API_KEY`, `GOOGLE_CLIENT_ID/SECRET`
 4. **Compose up.** `docker compose up -d`
-5. **Pull the OCR model.** `docker exec mototracker-ollama ollama pull gemma3:4b`
+5. **Pull the OCR model.** `docker exec mototracker-ollama ollama pull gemma4`
 6. **Run migrations.** First boot auto-runs them via the entrypoint; on later upgrades: `docker exec mototracker-api node dist/db/migrate.js`.
 
 ## Frontend deploy (Vercel)
