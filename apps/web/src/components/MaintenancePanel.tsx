@@ -23,18 +23,18 @@ export function MaintenancePanel({ bikeId }: Props) {
   const items = q.data ?? [];
 
   return (
-    <motion.div
+    <motion.section
       layout
-      className="rounded-2xl border border-border bg-surface/40 p-4 dark:border-border-dark dark:bg-surface-elev-dark/40"
+      className="rounded-2xl border border-dashed border-border bg-surface/40 p-4 dark:border-border-dark dark:bg-surface-elev-dark/40"
     >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-muted dark:text-muted-dark" />
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted dark:text-muted-dark">
+          <Wrench className="h-3.5 w-3.5 text-muted dark:text-muted-dark" />
+          <h2 className="label-micro text-muted dark:text-muted-dark">
             {t("maintenance.title")}
           </h2>
         </div>
-        <Button asChild variant="ghost" size="sm" aria-label={t("dashboard.add")}>
+        <Button asChild variant="ghost" size="sm" aria-label={t("dashboard.add")} className="-mr-2">
           <Link to={`/bikes/${bikeId}/maintenance/new`}>
             <Plus className="h-4 w-4" />
           </Link>
@@ -67,7 +67,7 @@ export function MaintenancePanel({ bikeId }: Props) {
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        "font-mono text-xs",
+                        "num text-xs",
                         danger ? "text-danger" : "text-muted dark:text-muted-dark",
                       )}
                     >
@@ -76,7 +76,7 @@ export function MaintenancePanel({ bikeId }: Props) {
                           ? "—"
                           : days < 0
                             ? t("items.expired")
-                            : `${days} ${t("items.daysLeft").replace(/kaldı|left/i, "").trim() || "gün"}`
+                            : `${days} ${t("items.daysLeft").split(" ")[0]}`
                         : "—"}
                     </span>
                     <ChevronRight className="h-3.5 w-3.5 text-muted dark:text-muted-dark" />
@@ -87,6 +87,6 @@ export function MaintenancePanel({ bikeId }: Props) {
           })}
         </ul>
       )}
-    </motion.div>
+    </motion.section>
   );
 }

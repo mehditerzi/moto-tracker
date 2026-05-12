@@ -42,26 +42,31 @@ export function DatedItemDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t(`items.${item.data.type}`)}</CardTitle>
+          <div className="label-micro text-muted dark:text-muted-dark">
+            {t("dashboard.active")}
+          </div>
+          <CardTitle className="text-[22px] tracking-tight">
+            {t(`items.${item.data.type}`)}
+          </CardTitle>
         </CardHeader>
         <CardContent className="gap-3">
           <div
             className={cn(
-              "flex flex-col items-center gap-1 rounded-2xl border p-5",
+              "flex flex-col items-center gap-1 rounded-2xl border p-6",
               statusColorClass(info.status),
             )}
           >
-            <div className="font-mono text-6xl font-semibold tabular-nums leading-none tracking-tight">
+            <div className="num text-[64px] font-semibold leading-none tracking-tight">
               {info.daysRemaining === null
                 ? "—"
                 : info.daysRemaining < 0
                   ? t("items.expired")
                   : info.daysRemaining}
             </div>
-            <div className="text-xs opacity-80">
+            <div className="label-micro mt-1 opacity-80">
               {info.daysRemaining !== null && info.daysRemaining >= 0 ? t("items.daysLeft") : ""}
             </div>
-            <div className="mt-1 font-mono text-sm opacity-80">{item.data.expiresOn}</div>
+            <div className="num mt-2 text-sm opacity-80">{item.data.expiresOn}</div>
           </div>
 
           <Field label={t("items.provider")} value={item.data.provider} />

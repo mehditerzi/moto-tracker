@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +22,6 @@ import { pushToast } from "@/hooks/useToast";
 
 export function SignUpPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -41,7 +46,6 @@ export function SignUpPage() {
       });
       return;
     }
-    // Hard navigation so RequireAuth picks up the fresh session cookie.
     window.location.assign("/dashboard");
   });
 
@@ -53,32 +57,38 @@ export function SignUpPage() {
         transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
         className="w-full max-w-md"
       >
-        <div className="mb-6 flex justify-center">
-          <BrandMark className="text-lg" />
+        <div className="mb-8 flex flex-col items-center gap-1">
+          <BrandMark />
+          <p className="label-micro mt-2 text-muted dark:text-muted-dark">
+            sigorta · kasko · muayene · bakım
+          </p>
         </div>
         <Card className="p-6 sm:p-7">
           <CardHeader>
-            <CardTitle className="text-balance text-2xl tracking-tight">
+            <CardTitle className="text-balance text-[26px] tracking-tight">
               {t("auth.newAccount")}
             </CardTitle>
             <CardDescription>{t("auth.newAccountSub")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={onSubmit} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="name">{t("auth.name")}</Label>
+            <form onSubmit={onSubmit} className="flex flex-col gap-4">
+              <FieldGroup
+                id="name"
+                label={t("auth.name")}
+                error={form.formState.errors.name?.message}
+              >
                 <Input
                   id="name"
                   autoComplete="name"
                   autoCapitalize="words"
                   {...form.register("name")}
                 />
-                {form.formState.errors.name && (
-                  <p className="text-xs text-danger">{form.formState.errors.name.message}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">{t("auth.email")}</Label>
+              </FieldGroup>
+              <FieldGroup
+                id="email"
+                label={t("auth.email")}
+                error={form.formState.errors.email?.message}
+              >
                 <Input
                   id="email"
                   type="email"
@@ -90,12 +100,12 @@ export function SignUpPage() {
                   placeholder="ornek@mail.com"
                   {...form.register("email")}
                 />
-                {form.formState.errors.email && (
-                  <p className="text-xs text-danger">{form.formState.errors.email.message}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="password">{t("auth.password")}</Label>
+              </FieldGroup>
+              <FieldGroup
+                id="password"
+                label={t("auth.password")}
+                error={form.formState.errors.password?.message}
+              >
                 <div className="relative">
                   <Input
                     id="password"
@@ -108,24 +118,21 @@ export function SignUpPage() {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
-                    className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
+                    className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:bg-surface hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:text-muted-dark dark:hover:bg-surface-elev-dark dark:hover:text-text-dark"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {form.formState.errors.password && (
-                  <p className="text-xs text-danger">{form.formState.errors.password.message}</p>
-                )}
-              </div>
-              <Button type="submit" variant="accent" size="lg" disabled={busy}>
+              </FieldGroup>
+              <Button type="submit" variant="accent" size="lg" disabled={busy} className="mt-1">
                 {t("auth.signUp")}
               </Button>
             </form>
-            <p className="mt-5 text-center text-sm text-muted dark:text-muted-dark">
+            <p className="mt-6 text-center text-sm text-muted dark:text-muted-dark">
               {t("auth.haveAccount")}{" "}
               <Link
                 to="/sign-in"
-                className="font-medium text-text underline-offset-2 hover:underline dark:text-text-dark"
+                className="font-medium text-text underline-offset-4 hover:underline dark:text-text-dark"
               >
                 {t("auth.signIn")}
               </Link>
@@ -133,6 +140,28 @@ export function SignUpPage() {
           </CardContent>
         </Card>
       </motion.div>
+    </div>
+  );
+}
+
+function FieldGroup({
+  id,
+  label,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id} className="label-micro text-muted dark:text-muted-dark">
+        {label}
+      </Label>
+      {children}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }

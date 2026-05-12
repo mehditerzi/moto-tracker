@@ -24,16 +24,17 @@ export function BikesPage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mx-auto flex max-w-md flex-col items-center gap-5 py-16 text-center"
+        className="mx-auto flex max-w-md flex-col items-center gap-6 py-16 text-center"
       >
-        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-surface ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark">
-          <BikeIcon className="h-10 w-10 text-muted dark:text-muted-dark" />
+        <div className="relative grid h-24 w-24 place-items-center rounded-3xl bg-surface ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark">
+          <span aria-hidden className="absolute inset-0 rounded-3xl bg-accent/5" />
+          <BikeIcon className="relative h-11 w-11 text-muted dark:text-muted-dark" strokeWidth={1.6} />
         </div>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-balance text-2xl font-semibold tracking-tight">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-balance text-[26px] font-semibold leading-tight tracking-tight">
             {t("dashboard.empty")}
           </h1>
-          <p className="text-pretty text-sm text-muted dark:text-muted-dark">
+          <p className="text-pretty text-[15px] text-muted dark:text-muted-dark">
             {t("dashboard.emptySub")}
           </p>
         </div>
@@ -47,37 +48,50 @@ export function BikesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.myBikes")}</h1>
+    <div className="flex flex-col gap-5">
+      <header className="flex items-end justify-between gap-3">
+        <div>
+          <div className="label-micro text-muted dark:text-muted-dark">
+            {t("nav.bikes")}
+          </div>
+          <h1 className="mt-1.5 text-[26px] font-semibold leading-none tracking-tight">
+            {t("dashboard.myBikes")}
+          </h1>
+        </div>
         <Button asChild size="sm" variant="accent">
           <Link to="/bikes/new">
             <Plus className="h-4 w-4" /> {t("dashboard.add")}
           </Link>
         </Button>
       </header>
-      <div className="grid gap-3">
-        {data.map((b) => (
-          <motion.div key={b.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+
+      <div className="grid gap-2.5">
+        {data.map((b, i) => (
+          <motion.div
+            key={b.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.04, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+          >
             <Link to={`/bikes/${b.id}/edit`} className="block">
-              <Card className="flex items-center justify-between p-5 transition hover:border-accent hover:shadow-sm">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-surface ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark">
-                    <BikeIcon className="h-5 w-5 text-muted dark:text-muted-dark" />
+              <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-text/20 hover:shadow-card dark:hover:border-text-dark/20">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
+                    <BikeIcon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate font-semibold">{b.nickname}</div>
-                    <div className="truncate text-sm text-muted dark:text-muted-dark">
+                    <div className="truncate text-[15px] font-semibold">{b.nickname}</div>
+                    <div className="truncate text-[13px] text-muted dark:text-muted-dark">
                       {[b.make, b.model, b.year].filter(Boolean).join(" · ") || "—"}
                     </div>
                     {b.plate && (
-                      <div className="mt-0.5 font-mono text-[11px] uppercase tracking-wider text-muted dark:text-muted-dark">
+                      <div className="num mt-0.5 text-[11px] uppercase tracking-wider text-muted dark:text-muted-dark">
                         {b.plate}
                       </div>
                     )}
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted dark:text-muted-dark" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted dark:text-muted-dark" />
               </Card>
             </Link>
           </motion.div>
