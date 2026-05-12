@@ -95,8 +95,9 @@ documentsRouter.post(
 
     const buf = await sharp(req.file.buffer)
       .rotate()
-      .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true })
+      .grayscale()
+      .jpeg({ quality: 80 })
       .toBuffer();
 
     await fs.writeFile(outPath, buf);
