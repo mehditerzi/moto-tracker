@@ -142,7 +142,8 @@
     "camera": "Kamera ile çek",
     "gallery": "Galeriden seç",
     "uploading": "Yükleniyor ve okunuyor...",
-    "uploadFailed": "Yüklenemedi"
+    "uploadFailed": "Yüklenemedi",
+    "skip": "Geç, sonra manuel eklerim"
   },
   "review": {
     "reading": "Belge okunuyor",

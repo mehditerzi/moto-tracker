@@ -146,7 +146,8 @@
     "camera": "Take photo",
     "gallery": "Pick from gallery",
     "uploading": "Uploading and reading...",
-    "uploadFailed": "Couldn't upload"
+    "uploadFailed": "Couldn't upload",
+    "skip": "Skip, add manually later"
   },
   "review": {
     "reading": "Reading document",

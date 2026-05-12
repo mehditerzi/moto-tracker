@@ -84,6 +84,16 @@ export function DocumentCapturePage() {
                 >
                   <ImageIcon className="h-4 w-4" /> {t("capture.gallery")}
                 </Button>
+                {bikeId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-muted dark:text-muted-dark"
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    {t("capture.skip")}
+                  </Button>
+                )}
                 <input
                   ref={cameraInput}
                   type="file"
