@@ -31,8 +31,8 @@ export function SignInPage() {
   const onSubmit = form.handleSubmit(async (v) => {
     setBusy(true);
     const res = await signIn.email({ email: v.email, password: v.password });
-    setBusy(false);
     if (res.error) {
+      setBusy(false);
       pushToast({
         variant: "danger",
         title: t("auth.signInFailed"),
@@ -40,7 +40,10 @@ export function SignInPage() {
       });
       return;
     }
-    navigate("/dashboard");
+    // Hard navigation so the SPA re-mounts with the fresh session cookie;
+    // useSession()'s cached `data: null` from before sign-in otherwise
+    // bounces RequireAuth straight back to /sign-in.
+    window.location.assign("/dashboard");
   });
 
   const onMagic = async () => {
