@@ -149,12 +149,14 @@ fi
 
 # --- write ngrok.yml (tunnel definition) ------------------------------------
 # Docker compose can't conditionally include a CLI flag in `command:`, so we
-# template the tunnel via ngrok's config file instead. The authtoken stays in
-# the env (NGROK_AUTHTOKEN), so the YAML below is safe to commit if you want
-# (though .gitignore excludes it by default).
+# template the tunnel via ngrok's config file. version "2" is the classic
+# format ("tunnels" map); ngrok agent 3.x accepts it for backward compat.
+# (v3 config switches to "endpoints" — different shape, easy to get wrong.)
+# The authtoken stays in the env (NGROK_AUTHTOKEN), so this file is safe to
+# inspect; it's gitignored by default.
 say "Writing ngrok.yml"
 {
-  echo "version: \"3\""
+  echo "version: \"2\""
   echo "tunnels:"
   echo "  api:"
   echo "    proto: http"
