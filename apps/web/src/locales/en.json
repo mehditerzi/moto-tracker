@@ -1,6 +1,10 @@
 {
   "brand": "MotoTracker",
-  "nav": { "bikes": "Bikes", "settings": "Settings", "signOut": "Sign out" },
+  "nav": {
+    "bikes": "Bikes",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
   "auth": {
     "signIn": "Sign in",
     "signUp": "Create account",
@@ -84,7 +88,11 @@
     "archiveConfirm": "Archive this motorcycle?",
     "optional": "optional",
     "added": "Added",
-    "updated": "Updated"
+    "updated": "Updated",
+    "chassisNo": "Chassis number",
+    "engineNo": "Engine block number",
+    "cylinderCc": "Cylinder capacity (cc)",
+    "documents": "Documents"
   },
   "maintenance": {
     "title": "Maintenance",
@@ -162,7 +170,10 @@
     "goToRecord": "Go to record",
     "applyToBike": "Apply to bike",
     "appliedToBike": "Applied to bike",
-    "close": "Close"
+    "close": "Close",
+    "chassisNo": "Chassis no",
+    "engineNo": "Engine no",
+    "cylinderCc": "Displacement"
   },
   "common": {
     "save": "Save",
