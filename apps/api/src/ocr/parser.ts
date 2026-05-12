@@ -21,7 +21,6 @@ const optionalInt = z
 
 const RawSchema = z.object({
   doc_type: z.enum(["ruhsat", "sigorta", "kasko", "muayene", "unknown"]).default("unknown"),
-  visible_text: optionalString,
   plate: optionalString,
   make: optionalString,
   model: optionalString,
@@ -52,7 +51,6 @@ const RawSchema = z.object({
 
 export interface ParsedOcr {
   docType: "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown";
-  visibleText: string | null;
   plate: string | null;
   make: string | null;
   model: string | null;
@@ -91,6 +89,7 @@ export function parseOcr(rawText: string): ParsedOcr {
     const start = jsonText.indexOf("{");
     const end = jsonText.lastIndexOf("}");
     if (start === -1 || end === -1 || end <= start) {
+      console.error("[ocr] no JSON found in response:", rawText.slice(0, 300));
       throw new Error("OCR response did not contain a JSON object");
     }
     jsonText = jsonText.slice(start, end + 1);
@@ -106,7 +105,6 @@ export function parseOcr(rawText: string): ParsedOcr {
   const parsed = RawSchema.parse(raw);
   return {
     docType: parsed.doc_type,
-    visibleText: parsed.visible_text,
     plate: parsed.plate,
     make: parsed.make,
     model: parsed.model,

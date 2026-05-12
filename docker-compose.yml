@@ -24,7 +24,7 @@ services:
       # container instead, set OLLAMA_URL=http://ollama:11434 in .env and
       # `docker compose --profile bundled-ollama up -d`.
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:e4b}
+      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:26b}
       OCR_AUTO_APPLY_THRESHOLD: ${OCR_AUTO_APPLY_THRESHOLD:-0.7}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
