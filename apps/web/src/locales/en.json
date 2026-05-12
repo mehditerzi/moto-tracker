@@ -121,6 +121,7 @@
     "iosHint": "On iPhone, install the app to your home screen first.",
     "unsupported": "This device or browser doesn't support notifications.",
     "permissionDenied": "Notification permission was denied. You can re-enable it in browser settings.",
+    "permissionDeniedHint": "To re-enable notifications, open your browser settings and allow notifications for this site.",
     "signOut": "Sign out",
     "signOutConfirm": "Sign out?",
     "on": "On",

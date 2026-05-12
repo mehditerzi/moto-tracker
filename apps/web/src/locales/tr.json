@@ -121,6 +121,7 @@
     "iosHint": "iPhone'da bildirim almak için uygulamayı önce ana ekrana ekle.",
     "unsupported": "Bu cihaz veya tarayıcı bildirimleri desteklemiyor.",
     "permissionDenied": "Bildirim izni reddedildi. Tarayıcı ayarlarından açabilirsin.",
+    "permissionDeniedHint": "Bildirimlere izin vermek için tarayıcı ayarlarını açın ve bu site için bildirimlere izin verin.",
     "signOut": "Çıkış yap",
     "signOutConfirm": "Çıkış yapmak istiyor musun?",
     "on": "Açık",

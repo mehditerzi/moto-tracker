@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Bell, BellOff, LogOut, Globe, ChevronRight } from "lucide-react";
@@ -37,7 +38,10 @@ export function SettingsPage() {
         pushToast({
           variant: "danger",
           title: t("common.error"),
-          description: (e as Error).message,
+          description:
+            (e as Error).message === "push/permission-denied"
+              ? t("settings.permissionDenied")
+              : (e as Error).message,
         });
       }
     }
@@ -57,6 +61,10 @@ export function SettingsPage() {
       // @ts-expect-error: iOS-only Safari property
       window.navigator?.standalone === true
     );
+
+  const [iosHintDismissed, setIosHintDismissed] = useState(
+    () => localStorage.getItem("moto.iosHintDismissed") === "1",
+  );
 
   return (
     <motion.div
@@ -108,7 +116,10 @@ export function SettingsPage() {
           ) : !push.data?.supported ? (
             <p className="text-sm text-muted dark:text-muted-dark">{t("settings.unsupported")}</p>
           ) : push.data.permission === "denied" ? (
-            <p className="text-sm text-danger">{t("settings.permissionDenied")}</p>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm text-danger">{t("settings.permissionDenied")}</p>
+              <p className="text-xs text-muted dark:text-muted-dark">{t("settings.permissionDeniedHint")}</p>
+            </div>
           ) : (
             <>
               <Button
@@ -154,8 +165,20 @@ export function SettingsPage() {
               )}
             </>
           )}
-          {isIos && (
-            <p className="text-xs text-muted dark:text-muted-dark">{t("settings.iosHint")}</p>
+          {isIos && !push.data?.subscribed && !iosHintDismissed && push.data?.permission !== "denied" && (
+            <div className="flex items-start gap-2">
+              <p className="text-xs text-muted dark:text-muted-dark">{t("settings.iosHint")}</p>
+              <button
+                onClick={() => {
+                  localStorage.setItem("moto.iosHintDismissed", "1");
+                  setIosHintDismissed(true);
+                }}
+                className="shrink-0 text-xs text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
           )}
         </CardContent>
       </Card>
