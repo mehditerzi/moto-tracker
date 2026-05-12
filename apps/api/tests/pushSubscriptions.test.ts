@@ -64,7 +64,7 @@ describe("/api/push", () => {
         keys: { p256dh: "P", auth: "A" },
       });
     const r = await request(app).post("/api/push/test").set("Cookie", cookie);
-    expect(r.body).toEqual({ sent: 2, total: 2 });
+    expect(r.body).toEqual({ sent: 2, total: 2, error: null });
     expect(calls).toBe(2);
   });
 });

@@ -54,6 +54,6 @@ export function useDisablePush() {
 
 export function useSendTestPush() {
   return useMutation({
-    mutationFn: () => api<{ sent: number; total: number }>("/api/push/test", { method: "POST" }),
+    mutationFn: () => api<{ sent: number; total: number; error: string | null }>("/api/push/test", { method: "POST" }),
   });
 }
