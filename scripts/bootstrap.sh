@@ -241,7 +241,7 @@ fi
 
 # --- Ollama model -----------------------------------------------------------
 ollama_model="$(read_env OLLAMA_VISION_MODEL)"
-ollama_model="${ollama_model:-gemma4}"
+ollama_model="${ollama_model:-gemma4:26b}"
 if [ "$USE_BUNDLED_OLLAMA" = "true" ]; then
   say "Pulling Ollama vision model ($ollama_model) into bundled container"
   docker exec mototracker-ollama ollama pull "$ollama_model" \

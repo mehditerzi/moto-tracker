@@ -51,6 +51,11 @@ export async function processDocument(documentId: string): Promise<void> {
       threshold: config.OCR_AUTO_APPLY_THRESHOLD,
     });
 
+    // If the doc was uploaded without a bike context but autoApply matched
+    // (or created) one, link the document to that bike so the review screen
+    // knows which bike to talk about.
+    const newBikeId = doc.bike_id ?? apply.appliedBikeId ?? null;
+
     db.prepare(
       `UPDATE document
          SET ocr_status = 'done',
@@ -58,6 +63,7 @@ export async function processDocument(documentId: string): Promise<void> {
              ocr_extracted_json = ?,
              doc_type = ?,
              ocr_model = ?,
+             bike_id = ?,
              applied_dated_item_id = ?,
              updated_at = datetime('now')
          WHERE id = ?`,
@@ -66,9 +72,18 @@ export async function processDocument(documentId: string): Promise<void> {
       JSON.stringify(parsed),
       parsed.docType,
       model,
+      newBikeId,
       apply.appliedDatedItemId,
       doc.id,
     );
+
+    if (apply.bikeAction !== "none") {
+      console.log(
+        `[ocr] document ${doc.id}: bike ${apply.bikeAction} (id=${apply.appliedBikeId})${
+          apply.appliedDatedItemId ? `, dated_item created (${apply.appliedDatedItemId})` : ""
+        }`,
+      );
+    }
   } catch (e) {
     const msg = (e as Error).message ?? String(e);
     db.prepare(
