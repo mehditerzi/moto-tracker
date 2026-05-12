@@ -9,6 +9,10 @@ export type OcrStatus = z.infer<typeof ocrStatusSchema>;
 export const ocrExtractedSchema = z.object({
   docType: docTypeSchema,
   plate: z.string().nullable(),
+  // Vehicle details — populated mostly from ruhsat (registration) documents.
+  make: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  year: z.number().int().nullable().optional(),
   dates: z.object({
     sigortaExpiresOn: z.string().nullable(),
     kaskoExpiresOn: z.string().nullable(),
