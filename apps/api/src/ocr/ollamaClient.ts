@@ -63,6 +63,7 @@ export async function runTextOcr(
   const body = {
     model: resolvedModel,
     prompt: buildTextParsePrompt(extractedText),
+    format: "json",
     stream: false,
     keep_alive: "10m",
     options: { num_predict: 1024 },
