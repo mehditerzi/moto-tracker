@@ -63,6 +63,10 @@ pushSubscriptionsRouter.post(
 pushSubscriptionsRouter.post(
   "/test",
   asyncHandler(async (req, res) => {
+    if (!config.VAPID_PUBLIC_KEY || !config.VAPID_PRIVATE_KEY) {
+      res.status(400).json({ sent: 0, total: 0, error: "vapid_not_configured" });
+      return;
+    }
     const db = getDb();
     const subs = db
       .prepare("SELECT endpoint, p256dh, auth FROM push_subscription WHERE user_id = ?")
@@ -85,6 +89,12 @@ pushSubscriptionsRouter.post(
         }),
       ),
     );
-    res.json({ sent: results.filter((r) => r.ok).length, total: results.length });
+    const sent = results.filter((r) => r.ok).length;
+    const firstError = results.find((r) => !r.ok) as { ok: false; message: string } | undefined;
+    res.json({
+      sent,
+      total: results.length,
+      error: sent === 0 && firstError ? firstError.message : null,
+    });
   }),
 );

@@ -71,5 +71,7 @@ export const config: AppEnv =
         DATABASE_PATH: ":memory:",
         UPLOADS_DIR: "/tmp/mototracker-test-uploads",
         CRON_ENABLED: "false",
+        VAPID_PUBLIC_KEY: "BTest_PublicKey_ForTests_Only",
+        VAPID_PRIVATE_KEY: "TestPrivateKey_ForTests_Only",
       })
     : loadConfig();

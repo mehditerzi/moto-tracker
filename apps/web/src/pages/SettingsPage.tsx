@@ -41,6 +41,8 @@ export function SettingsPage() {
           description:
             (e as Error).message === "push/permission-denied"
               ? t("settings.permissionDenied")
+              : (e as Error).message === "VAPID public key not configured on server"
+              ? "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın."
               : (e as Error).message,
         });
       }
@@ -144,12 +146,26 @@ export function SettingsPage() {
                   onClick={() =>
                     test
                       .mutateAsync()
-                      .then((r) =>
-                        pushToast({
-                          variant: r.sent > 0 ? "success" : "danger",
-                          title: t("settings.testSent", { sent: r.sent, total: r.total }),
-                        }),
-                      )
+                      .then((r) => {
+                        if (r.sent > 0) {
+                          pushToast({
+                            variant: "success",
+                            title: t("settings.testSent", { sent: r.sent, total: r.total }),
+                          });
+                        } else {
+                          const desc =
+                            r.error === "vapid_not_configured"
+                              ? "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın."
+                              : r.error === "VAPID keys not configured"
+                              ? "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın."
+                              : (r.error ?? "Bildirim gönderilemedi.");
+                          pushToast({
+                            variant: "danger",
+                            title: t("common.error"),
+                            description: desc,
+                          });
+                        }
+                      })
                       .catch((e) =>
                         pushToast({
                           variant: "danger",
