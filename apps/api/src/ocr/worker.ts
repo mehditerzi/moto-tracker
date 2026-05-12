@@ -18,11 +18,14 @@ type OcrFn = (filePath: string) => Promise<{ rawText: string; model: string }>;
 async function defaultOcrPipeline(filePath: string): Promise<{ rawText: string; model: string }> {
   const tesseractText = await extractTextWithTesseract(filePath);
   if (tesseractText.length >= 80) {
-    console.log(`[ocr] tesseract extracted ${tesseractText.length} chars — using text LLM`);
+    console.log(`[ocr] tesseract extracted ${tesseractText.length} chars — trying text LLM`);
     try {
-      return await runTextOcrDefault(tesseractText);
+      const result = await runTextOcrDefault(tesseractText);
+      // Validate the response contains parseable JSON before committing to it.
+      parseOcr(result.rawText);
+      return result;
     } catch (e) {
-      console.warn("[ocr] text LLM failed, falling back to vision:", (e as Error).message);
+      console.warn("[ocr] text LLM unusable, falling back to vision:", (e as Error).message);
     }
   } else {
     console.log(`[ocr] tesseract returned ${tesseractText.length} chars — using vision LLM`);
