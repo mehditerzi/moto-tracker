@@ -37,7 +37,7 @@ const Env = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   UPLOADS_DIR: z.string().default("./data/uploads"),
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
-  OLLAMA_VISION_MODEL: z.string().default("gemma4"),
+  OLLAMA_VISION_MODEL: z.string().default("gemma4:26b"),
   OCR_AUTO_APPLY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
