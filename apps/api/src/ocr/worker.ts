@@ -15,21 +15,30 @@ interface DocRow {
 type OcrFn = (filePath: string) => Promise<{ rawText: string; model: string }>;
 
 // Default pipeline: Tesseract → text LLM → vision fallback
+// Vision fallback fires when:
+//   • Tesseract extracted too few chars (blurry/unreadable scan)
+//   • text LLM threw (network / HTTP error)
+//   • text LLM returned valid JSON but couldn't identify the document
+//     (doc_type=unknown or confidence<0.3 — typical for garbled Tesseract output)
 async function defaultOcrPipeline(filePath: string): Promise<{ rawText: string; model: string }> {
   const tesseractText = await extractTextWithTesseract(filePath);
+  console.log(`[ocr] tesseract: ${tesseractText.length} chars — first 120: ${tesseractText.slice(0, 120).replace(/\n/g, " ")}`);
+
   if (tesseractText.length >= 80) {
-    console.log(`[ocr] tesseract extracted ${tesseractText.length} chars — trying text LLM`);
     try {
       const result = await runTextOcrDefault(tesseractText);
-      // Validate the response contains parseable JSON before committing to it.
-      parseOcr(result.rawText);
-      return result;
+      const parsed = parseOcr(result.rawText);
+      console.log(`[ocr] text LLM: doc_type=${parsed.docType} confidence=${parsed.confidence} plate=${parsed.plate}`);
+      if (parsed.docType !== "unknown" && parsed.confidence >= 0.3) {
+        return result;
+      }
+      console.log("[ocr] text LLM result too uncertain — falling back to vision");
     } catch (e) {
-      console.warn("[ocr] text LLM unusable, falling back to vision:", (e as Error).message);
+      console.warn("[ocr] text LLM failed — falling back to vision:", (e as Error).message);
     }
-  } else {
-    console.log(`[ocr] tesseract returned ${tesseractText.length} chars — using vision LLM`);
   }
+
+  console.log("[ocr] running vision LLM");
   return runVisionOcrDefault(filePath);
 }
 
