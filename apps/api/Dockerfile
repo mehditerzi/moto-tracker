@@ -29,6 +29,9 @@ RUN pnpm --filter @mototracker/api deploy --prod /out
 
 # ---- runtime stage ----
 FROM node:20-bookworm-slim AS runtime
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-tur \
+ && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /out ./
