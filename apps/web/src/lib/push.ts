@@ -26,7 +26,7 @@ export async function ensureServiceWorker(): Promise<ServiceWorkerRegistration> 
 export async function subscribePushOnDevice(publicKey: string): Promise<{ id: string }> {
   if (Notification.permission !== "granted") {
     const p = await Notification.requestPermission();
-    if (p !== "granted") throw new Error("Bildirim izni reddedildi");
+    if (p !== "granted") throw new Error("push/permission-denied");
   }
   const reg = await ensureServiceWorker();
   const sub = await reg.pushManager.subscribe({
