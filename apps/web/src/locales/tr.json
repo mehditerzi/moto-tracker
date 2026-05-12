@@ -193,6 +193,12 @@
     "no": "Hayır",
     "dash": "—"
   },
+  "install": {
+    "title": "Ana Ekrana Ekle",
+    "subtitle": "En iyi deneyim için MotoTracker'ı yükle.",
+    "iosHint": "Paylaş'a bas, ardından \"Ana Ekrana Ekle\"yi seç.",
+    "add": "Ekle"
+  },
   "notFound": {
     "title": "Sayfa bulunamadı",
     "sub": "Aradığın sayfa burada değil.",
