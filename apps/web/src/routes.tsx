@@ -2,8 +2,7 @@ import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom"
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { AppShell } from "@/components/AppShell";
-import { SignInPage } from "@/pages/SignInPage";
-import { SignUpPage } from "@/pages/SignUpPage";
+import { LandingPage } from "@/pages/LandingPage";
 import { MagicLinkSentPage } from "@/pages/MagicLinkSentPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { BikesPage } from "@/pages/BikesPage";
@@ -39,8 +38,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 const router = createBrowserRouter([
-  { path: "/sign-in", element: <SignInPage /> },
-  { path: "/sign-up", element: <SignUpPage /> },
+  { path: "/sign-in", element: <LandingPage mode="signin" /> },
+  { path: "/sign-up", element: <LandingPage mode="signup" /> },
   { path: "/magic-link-sent", element: <MagicLinkSentPage /> },
   { path: "/auth/callback", element: <AuthCallbackPage /> },
   {
