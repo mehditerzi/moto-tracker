@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function MaintenanceFormPage({ mode }: Props) {
+  const { t } = useTranslation();
   const params = useParams();
   const navigate = useNavigate();
   const bikeId = params.bikeId!;
@@ -80,16 +82,20 @@ export function MaintenanceFormPage({ mode }: Props) {
       } else {
         await createMut.mutateAsync(payload);
       }
-      pushToast({ variant: "success", title: "Kaydedildi" });
+      pushToast({ variant: "success", title: t("items.saved") });
       navigate("/dashboard");
     } catch (e) {
-      pushToast({ variant: "danger", title: "Kaydedilemedi", description: String(e) });
+      pushToast({
+        variant: "danger",
+        title: t("items.saveFailed"),
+        description: String(e),
+      });
     }
   });
 
   const onDelete = async () => {
     if (!itemId) return;
-    if (!confirm("Sil?")) return;
+    if (!confirm(t("maintenance.deleteConfirm"))) return;
     await deleteMut.mutateAsync(itemId);
     navigate("/dashboard");
   };
@@ -102,69 +108,90 @@ export function MaintenanceFormPage({ mode }: Props) {
     >
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "edit" ? "Bakım kaydını düzenle" : "Yeni bakım kaydı"}</CardTitle>
+          <CardTitle>
+            {mode === "edit" ? t("maintenance.editTitle") : t("maintenance.newTitle")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="kind">Tür</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="kind">{t("items.type")}</Label>
               <select
                 id="kind"
                 {...form.register("kind")}
-                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
               >
-                <option value="engine_oil">Motor yağı</option>
-                <option value="chain">Zincir</option>
-                <option value="brakes">Fren</option>
-                <option value="tires">Lastik</option>
-                <option value="coolant">Soğutma</option>
-                <option value="custom">Diğer</option>
+                {KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {t(`maintenance.kinds.${k}`)}
+                  </option>
+                ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="customLabel">Etiket (Diğer için)</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="customLabel">{t("maintenance.customLabel")}</Label>
               <Input id="customLabel" {...form.register("customLabel")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="lastDoneOn">Son yapım tarihi</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lastDoneOn">{t("maintenance.lastDoneOn")}</Label>
                 <Input id="lastDoneOn" type="date" {...form.register("lastDoneOn")} />
               </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="lastDoneKm">Son yapım km</Label>
-                <Input id="lastDoneKm" type="number" {...form.register("lastDoneKm")} />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lastDoneKm">{t("maintenance.lastDoneKm")}</Label>
+                <Input
+                  id="lastDoneKm"
+                  type="number"
+                  inputMode="numeric"
+                  {...form.register("lastDoneKm")}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="intervalMonths">Periyot (ay)</Label>
-                <Input id="intervalMonths" type="number" {...form.register("intervalMonths")} />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="intervalMonths">{t("maintenance.intervalMonths")}</Label>
+                <Input
+                  id="intervalMonths"
+                  type="number"
+                  inputMode="numeric"
+                  {...form.register("intervalMonths")}
+                />
               </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="intervalKm">Periyot (km)</Label>
-                <Input id="intervalKm" type="number" {...form.register("intervalKm")} />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="intervalKm">{t("maintenance.intervalKm")}</Label>
+                <Input
+                  id="intervalKm"
+                  type="number"
+                  inputMode="numeric"
+                  {...form.register("intervalKm")}
+                />
               </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="notes">Not</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="notes">{t("items.note")}</Label>
               <textarea
                 id="notes"
                 rows={3}
                 {...form.register("notes")}
-                className="rounded-xl border border-border bg-surface p-2 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+                className="rounded-xl border border-border bg-surface p-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
               />
             </div>
-            <div className="flex gap-2">
-              <Button type="submit" variant="accent" className="flex-1">
-                Kaydet
-              </Button>
+            <div className="mt-2 flex gap-2">
               <Button asChild variant="ghost" className="flex-1">
-                <Link to="/dashboard">İptal</Link>
+                <Link to="/dashboard">{t("common.cancel")}</Link>
+              </Button>
+              <Button type="submit" variant="accent" className="flex-1">
+                {t("common.save")}
               </Button>
             </div>
             {mode === "edit" && (
-              <Button type="button" variant="danger" onClick={onDelete}>
-                <Trash2 className="h-4 w-4" /> Sil
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-1 text-danger border-danger/40 hover:bg-danger/10 hover:border-danger/60"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" /> {t("items.delete")}
               </Button>
             )}
           </form>

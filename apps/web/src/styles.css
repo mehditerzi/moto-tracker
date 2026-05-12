@@ -7,11 +7,16 @@
 
 :root {
   color-scheme: light dark;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 html {
   background: theme(colors.bg.DEFAULT);
   color: theme(colors.text.DEFAULT);
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,4 +30,46 @@ body {
   font-family: theme(fontFamily.sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+  overscroll-behavior-y: none;
+}
+
+/* Subtle ambient backdrop — barely visible in light, more present in dark. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(60% 40% at 80% 0%, rgba(225, 255, 77, 0.08), transparent 60%),
+    radial-gradient(50% 35% at 0% 100%, rgba(225, 255, 77, 0.05), transparent 60%);
+}
+
+@media (prefers-color-scheme: dark) {
+  body::before {
+    background:
+      radial-gradient(60% 40% at 80% 0%, rgba(225, 255, 77, 0.1), transparent 60%),
+      radial-gradient(50% 35% at 0% 100%, rgba(225, 255, 77, 0.07), transparent 60%);
+  }
+}
+
+/* Hide number-input spinners for cleaner mobile UI. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@layer utilities {
+  .pt-safe { padding-top: max(theme(spacing.3), var(--safe-top)); }
+  .pb-safe { padding-bottom: max(theme(spacing.3), var(--safe-bottom)); }
+  .pl-safe { padding-left: max(theme(spacing.4), var(--safe-left)); }
+  .pr-safe { padding-right: max(theme(spacing.4), var(--safe-right)); }
+  .mb-safe { margin-bottom: max(theme(spacing.6), calc(var(--safe-bottom) + theme(spacing.4))); }
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
 }

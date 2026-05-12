@@ -19,6 +19,15 @@ void i18n
     resources: { tr: { translation: tr }, en: { translation: en } },
   });
 
+function syncHtmlLang(lng: string) {
+  if (typeof document === "undefined") return;
+  const short = lng.toLowerCase().startsWith("en") ? "en" : "tr";
+  document.documentElement.lang = short;
+}
+
+syncHtmlLang(i18n.language);
+i18n.on("languageChanged", syncHtmlLang);
+
 export default i18n;
 
 export function setLanguage(lng: "tr" | "en"): void {

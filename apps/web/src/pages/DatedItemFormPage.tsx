@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardHeader,
@@ -23,25 +24,15 @@ import {
   useUpdateDatedItem,
 } from "@/hooks/useDatedItems";
 import type { DatedItemType } from "@mototracker/shared";
-import { TYPE_LABEL_TR } from "@/lib/datedItems";
 
 const datedItemTypeValues = ["sigorta", "kasko", "muayene"] as const;
-
-const schema = z.object({
-  type: z.enum(datedItemTypeValues),
-  expiresOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-AA-GG formatında girin"),
-  provider: z.string().max(120).optional().or(z.literal("")),
-  policyNo: z.string().max(80).optional().or(z.literal("")),
-  cost: z.union([z.coerce.number().nonnegative(), z.literal("")]).optional(),
-  notes: z.string().max(2000).optional().or(z.literal("")),
-});
-type FormValues = z.infer<typeof schema>;
 
 interface Props {
   mode: "new" | "edit";
 }
 
 export function DatedItemFormPage({ mode }: Props) {
+  const { t } = useTranslation();
   const params = useParams();
   const [search] = useSearchParams();
   const navigate = useNavigate();
@@ -56,6 +47,18 @@ export function DatedItemFormPage({ mode }: Props) {
   const deleteMut = useDeleteDatedItem();
 
   const initialType = (search.get("type") as DatedItemType | null) ?? "sigorta";
+
+  const schema = z.object({
+    type: z.enum(datedItemTypeValues),
+    expiresOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-AA-GG"),
+    provider: z.string().max(120).optional().or(z.literal("")),
+    policyNo: z.string().max(80).optional().or(z.literal("")),
+    cost: z.union([z.coerce.number().nonnegative(), z.literal("")]).optional(),
+    notes: z.string().max(2000).optional().or(z.literal("")),
+  });
+  type FormValues = z.infer<typeof schema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -87,21 +90,25 @@ export function DatedItemFormPage({ mode }: Props) {
     try {
       if (isEdit && itemId) {
         await updateMut.mutateAsync(payload);
-        pushToast({ variant: "success", title: "Güncellendi" });
+        pushToast({ variant: "success", title: t("items.saved") });
         navigate(`/dated-items/${itemId}`);
       } else {
         const created = await createMut.mutateAsync(payload);
-        pushToast({ variant: "success", title: "Eklendi" });
+        pushToast({ variant: "success", title: t("items.saved") });
         navigate(`/dated-items/${created.id}`);
       }
     } catch (e) {
-      pushToast({ variant: "danger", title: "Kaydedilemedi", description: String(e) });
+      pushToast({
+        variant: "danger",
+        title: t("items.saveFailed"),
+        description: String(e),
+      });
     }
   });
 
   const onDelete = async () => {
     if (!itemId) return;
-    if (!confirm("Bu kaydı silmek istiyor musun?")) return;
+    if (!confirm(t("items.confirmDelete"))) return;
     await deleteMut.mutateAsync(itemId);
     navigate("/dashboard");
   };
@@ -115,67 +122,80 @@ export function DatedItemFormPage({ mode }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isEdit ? "Kaydı düzenle" : `Yeni ${TYPE_LABEL_TR[initialType]} kaydı`}
+            {isEdit
+              ? t("items.editRecord")
+              : t("items.newRecord", { type: t(`items.${initialType}`) })}
           </CardTitle>
-          <CardDescription>Bitiş tarihini ve isteğe bağlı detayları gir.</CardDescription>
+          <CardDescription>{t("items.expiresOn")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="type">Tür</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="type">{t("items.type")}</Label>
               <select
                 id="type"
                 {...form.register("type")}
-                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
               >
-                {datedItemTypeValues.map((t) => (
-                  <option key={t} value={t}>
-                    {TYPE_LABEL_TR[t]}
+                {datedItemTypeValues.map((tt) => (
+                  <option key={tt} value={tt}>
+                    {t(`items.${tt}`)}
                   </option>
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="expiresOn">Bitiş tarihi</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="expiresOn">{t("items.expiresOn")}</Label>
               <Input id="expiresOn" type="date" {...form.register("expiresOn")} />
               {form.formState.errors.expiresOn && (
                 <p className="text-xs text-danger">{form.formState.errors.expiresOn.message}</p>
               )}
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="provider">Şirket</Label>
-              <Input id="provider" {...form.register("provider")} placeholder="Acme Sigorta" />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="provider">{t("items.provider")}</Label>
+              <Input id="provider" {...form.register("provider")} placeholder="Acme" />
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="policyNo">Poliçe no</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="policyNo">{t("items.policyNo")}</Label>
               <Input id="policyNo" {...form.register("policyNo")} />
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="cost">Tutar (TL)</Label>
-              <Input id="cost" type="number" step="0.01" {...form.register("cost")} />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cost">{t("items.amount")} (TL)</Label>
+              <Input
+                id="cost"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                {...form.register("cost")}
+              />
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="notes">Not</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="notes">{t("items.note")}</Label>
               <textarea
                 id="notes"
                 {...form.register("notes")}
                 rows={3}
-                className="rounded-xl border border-border bg-surface p-2 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+                className="rounded-xl border border-border bg-surface p-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
               />
             </div>
-            <div className="flex gap-2">
-              <Button type="submit" variant="accent" className="flex-1">
-                {isEdit ? "Kaydet" : "Ekle"}
-              </Button>
+            <div className="mt-2 flex gap-2">
               <Button asChild variant="ghost" className="flex-1">
                 <Link to={isEdit && itemId ? `/dated-items/${itemId}` : "/dashboard"}>
-                  İptal
+                  {t("common.cancel")}
                 </Link>
+              </Button>
+              <Button type="submit" variant="accent" className="flex-1">
+                {isEdit ? t("common.save") : t("dashboard.add")}
               </Button>
             </div>
             {isEdit && (
-              <Button type="button" variant="danger" onClick={onDelete}>
-                <Trash2 className="h-4 w-4" /> Sil
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-1 text-danger border-danger/40 hover:bg-danger/10 hover:border-danger/60"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" /> {t("items.delete")}
               </Button>
             )}
           </form>

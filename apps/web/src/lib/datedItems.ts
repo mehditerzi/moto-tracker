@@ -18,18 +18,6 @@ export function statusFor(expiresOn: string | null | undefined, today = new Date
   return { status: "ok", daysRemaining: days };
 }
 
-export const TYPE_LABEL_TR: Record<DatedItemType, string> = {
-  sigorta: "Sigorta",
-  kasko: "Kasko",
-  muayene: "Muayene",
-};
-
-export const TYPE_LABEL_EN: Record<DatedItemType, string> = {
-  sigorta: "Insurance",
-  kasko: "Kasko",
-  muayene: "Inspection",
-};
-
 export const TYPE_ORDER: DatedItemType[] = ["muayene", "sigorta", "kasko"];
 
 export function statusColorClass(status: Status): string {
@@ -37,12 +25,12 @@ export function statusColorClass(status: Status): string {
     case "ok":
       return "text-success border-success/40 bg-success/10";
     case "soon":
-      return "text-warning border-warning/40 bg-warning/10";
+      return "text-warning border-warning/50 bg-warning/10";
     case "danger":
     case "expired":
-      return "text-danger border-danger/40 bg-danger/10";
+      return "text-danger border-danger/50 bg-danger/10";
     case "unset":
-      return "text-muted border-border bg-surface dark:border-border-dark dark:bg-surface-elev-dark";
+      return "text-muted border-border bg-surface/80 dark:border-border-dark dark:bg-surface-elev-dark";
   }
 }
 
@@ -51,11 +39,25 @@ export function statusRingClass(status: Status): string {
     case "ok":
       return "ring-2 ring-success/30";
     case "soon":
-      return "ring-2 ring-warning/30";
+      return "ring-2 ring-warning/40";
     case "danger":
     case "expired":
-      return "ring-2 ring-danger/40";
+      return "ring-2 ring-danger/50";
     case "unset":
       return "ring-1 ring-border dark:ring-border-dark";
+  }
+}
+
+export function statusDotClass(status: Status): string {
+  switch (status) {
+    case "ok":
+      return "bg-success";
+    case "soon":
+      return "bg-warning";
+    case "danger":
+    case "expired":
+      return "bg-danger";
+    case "unset":
+      return "bg-muted/40 dark:bg-muted-dark/40";
   }
 }
