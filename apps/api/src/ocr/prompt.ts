@@ -26,6 +26,9 @@ confidence değeri 0.0 ile 1.0 arasında, çıkardığın bilgiye olan güvenini
   "confidence": 0.0
 }`;
 
-export function buildUserPrompt(): string {
+export function buildUserPrompt(extractedText?: string): string {
+  if (extractedText && extractedText.trim().length > 0) {
+    return `Görselden çıkarılan ham metin:\n"""\n${extractedText}\n"""\n\nBu metni ve görseli birlikte kullanarak şemaya göre JSON döndür.`;
+  }
   return "Bu fotoğrafı incele ve şemaya göre JSON döndür.";
 }
