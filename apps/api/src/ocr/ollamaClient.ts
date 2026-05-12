@@ -16,11 +16,13 @@ export async function runVisionOcr(
   const buf = await fs.readFile(imagePath);
   const base64 = buf.toString("base64");
 
+  // We deliberately do NOT pass `format: "json"` — Ollama's strict JSON mode
+  // returns an empty response on some vision models (notably Qwen). The prompt
+  // asks for JSON-only output, and the parser tolerates prose-wrapped JSON.
   const body = {
     model,
     prompt: `${OCR_SYSTEM_PROMPT}\n\n${buildUserPrompt()}`,
     images: [base64],
-    format: "json" as const,
     stream: false,
   };
 
