@@ -25,6 +25,20 @@ const RawSchema = z.object({
   make: optionalString,
   model: optionalString,
   year: optionalInt,
+  chassis_no: optionalString,
+  engine_no: optionalString,
+  cylinder_cc: z
+    .union([z.coerce.number(), z.string(), z.null()])
+    .optional()
+    .default(null)
+    .transform((v) => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = typeof v === "number" ? v : Number(v);
+      if (!Number.isFinite(n)) return null;
+      const i = Math.trunc(n);
+      if (i < 0 || i > 10000) return null;
+      return i;
+    }),
   dates: z
     .object({
       sigorta_expires_on: z.union([z.string(), z.null()]).optional(),
@@ -41,6 +55,9 @@ export interface ParsedOcr {
   make: string | null;
   model: string | null;
   year: number | null;
+  chassisNo: string | null;
+  engineNo: string | null;
+  cylinderCc: number | null;
   dates: {
     sigortaExpiresOn: string | null;
     kaskoExpiresOn: string | null;
@@ -91,6 +108,9 @@ export function parseOcr(rawText: string): ParsedOcr {
     make: parsed.make,
     model: parsed.model,
     year: parsed.year,
+    chassisNo: parsed.chassis_no,
+    engineNo: parsed.engine_no,
+    cylinderCc: parsed.cylinder_cc,
     dates: {
       sigortaExpiresOn: normalizeDate(parsed.dates.sigorta_expires_on),
       kaskoExpiresOn: normalizeDate(parsed.dates.kasko_expires_on),

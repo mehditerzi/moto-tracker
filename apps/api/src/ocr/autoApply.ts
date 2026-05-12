@@ -32,6 +32,9 @@ interface BikeRow {
   make: string | null;
   model: string | null;
   year: number | null;
+  chassis_no: string | null;
+  engine_no: string | null;
+  cylinder_cc: number | null;
 }
 
 function normalizePlate(p: string | null | undefined): string | null {
@@ -69,7 +72,7 @@ function pickOrCreateBike(
 
   const np = normalizePlate(parsed.plate);
   const allBikes = db
-    .prepare("SELECT id, plate, make, model, year FROM bike WHERE user_id = ? AND archived = 0")
+    .prepare("SELECT id, plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE user_id = ? AND archived = 0")
     .all(userId) as BikeRow[];
 
   if (np) {
@@ -92,8 +95,8 @@ function pickOrCreateBike(
       parsed.plate ||
       "Motosiklet";
     db.prepare(
-      `INSERT INTO bike (id, user_id, nickname, plate, make, model, year)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, nickname, plate, make, model, year, chassis_no, engine_no, cylinder_cc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       userId,
@@ -102,6 +105,9 @@ function pickOrCreateBike(
       parsed.make,
       parsed.model,
       parsed.year,
+      parsed.chassisNo,
+      parsed.engineNo,
+      parsed.cylinderCc,
     );
     return { bikeId: id, action: "created" };
   }
@@ -122,9 +128,9 @@ function patchBikeBlanks(
   parsed: ParsedOcr,
 ): boolean {
   const row = db
-    .prepare("SELECT plate, make, model, year FROM bike WHERE id = ? AND user_id = ?")
+    .prepare("SELECT plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE id = ? AND user_id = ?")
     .get(bikeId, userId) as
-    | { plate: string | null; make: string | null; model: string | null; year: number | null }
+    | { plate: string | null; make: string | null; model: string | null; year: number | null; chassis_no: string | null; engine_no: string | null; cylinder_cc: number | null }
     | undefined;
   if (!row) return false;
 
@@ -136,6 +142,9 @@ function patchBikeBlanks(
     ["make", parsed.make],
     ["model", parsed.model],
     ["year", parsed.year],
+    ["chassis_no", parsed.chassisNo],
+    ["engine_no", parsed.engineNo],
+    ["cylinder_cc", parsed.cylinderCc],
   ];
   for (const [col, val] of wants) {
     if (val == null) continue;
