@@ -16,13 +16,24 @@ import { DocumentReviewPage } from "@/pages/DocumentReviewPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { MaintenanceFormPage } from "@/pages/MaintenanceFormPage";
-import { useSession } from "@/lib/authClient";
+import { useMe } from "@/hooks/useMe";
 import { Toaster } from "@/components/ui/toaster";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { data, isPending } = useSession();
-  if (isPending) return <p className="text-center text-muted dark:text-muted-dark">...</p>;
-  if (!data) return <Navigate to="/sign-in" replace />;
+  // Use our own /api/me TanStack Query rather than BetterAuth's useSession —
+  // useSession's initial render flashes `data: null, isPending: false` which
+  // causes a false redirect before the fetch resolves.
+  const me = useMe();
+  if (me.isPending) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center">
+        <p className="text-sm text-muted dark:text-muted-dark">…</p>
+      </div>
+    );
+  }
+  if (me.isError || !me.data) {
+    return <Navigate to="/sign-in" replace />;
+  }
   return <>{children}</>;
 }
 
