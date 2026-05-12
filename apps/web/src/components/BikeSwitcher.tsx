@@ -22,7 +22,7 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect }: Props) {
               "relative flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
               active
                 ? "border-accent text-text dark:text-text-dark"
-                : "border-border text-muted hover:text-text dark:border-border-dark dark:hover:text-text-dark",
+                : "border-border text-muted hover:text-text dark:border-border-dark dark:text-muted-dark dark:hover:text-text-dark",
             )}
           >
             {active && (

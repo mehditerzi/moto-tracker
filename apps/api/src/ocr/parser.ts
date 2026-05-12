@@ -1,12 +1,30 @@
 import { z } from "zod";
 
+const optionalString = z
+  .union([z.string(), z.null()])
+  .optional()
+  .default(null)
+  .transform((v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : null));
+
+const optionalInt = z
+  .union([z.coerce.number(), z.string(), z.null()])
+  .optional()
+  .default(null)
+  .transform((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "number" ? v : Number(v);
+    if (!Number.isFinite(n)) return null;
+    const i = Math.trunc(n);
+    if (i < 1900 || i > 2100) return null;
+    return i;
+  });
+
 const RawSchema = z.object({
   doc_type: z.enum(["ruhsat", "sigorta", "kasko", "muayene", "unknown"]).default("unknown"),
-  plate: z
-    .union([z.string(), z.null()])
-    .optional()
-    .default(null)
-    .transform((v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : null)),
+  plate: optionalString,
+  make: optionalString,
+  model: optionalString,
+  year: optionalInt,
   dates: z
     .object({
       sigorta_expires_on: z.union([z.string(), z.null()]).optional(),
@@ -20,6 +38,9 @@ const RawSchema = z.object({
 export interface ParsedOcr {
   docType: "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown";
   plate: string | null;
+  make: string | null;
+  model: string | null;
+  year: number | null;
   dates: {
     sigortaExpiresOn: string | null;
     kaskoExpiresOn: string | null;
@@ -67,6 +88,9 @@ export function parseOcr(rawText: string): ParsedOcr {
   return {
     docType: parsed.doc_type,
     plate: parsed.plate,
+    make: parsed.make,
+    model: parsed.model,
+    year: parsed.year,
     dates: {
       sigortaExpiresOn: normalizeDate(parsed.dates.sigorta_expires_on),
       kaskoExpiresOn: normalizeDate(parsed.dates.kasko_expires_on),

@@ -30,7 +30,7 @@ export function statusColorClass(status: Status): string {
     case "expired":
       return "text-danger border-danger/50 bg-danger/10";
     case "unset":
-      return "text-muted border-border bg-surface/80 dark:border-border-dark dark:bg-surface-elev-dark";
+      return "text-muted dark:text-muted-dark border-border bg-surface/80 dark:border-border-dark dark:bg-surface-elev-dark";
   }
 }
 
