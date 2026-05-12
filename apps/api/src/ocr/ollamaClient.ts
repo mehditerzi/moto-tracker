@@ -8,32 +8,38 @@ export interface OllamaGenerateResponse {
   done: boolean;
 }
 
-// Ollama structured-output schema (draft-07). Pins exact field names so the
-// model can't invent its own keys. Nullable fields omit "null" type because
-// Ollama/llama.cpp JSON grammar doesn't always support type arrays; the Zod
-// parser already coerces missing/null fields to null with .default(null).
+// Ollama structured-output schema (draft-07). All top-level fields are in
+// required so the grammar forces the model to emit every key. Nullable fields
+// use anyOf so the model can output null when it can't extract a value.
+const N = (t: "string" | "integer" | "number") =>
+  ({ anyOf: [{ type: t }, { type: "null" }] }) as const;
+
 const OCR_FORMAT_SCHEMA = {
   type: "object",
   properties: {
     doc_type: { type: "string", enum: ["ruhsat", "sigorta", "kasko", "muayene", "unknown"] },
-    plate: { type: "string" },
-    make: { type: "string" },
-    model: { type: "string" },
-    year: { type: "integer" },
-    chassis_no: { type: "string" },
-    engine_no: { type: "string" },
-    cylinder_cc: { type: "integer" },
+    plate: N("string"),
+    make: N("string"),
+    model: N("string"),
+    year: N("integer"),
+    chassis_no: N("string"),
+    engine_no: N("string"),
+    cylinder_cc: N("integer"),
     dates: {
       type: "object",
       properties: {
-        sigorta_expires_on: { type: "string" },
-        kasko_expires_on: { type: "string" },
-        muayene_expires_on: { type: "string" },
+        sigorta_expires_on: N("string"),
+        kasko_expires_on: N("string"),
+        muayene_expires_on: N("string"),
       },
+      required: ["sigorta_expires_on", "kasko_expires_on", "muayene_expires_on"],
     },
     confidence: { type: "number" },
   },
-  required: ["doc_type", "confidence"],
+  required: [
+    "doc_type", "plate", "make", "model", "year",
+    "chassis_no", "engine_no", "cylinder_cc", "dates", "confidence",
+  ],
 };
 
 export async function runVisionOcr(
