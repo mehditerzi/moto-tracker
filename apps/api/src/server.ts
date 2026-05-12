@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import rateLimit from "express-rate-limit";
 import path from "node:path";
 import fs from "node:fs";
 import { config } from "./config.js";
@@ -44,6 +45,18 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   if (!opts.silent && config.NODE_ENV !== "test") {
     app.use(morgan("dev"));
   }
+
+  // Strict rate limit on auth endpoints to slow brute-force attempts.
+  app.use(
+    "/api/auth",
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      standardHeaders: false,
+      legacyHeaders: false,
+      message: { error: "too_many_requests" },
+    }),
+  );
 
   // BetterAuth must mount BEFORE express.json so it can read raw bodies.
   app.all("/api/auth/*", (req, res) => {

@@ -76,9 +76,19 @@ documentsRouter.post(
       res.status(400).json({ error: "file_required" });
       return;
     }
+
+    // Silent per-user daily cap — do not surface limit details to the client.
+    const db = getDb();
+    const { cnt } = db
+      .prepare("SELECT COUNT(*) AS cnt FROM document WHERE user_id = ? AND date(created_at) = date('now')")
+      .get(req.user!.id) as { cnt: number };
+    if (cnt >= 20) {
+      res.status(429).json({ error: "service_unavailable" });
+      return;
+    }
+
     const bikeId = typeof req.query.bikeId === "string" ? req.query.bikeId : null;
     if (bikeId) {
-      const db = getDb();
       const exists = db
         .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
         .get(bikeId, req.user!.id);
@@ -101,8 +111,6 @@ documentsRouter.post(
       .toBuffer();
 
     await fs.writeFile(outPath, buf);
-
-    const db = getDb();
     db.prepare(
       `INSERT INTO document (id, user_id, bike_id, file_path, mime_type, size_bytes, ocr_status)
        VALUES (?, ?, ?, ?, 'image/jpeg', ?, 'pending')`,
