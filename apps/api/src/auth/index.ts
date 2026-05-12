@@ -7,15 +7,20 @@ import { sendMagicLinkEmail } from "./email.js";
 
 function makeAuth() {
   const isProd = config.NODE_ENV === "production";
-  const trustedOrigins = [config.APP_BASE_URL];
-  if (config.WEB_ORIGIN && config.WEB_ORIGIN !== config.APP_BASE_URL) {
-    trustedOrigins.push(config.WEB_ORIGIN);
-  }
+  // Always trust the configured public origin + an optional separate web origin.
+  // Also unconditionally trust the local loopback bound port — only this host
+  // can reach it, so it's safe, and it makes direct API testing not 403.
+  const trustedOrigins = new Set<string>([
+    config.APP_BASE_URL,
+    `http://localhost:${config.PORT}`,
+    `http://127.0.0.1:${config.PORT}`,
+  ]);
+  if (config.WEB_ORIGIN) trustedOrigins.add(config.WEB_ORIGIN);
 
   return betterAuth({
     database: getDb() as unknown as Database.Database,
     baseURL: config.APP_BASE_URL,
-    trustedOrigins,
+    trustedOrigins: [...trustedOrigins],
     secret: config.SESSION_SECRET,
     advanced: {
       defaultCookieAttributes: {
