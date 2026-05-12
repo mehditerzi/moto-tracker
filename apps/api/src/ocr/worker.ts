@@ -1,6 +1,7 @@
 import { getDb } from "../db/index.js";
 import { config } from "../config.js";
-import { runVisionOcr as runVisionOcrDefault } from "./ollamaClient.js";
+import { runVisionOcr as runVisionOcrDefault, runTextOcr as runTextOcrDefault } from "./ollamaClient.js";
+import { extractTextWithTesseract } from "./tesseractClient.js";
 import { parseOcr } from "./parser.js";
 import { autoApply } from "./autoApply.js";
 
@@ -11,14 +12,31 @@ interface DocRow {
   file_path: string;
 }
 
-type RunVisionOcr = typeof runVisionOcrDefault;
+type OcrFn = (filePath: string) => Promise<{ rawText: string; model: string }>;
 
-let _runVisionOcr: RunVisionOcr = runVisionOcrDefault;
-export function __setRunVisionOcrForTests(impl: RunVisionOcr): void {
-  _runVisionOcr = impl;
+// Default pipeline: Tesseract → text LLM → vision fallback
+async function defaultOcrPipeline(filePath: string): Promise<{ rawText: string; model: string }> {
+  const tesseractText = await extractTextWithTesseract(filePath);
+  if (tesseractText.length >= 80) {
+    console.log(`[ocr] tesseract extracted ${tesseractText.length} chars — using text LLM`);
+    try {
+      return await runTextOcrDefault(tesseractText);
+    } catch (e) {
+      console.warn("[ocr] text LLM failed, falling back to vision:", (e as Error).message);
+    }
+  } else {
+    console.log(`[ocr] tesseract returned ${tesseractText.length} chars — using vision LLM`);
+  }
+  return runVisionOcrDefault(filePath);
+}
+
+let _ocrPipeline: OcrFn = defaultOcrPipeline;
+
+export function __setRunVisionOcrForTests(impl: (filePath: string) => Promise<{ rawText: string; model: string }>): void {
+  _ocrPipeline = impl;
 }
 export function __resetRunVisionOcrForTests(): void {
-  _runVisionOcr = runVisionOcrDefault;
+  _ocrPipeline = defaultOcrPipeline;
 }
 
 let _running = Promise.resolve();
@@ -39,7 +57,7 @@ export async function processDocument(documentId: string): Promise<void> {
   if (!doc) return;
 
   try {
-    const { rawText, model } = await _runVisionOcr(doc.file_path);
+    const { rawText, model } = await _ocrPipeline(doc.file_path);
     const parsed = parseOcr(rawText);
 
     const apply = autoApply({

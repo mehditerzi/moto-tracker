@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { config } from "../config.js";
-import { OCR_SYSTEM_PROMPT, buildUserPrompt } from "./prompt.js";
+import { OCR_SYSTEM_PROMPT, buildUserPrompt, buildTextParsePrompt } from "./prompt.js";
 
 export interface OllamaGenerateResponse {
   model: string;
@@ -52,4 +52,36 @@ export async function runVisionOcr(
     throw new Error("Ollama response missing 'response' string");
   }
   return { rawText: json.response, model: json.model ?? model };
+}
+
+export async function runTextOcr(
+  extractedText: string,
+  model?: string,
+  baseUrl = config.OLLAMA_URL,
+): Promise<{ rawText: string; model: string }> {
+  const resolvedModel = model ?? config.OLLAMA_PARSE_MODEL ?? config.OLLAMA_VISION_MODEL;
+  const body = {
+    model: resolvedModel,
+    prompt: buildTextParsePrompt(extractedText),
+    stream: false,
+    keep_alive: "10m",
+    options: { num_predict: 1024 },
+  };
+
+  const res = await fetch(`${baseUrl}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Ollama returned ${res.status}: ${txt.slice(0, 500)}`);
+  }
+
+  const json = (await res.json()) as OllamaGenerateResponse;
+  if (typeof json.response !== "string") {
+    throw new Error("Ollama response missing 'response' string");
+  }
+  return { rawText: json.response, model: json.model ?? resolvedModel };
 }

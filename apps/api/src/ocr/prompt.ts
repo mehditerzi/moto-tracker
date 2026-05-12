@@ -33,3 +33,16 @@ confidence değeri 0.0 ile 1.0 arasında, çıkardığın bilgiye olan güvenini
 export function buildUserPrompt(): string {
   return "Bu fotoğrafı incele ve şemaya göre JSON döndür.";
 }
+
+export function buildTextParsePrompt(extractedText: string): string {
+  return `Aşağıdaki metin bir Türk araç belgesinden (ruhsat, sigorta, kasko veya muayene) Tesseract OCR ile çıkarılmıştır.
+
+Çıkarılan metin:
+"""
+${extractedText}
+"""
+
+${OCR_SYSTEM_PROMPT}
+
+Bu metni analiz et ve şemaya göre JSON döndür.`;
+}
