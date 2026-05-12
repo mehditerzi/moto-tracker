@@ -165,12 +165,33 @@ say "Writing ngrok.yml"
 } > "$REPO_ROOT/ngrok.yml"
 ok "ngrok.yml written ($([ -n "$existing_domain" ] && echo "reserved domain: $existing_domain" || echo "ephemeral URL"))"
 
+# --- Ollama: host or bundled? ----------------------------------------------
+# Prefer an Ollama already running on the host (cheaper, keeps GPU access,
+# preserves any models the user has pulled). Fall back to a bundled
+# container only when there's nothing listening on :11434.
+USE_BUNDLED_OLLAMA=false
+if curl -fsS --max-time 2 http://localhost:11434/api/version >/dev/null 2>&1; then
+  ok "Found Ollama already running on host — api will connect to it"
+  set_env OLLAMA_URL "http://host.docker.internal:11434"
+else
+  say "No host Ollama detected — will run a bundled container"
+  set_env OLLAMA_URL "http://ollama:11434"
+  USE_BUNDLED_OLLAMA=true
+fi
+
+COMPOSE_PROFILE_ARGS=""
+if [ "$USE_BUNDLED_OLLAMA" = "true" ]; then
+  COMPOSE_PROFILE_ARGS="--profile bundled-ollama"
+fi
+
 # --- compose up -------------------------------------------------------------
 say "Building images (first run can take a few minutes)"
-docker compose build
+# shellcheck disable=SC2086
+docker compose $COMPOSE_PROFILE_ARGS build
 
 say "Starting stack"
-docker compose up -d
+# shellcheck disable=SC2086
+docker compose $COMPOSE_PROFILE_ARGS up -d
 
 # Discover ephemeral ngrok URL if none was reserved.
 if [ -z "$existing_domain" ]; then
@@ -193,9 +214,23 @@ if [ -z "$existing_domain" ]; then
 fi
 
 # --- Ollama model -----------------------------------------------------------
-say "Pulling Ollama vision model (${OLLAMA_VISION_MODEL:-gemma4})"
-docker exec mototracker-ollama ollama pull "${OLLAMA_VISION_MODEL:-gemma4}" || \
-  warn "ollama pull failed — pull manually later with: docker exec mototracker-ollama ollama pull gemma4"
+ollama_model="$(read_env OLLAMA_VISION_MODEL)"
+ollama_model="${ollama_model:-gemma4}"
+if [ "$USE_BUNDLED_OLLAMA" = "true" ]; then
+  say "Pulling Ollama vision model ($ollama_model) into bundled container"
+  docker exec mototracker-ollama ollama pull "$ollama_model" \
+    || warn "ollama pull failed — pull manually later with: docker exec mototracker-ollama ollama pull $ollama_model"
+else
+  say "Using host Ollama — checking for $ollama_model"
+  if curl -fsS http://localhost:11434/api/show -X POST -d "{\"model\":\"$ollama_model\"}" \
+       >/dev/null 2>&1; then
+    ok "Model $ollama_model is available on host Ollama"
+  else
+    warn "Model $ollama_model not found on host Ollama."
+    warn "Pull it with:  ollama pull $ollama_model"
+    warn "Or change OLLAMA_VISION_MODEL in .env to a tag you have."
+  fi
+fi
 
 # --- final summary ----------------------------------------------------------
 echo
@@ -204,7 +239,11 @@ ok "MotoTracker is up."
 printf "   %sPublic URL:%s %s\n" "$bold" "$reset" "$final_url"
 printf "   %sngrok inspector:%s http://localhost:4040\n" "$bold" "$reset"
 printf "   %sAPI (local):%s    http://localhost:8787\n" "$bold" "$reset"
-printf "   %sOllama (local):%s http://localhost:11434\n" "$bold" "$reset"
+if [ "$USE_BUNDLED_OLLAMA" = "true" ]; then
+  printf "   %sOllama:%s         bundled container at http://localhost:11434\n" "$bold" "$reset"
+else
+  printf "   %sOllama:%s         using host (http://localhost:11434)\n" "$bold" "$reset"
+fi
 echo
 printf "   %sLogs:%s          docker compose logs -f\n" "$dim" "$reset"
 printf "   %sStop:%s          docker compose down\n" "$dim" "$reset"
