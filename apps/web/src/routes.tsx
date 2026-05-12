@@ -18,6 +18,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { MaintenanceFormPage } from "@/pages/MaintenanceFormPage";
 import { useMe } from "@/hooks/useMe";
 import { Toaster } from "@/components/ui/toaster";
+import { InstallBanner } from "@/components/InstallBanner";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   // Use our own /api/me TanStack Query rather than BetterAuth's useSession —
@@ -82,6 +83,7 @@ export function Routes() {
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       <Toaster />
+      <InstallBanner />
     </QueryClientProvider>
   );
 }

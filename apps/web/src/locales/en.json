@@ -197,6 +197,12 @@
     "no": "No",
     "dash": "—"
   },
+  "install": {
+    "title": "Add to Home Screen",
+    "subtitle": "Install MotoTracker for the best experience.",
+    "iosHint": "Tap the Share button then \"Add to Home Screen\".",
+    "add": "Add"
+  },
   "notFound": {
     "title": "Page not found",
     "sub": "The page you're looking for isn't here.",
