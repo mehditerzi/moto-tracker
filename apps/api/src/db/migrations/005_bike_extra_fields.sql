@@ -1,0 +1,3 @@
+ALTER TABLE bike ADD COLUMN chassis_no TEXT;
+ALTER TABLE bike ADD COLUMN engine_no TEXT;
+ALTER TABLE bike ADD COLUMN cylinder_cc INTEGER;
