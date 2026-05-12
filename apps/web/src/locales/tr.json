@@ -40,7 +40,10 @@
     "loadFailed": "Yüklenemedi.",
     "myBikes": "Motosikletlerim",
     "add": "Ekle",
-    "edit": "Düzenle"
+    "edit": "Düzenle",
+    "upcoming": "Yaklaşan",
+    "updateKm": "Km güncelle",
+    "addKm": "Km ekle"
   },
   "items": {
     "sigorta": "Sigorta",

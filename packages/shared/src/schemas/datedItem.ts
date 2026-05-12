@@ -44,6 +44,7 @@ export const dashboardEntrySchema = z.object({
     year: z.number().nullable(),
     color: z.string().nullable(),
     photoUrl: z.string().nullable(),
+    currentKm: z.number().nullable(),
   }),
   items: z.object({
     sigorta: datedItemSchema.nullable(),
