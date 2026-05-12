@@ -8,6 +8,34 @@ export interface OllamaGenerateResponse {
   done: boolean;
 }
 
+// Ollama structured-output schema (draft-07). Pins exact field names so the
+// model can't invent its own keys. Nullable fields omit "null" type because
+// Ollama/llama.cpp JSON grammar doesn't always support type arrays; the Zod
+// parser already coerces missing/null fields to null with .default(null).
+const OCR_FORMAT_SCHEMA = {
+  type: "object",
+  properties: {
+    doc_type: { type: "string", enum: ["ruhsat", "sigorta", "kasko", "muayene", "unknown"] },
+    plate: { type: "string" },
+    make: { type: "string" },
+    model: { type: "string" },
+    year: { type: "integer" },
+    chassis_no: { type: "string" },
+    engine_no: { type: "string" },
+    cylinder_cc: { type: "integer" },
+    dates: {
+      type: "object",
+      properties: {
+        sigorta_expires_on: { type: "string" },
+        kasko_expires_on: { type: "string" },
+        muayene_expires_on: { type: "string" },
+      },
+    },
+    confidence: { type: "number" },
+  },
+  required: ["doc_type", "confidence"],
+};
+
 export async function runVisionOcr(
   imagePath: string,
   model = config.OLLAMA_VISION_MODEL,
@@ -16,24 +44,14 @@ export async function runVisionOcr(
   const buf = await fs.readFile(imagePath);
   const base64 = buf.toString("base64");
 
-  // Single-pass: the prompt schema has visible_text as the first field so the
-  // model dumps all visible characters before filling structured fields — same
-  // quality benefit as a two-pass approach at half the latency.
-  // We deliberately do NOT pass `format: "json"` — Ollama's strict JSON mode
-  // returns an empty response on some vision models (notably Qwen). The prompt
-  // asks for JSON-only output, and the parser tolerates prose-wrapped JSON.
   const body = {
     model,
     prompt: `${OCR_SYSTEM_PROMPT}\n\n${buildUserPrompt()}`,
     images: [base64],
+    format: OCR_FORMAT_SCHEMA,
     stream: false,
-    // Keep model loaded for 10 min so back-to-back scans skip the load penalty.
     keep_alive: "10m",
-    options: {
-      // Structured OCR JSON is ~200-400 tokens. Cap at 1024 to prevent
-      // runaway output while leaving enough headroom for all fields.
-      num_predict: 1024,
-    },
+    options: { num_predict: 1024 },
   };
 
   const res = await fetch(`${baseUrl}/api/generate`, {
@@ -63,7 +81,7 @@ export async function runTextOcr(
   const body = {
     model: resolvedModel,
     prompt: buildTextParsePrompt(extractedText),
-    format: "json",
+    format: OCR_FORMAT_SCHEMA,
     stream: false,
     keep_alive: "10m",
     options: { num_predict: 1024 },
