@@ -8,37 +8,6 @@ export interface OllamaGenerateResponse {
   done: boolean;
 }
 
-async function extractRawText(
-  base64: string,
-  model: string,
-  baseUrl: string,
-): Promise<string> {
-  try {
-    const body = {
-      model,
-      prompt:
-        "Bu görseldeki TÜM metni aynen yaz. Her kelimeyi, tarihi, plakayı, sayıyı eksiksiz listele. Sadece görünen metni yaz, yorum ekleme.",
-      images: [base64],
-      stream: false,
-    };
-
-    const res = await fetch(`${baseUrl}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      return "";
-    }
-
-    const json = (await res.json()) as OllamaGenerateResponse;
-    return typeof json.response === "string" ? json.response : "";
-  } catch {
-    return "";
-  }
-}
-
 export async function runVisionOcr(
   imagePath: string,
   model = config.OLLAMA_VISION_MODEL,
@@ -47,17 +16,15 @@ export async function runVisionOcr(
   const buf = await fs.readFile(imagePath);
   const base64 = buf.toString("base64");
 
-  // Pass 1 — raw text dump: extract all visible text from the image.
-  // Errors are caught inside extractRawText; defaults to empty string.
-  const extractedText = await extractRawText(base64, model, baseUrl);
-
-  // Pass 2 — structured extraction.
+  // Single-pass: the prompt schema has visible_text as the first field so the
+  // model dumps all visible characters before filling structured fields — same
+  // quality benefit as a two-pass approach at half the latency.
   // We deliberately do NOT pass `format: "json"` — Ollama's strict JSON mode
   // returns an empty response on some vision models (notably Qwen). The prompt
   // asks for JSON-only output, and the parser tolerates prose-wrapped JSON.
   const body = {
     model,
-    prompt: `${OCR_SYSTEM_PROMPT}\n\n${buildUserPrompt(extractedText)}`,
+    prompt: `${OCR_SYSTEM_PROMPT}\n\n${buildUserPrompt()}`,
     images: [base64],
     stream: false,
   };
