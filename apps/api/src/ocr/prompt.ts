@@ -7,16 +7,13 @@ Belge tipleri:
 - muayene: araç muayene belgesi. Plaka ve muayene bitiş tarihini içerir.
 - unknown: yukarıdakilerden hiçbirine uymuyorsa.
 
-SADECE aşağıdaki JSON şemasında yanıt ver. Açıklama, yorum veya kod bloğu ekleme.
+Yanıt vermeden önce görseldeki TÜM metni zihninde oku — her kelime, tarih, plaka ve numara.
+Sonra SADECE aşağıdaki JSON şemasını çıktı olarak ver. Açıklama, yorum veya kod bloğu ekleme.
 Tarihler ISO 8601 (YYYY-MM-DD) formatında olmalı; bilmediğin alanları null bırak.
 confidence değeri 0.0 ile 1.0 arasında, çıkardığın bilgiye olan güvenini gösterir.
 
-Önce visible_text alanını doldur — görseldeki her kelimeyi, tarihi, numarayı ve plakayı olduğu gibi yaz.
-Bu metin diğer alanları doğru doldurmana yardımcı olacak.
-
 Şema:
 {
-  "visible_text": "görseldeki tüm görünür metin",
   "doc_type": "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown",
   "plate": "string veya null",
   "make": "string veya null",

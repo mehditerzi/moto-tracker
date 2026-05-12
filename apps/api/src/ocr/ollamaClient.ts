@@ -30,9 +30,9 @@ export async function runVisionOcr(
     // Keep model loaded for 10 min so back-to-back scans skip the load penalty.
     keep_alive: "10m",
     options: {
-      // OCR JSON incl. visible_text is ~300-600 tokens. Hard cap prevents the
-      // model from rambling and cuts worst-case latency significantly.
-      num_predict: 800,
+      // Structured OCR JSON is ~200-400 tokens. Cap at 1024 to prevent
+      // runaway output while leaving enough headroom for all fields.
+      num_predict: 1024,
     },
   };
 
