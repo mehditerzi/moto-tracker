@@ -1,21 +1,23 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, AlertTriangle, Pencil, X, FileText } from "lucide-react";
+import {
+  CheckCircle2, AlertTriangle, FileText, X, Pencil, Check, ChevronRight, Plus,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useDocument } from "@/hooks/useDocuments";
-import { useUpdateBike } from "@/hooks/useBikes";
+import { useBike, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
 import { pushToast } from "@/hooks/useToast";
 import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
+import type { Bike } from "@mototracker/shared";
+
+// ─── page shell ──────────────────────────────────────────────────────────────
 
 export function DocumentReviewPage() {
   const { t } = useTranslation();
@@ -23,10 +25,8 @@ export function DocumentReviewPage() {
   const doc = useDocument(id, { pollWhilePending: true });
 
   if (!id) return null;
-
-  if (doc.isLoading || !doc.data) {
+  if (doc.isLoading || !doc.data)
     return <p className="text-center text-muted dark:text-muted-dark">{t("common.loading")}</p>;
-  }
 
   const d = doc.data;
   const fileUrl = `${env.VITE_API_URL}/api/documents/${d.id}/file`;
@@ -39,9 +39,7 @@ export function DocumentReviewPage() {
             <CardTitle>{t("review.reading")}</CardTitle>
             <CardDescription>{t("review.readingSub")}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ScanFrame src={fileUrl} active />
-          </CardContent>
+          <CardContent><ScanFrame src={fileUrl} active /></CardContent>
         </Card>
       </motion.div>
     );
@@ -60,16 +58,10 @@ export function DocumentReviewPage() {
             <CardDescription>{t("review.failedSub")}</CardDescription>
           </CardHeader>
           <CardContent className="gap-3">
-            <p className="text-sm text-muted dark:text-muted-dark">
-              {d.ocrError ?? t("common.error")}
-            </p>
+            <p className="text-sm text-muted dark:text-muted-dark">{d.ocrError ?? t("common.error")}</p>
             <div className="flex gap-2">
-              <Button asChild variant="accent" className="flex-1">
-                <Link to="/capture">{t("review.retry")}</Link>
-              </Button>
-              <Button asChild variant="outline" className="flex-1">
-                <Link to="/dashboard">{t("review.manualEntry")}</Link>
-              </Button>
+              <Button asChild variant="accent" className="flex-1"><Link to="/capture">{t("review.retry")}</Link></Button>
+              <Button asChild variant="outline" className="flex-1"><Link to="/dashboard">{t("review.manualEntry")}</Link></Button>
             </div>
           </CardContent>
         </Card>
@@ -78,8 +70,9 @@ export function DocumentReviewPage() {
   }
 
   const ex = d.ocrExtracted;
-  const applied = !!d.appliedDatedItemId;
-  const isRuhsat = ex?.docType === "ruhsat";
+  if (!ex) return <Link to="/dashboard" className="block text-center text-sm underline">{t("review.close")}</Link>;
+
+  const isRuhsat = ex.docType === "ruhsat";
 
   return (
     <motion.div
@@ -87,209 +80,427 @@ export function DocumentReviewPage() {
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto flex max-w-md flex-col gap-3"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <span
-              className={
-                "inline-flex items-center gap-2 " +
-                (applied ? "text-success" : isRuhsat ? "text-text dark:text-text-dark" : "")
-              }
-            >
-              {applied ? (
-                <>
-                  <CheckCircle2 className="h-5 w-5" /> {t("review.appliedTitle")}
-                </>
-              ) : isRuhsat ? (
-                <>
-                  <FileText className="h-5 w-5" /> {t("review.ruhsatTitle")}
-                </>
-              ) : (
-                <>
-                  <Pencil className="h-5 w-5" /> {t("review.pendingTitle")}
-                </>
-              )}
-            </span>
-          </CardTitle>
-          <CardDescription>
-            {applied
-              ? t("review.appliedSub")
-              : isRuhsat
-                ? t("review.ruhsatSub")
-                : t("review.pendingSub")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="gap-3">
-          <div className="overflow-hidden rounded-2xl border border-border dark:border-border-dark">
-            <img src={fileUrl} alt="" className="block h-56 w-full object-cover" />
-          </div>
+      <div className="overflow-hidden rounded-2xl border border-border dark:border-border-dark">
+        <img src={fileUrl} alt="" className="block h-44 w-full object-cover" />
+      </div>
 
-          {ex && (
-            <ul className="grid gap-2">
-              <FieldRow label={t("review.docType")} value={ex.docType} />
-              <FieldRow label={t("review.plate")} value={ex.plate} />
-              {/* Ruhsat-specific fields */}
-              {(isRuhsat || ex.make) && <FieldRow label={t("review.make")} value={ex.make ?? null} />}
-              {(isRuhsat || ex.model) && <FieldRow label={t("review.model")} value={ex.model ?? null} />}
-              {(isRuhsat || ex.year) && (
-                <FieldRow
-                  label={t("review.year")}
-                  value={ex.year != null ? String(ex.year) : null}
-                />
-              )}
-              {ex?.chassisNo && <FieldRow label={t("review.chassisNo")} value={ex.chassisNo} mono />}
-              {ex?.engineNo && <FieldRow label={t("review.engineNo")} value={ex.engineNo} mono />}
-              {ex?.cylinderCc && <FieldRow label={t("review.cylinderCc")} value={`${ex.cylinderCc} cc`} />}
-              {/* Date-bearing docs */}
-              {!isRuhsat && (
-                <>
-                  <FieldRow
-                    label={t("review.sigortaExpires")}
-                    value={ex.dates.sigortaExpiresOn}
-                  />
-                  <FieldRow
-                    label={t("review.kaskoExpires")}
-                    value={ex.dates.kaskoExpiresOn}
-                  />
-                  <FieldRow
-                    label={t("review.muayeneExpires")}
-                    value={ex.dates.muayeneExpiresOn}
-                  />
-                </>
-              )}
-              <FieldRow
-                label={t("review.confidence")}
-                value={`${Math.round(ex.confidence * 100)}%`}
-              />
-            </ul>
-          )}
-
-          {isRuhsat && d.bikeId && ex && (
-            <ApplyRuhsatToBike
-              bikeId={d.bikeId}
-              extracted={{
-                plate: ex.plate ?? undefined,
-                make: ex.make ?? undefined,
-                model: ex.model ?? undefined,
-                year: ex.year ?? undefined,
-                chassisNo: (ex as any).chassisNo ?? undefined,
-                engineNo: (ex as any).engineNo ?? undefined,
-                cylinderCc: (ex as any).cylinderCc ?? undefined,
-              }}
-            />
-          )}
-
-          <div className="flex gap-2">
-            {applied && d.appliedDatedItemId ? (
-              <Button asChild variant="accent" className="flex-1">
-                <Link to={`/dated-items/${d.appliedDatedItemId}`}>{t("review.goToRecord")}</Link>
-              </Button>
-            ) : !isRuhsat ? (
-              <Button asChild variant="accent" className="flex-1">
-                <Link
-                  to={
-                    d.bikeId
-                      ? `/bikes/${d.bikeId}/dated-items/new?type=${
-                          ex?.docType && ex.docType !== "ruhsat" && ex.docType !== "unknown"
-                            ? ex.docType
-                            : "sigorta"
-                        }`
-                      : "/dashboard"
-                  }
-                >
-                  {t("items.manualAdd")}
-                </Link>
-              </Button>
-            ) : null}
-            <Button asChild variant="ghost" className="flex-1">
-              <Link to="/dashboard">
-                <X className="h-4 w-4" /> {t("review.close")}
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isRuhsat ? (
+        <RuhsatReviewForm
+          bikeId={d.bikeId ?? undefined}
+          extracted={{
+            plate: ex.plate ?? "",
+            make: ex.make ?? "",
+            model: ex.model ?? "",
+            year: ex.year != null ? String(ex.year) : "",
+            chassisNo: ex.chassisNo ?? "",
+            engineNo: ex.engineNo ?? "",
+            cylinderCc: ex.cylinderCc != null ? String(ex.cylinderCc) : "",
+          }}
+          muayeneDate={ex.dates?.muayeneExpiresOn ?? null}
+          confidence={ex.confidence}
+        />
+      ) : (
+        <DateDocReviewForm
+          bikeId={d.bikeId ?? undefined}
+          docType={ex.docType as "sigorta" | "kasko" | "muayene" | "unknown"}
+          plate={ex.plate}
+          dates={ex.dates}
+          appliedDatedItemId={d.appliedDatedItemId ?? null}
+          confidence={ex.confidence}
+        />
+      )}
     </motion.div>
   );
 }
 
-interface RuhsatPayload {
-  plate?: string;
-  make?: string;
-  model?: string;
-  year?: number;
-  chassisNo?: string;
-  engineNo?: string;
-  cylinderCc?: number;
+// ─── types ────────────────────────────────────────────────────────────────────
+
+interface ExtractedBikeFields {
+  plate: string;
+  make: string;
+  model: string;
+  year: string;
+  chassisNo: string;
+  engineNo: string;
+  cylinderCc: string;
 }
 
-function ApplyRuhsatToBike({
-  bikeId,
-  extracted,
+type FieldKey = keyof ExtractedBikeFields;
+const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "chassisNo", "engineNo", "cylinderCc"];
+
+function bikeToFields(bike: Bike): ExtractedBikeFields {
+  return {
+    plate: bike.plate ?? "",
+    make: bike.make ?? "",
+    model: bike.model ?? "",
+    year: bike.year != null ? String(bike.year) : "",
+    chassisNo: bike.chassisNo ?? "",
+    engineNo: bike.engineNo ?? "",
+    cylinderCc: bike.cylinderCc != null ? String(bike.cylinderCc) : "",
+  };
+}
+
+// ─── ruhsat form ──────────────────────────────────────────────────────────────
+
+function RuhsatReviewForm({
+  bikeId, extracted, muayeneDate, confidence,
 }: {
-  bikeId: string;
-  extracted: RuhsatPayload;
+  bikeId?: string;
+  extracted: ExtractedBikeFields;
+  muayeneDate: string | null;
+  confidence: number;
 }) {
   const { t } = useTranslation();
-  const update = useUpdateBike(bikeId);
-  const [applied, setApplied] = useState(false);
+  const bike = useBike(bikeId);
+  const update = useUpdateBike(bikeId ?? "");
+  const create = useCreateBike();
+  const [saved, setSaved] = useState(false);
+  const [nickname, setNickname] = useState(extracted.plate || extracted.make || "");
+  const [showNicknameInput, setShowNicknameInput] = useState(false);
 
-  const hasAnything =
-    !!extracted.plate ||
-    !!extracted.make ||
-    !!extracted.model ||
-    extracted.year != null ||
-    !!extracted.chassisNo ||
-    !!extracted.engineNo ||
-    extracted.cylinderCc != null;
-  if (!hasAnything) return null;
+  const [values, setValues] = useState<ExtractedBikeFields>(extracted);
+  const [accepted, setAccepted] = useState<Record<FieldKey, boolean>>(() => {
+    const init = {} as Record<FieldKey, boolean>;
+    for (const k of FIELD_KEYS) init[k] = extracted[k] !== "";
+    return init;
+  });
+
+  const existingBike = bike.data;
+  const hasComparison = !!existingBike;
+  const hasAnyAccepted = FIELD_KEYS.some((k) => accepted[k] && values[k] !== "");
+
+  const buildPatch = () => {
+    const patch: Record<string, unknown> = {};
+    for (const k of FIELD_KEYS) {
+      if (!accepted[k] || values[k] === "") continue;
+      const v = k === "year" || k === "cylinderCc" ? Number(values[k]) || null : values[k] || null;
+      if (v != null) patch[k] = v;
+    }
+    return patch;
+  };
 
   const onApply = async () => {
+    if (!bikeId) return;
+    const patch = buildPatch();
+    if (Object.keys(patch).length === 0) {
+      pushToast({ variant: "default", title: t("review.nothingToApply") });
+      return;
+    }
     try {
-      await update.mutateAsync({
-        ...(extracted.plate ? { plate: extracted.plate } : {}),
-        ...(extracted.make ? { make: extracted.make } : {}),
-        ...(extracted.model ? { model: extracted.model } : {}),
-        ...(extracted.year != null ? { year: extracted.year } : {}),
-        ...(extracted.chassisNo ? { chassisNo: extracted.chassisNo } : {}),
-        ...(extracted.engineNo ? { engineNo: extracted.engineNo } : {}),
-        ...(extracted.cylinderCc != null ? { cylinderCc: extracted.cylinderCc } : {}),
-      } as any);
-      setApplied(true);
-      pushToast({ variant: "success", title: t("review.appliedToBike") });
+      await update.mutateAsync(patch as any);
+      setSaved(true);
+      pushToast({ variant: "success", title: t("bike.updated") });
     } catch (e) {
-      pushToast({
-        variant: "danger",
-        title: t("items.saveFailed"),
-        description: String(e),
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(e) });
+    }
+  };
+
+  const onCreateBike = async () => {
+    if (!nickname.trim()) { setShowNicknameInput(true); return; }
+    const patch = buildPatch();
+    try {
+      await create.mutateAsync({
+        nickname: nickname.trim(),
+        plate:      (patch.plate      as string | undefined) || undefined,
+        make:       (patch.make       as string | undefined) || undefined,
+        model:      (patch.model      as string | undefined) || undefined,
+        year:       (patch.year       as number | undefined) || undefined,
+        chassisNo:  (patch.chassisNo  as string | undefined) || undefined,
+        engineNo:   (patch.engineNo   as string | undefined) || undefined,
+        cylinderCc: (patch.cylinderCc as number | undefined) || undefined,
       });
+      setSaved(true);
+      pushToast({ variant: "success", title: t("bike.added") });
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(e) });
     }
   };
 
   return (
-    <Button
-      onClick={onApply}
-      variant={applied ? "outline" : "accent"}
-      disabled={update.isPending || applied}
-    >
-      {applied ? (
-        <>
-          <CheckCircle2 className="h-4 w-4" /> {t("review.appliedToBike")}
-        </>
-      ) : (
-        t("review.applyToBike")
-      )}
-    </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="inline-flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          {hasComparison ? t("review.compareTitle") : t("review.ruhsatTitle")}
+        </CardTitle>
+        <CardDescription>
+          {hasComparison ? t("review.compareSub") : t("review.ruhsatSub")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="gap-3">
+        {bike.isLoading && bikeId && (
+          <p className="text-center text-sm text-muted dark:text-muted-dark">{t("common.loading")}</p>
+        )}
+
+        <ul className="grid gap-2">
+          {FIELD_KEYS.map((key) => {
+            const ocrVal = extracted[key];
+            const existingVal = existingBike ? bikeToFields(existingBike)[key] : null;
+            if (!ocrVal && !existingVal) return null;
+            return (
+              <CompareFieldRow
+                key={key}
+                label={t(`review.${key}` as any)}
+                ocrValue={ocrVal}
+                existingValue={existingVal}
+                currentValue={values[key]}
+                accepted={accepted[key]}
+                hasComparison={hasComparison}
+                onAcceptChange={(v) => setAccepted((s) => ({ ...s, [key]: v }))}
+                onValueChange={(v) => setValues((s) => ({ ...s, [key]: v }))}
+              />
+            );
+          })}
+        </ul>
+
+        {muayeneDate && bikeId && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 dark:border-border-dark">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
+                {t("review.muayeneExpires")}
+              </p>
+              <p className="text-sm font-medium">{muayeneDate}</p>
+            </div>
+            <Button size="sm" variant="outline" asChild>
+              <Link to={`/bikes/${bikeId}/dated-items/new?type=muayene&expiresOn=${muayeneDate}`}>
+                {t("review.addMuayeneRecord")} <ChevronRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+        )}
+
+        <p className="text-right text-xs text-muted dark:text-muted-dark">
+          {t("review.confidence")}: {Math.round(confidence * 100)}%
+        </p>
+
+        {!bikeId && !saved && showNicknameInput && (
+          <Input
+            placeholder={t("bike.nickname")}
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            autoFocus
+          />
+        )}
+
+        <div className="flex gap-2">
+          {saved ? (
+            <Button asChild variant="accent" className="flex-1">
+              <Link to="/dashboard"><CheckCircle2 className="mr-1 h-4 w-4" />{t("common.save")}</Link>
+            </Button>
+          ) : bikeId ? (
+            <Button onClick={onApply} variant="accent" disabled={update.isPending || !hasAnyAccepted} className="flex-1">
+              {t("review.applySelected")}
+            </Button>
+          ) : (
+            <Button onClick={onCreateBike} variant="accent" disabled={create.isPending || !hasAnyAccepted} className="flex-1">
+              <Plus className="mr-1 h-4 w-4" />{t("review.createBike")}
+            </Button>
+          )}
+          <Button asChild variant="ghost">
+            <Link to="/dashboard"><X className="h-4 w-4" /></Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-function FieldRow({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
+// ─── compare field row ────────────────────────────────────────────────────────
+
+function CompareFieldRow({
+  label, ocrValue, existingValue, currentValue, accepted, hasComparison,
+  onAcceptChange, onValueChange,
+}: {
+  label: string;
+  ocrValue: string;
+  existingValue: string | null;
+  currentValue: string;
+  accepted: boolean;
+  hasComparison: boolean;
+  onAcceptChange: (v: boolean) => void;
+  onValueChange: (v: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+
+  const isMatch  = hasComparison && !!existingValue && !!ocrValue && existingValue === ocrValue;
+  const isDiff   = hasComparison && !!existingValue && !!ocrValue && existingValue !== ocrValue;
+  const isSimple = !hasComparison || (!existingValue && !!ocrValue);
+
+  return (
+    <li className="flex flex-col gap-1.5 rounded-xl border border-border p-3 text-sm dark:border-border-dark">
+      <span className="text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
+        {label}
+      </span>
+
+      {isMatch && (
+        <div className="flex items-center justify-between">
+          <span className="font-medium">{ocrValue}</span>
+          <Check className="h-4 w-4 text-success" />
+        </div>
+      )}
+
+      {isSimple && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onAcceptChange(!accepted)}
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+              accepted ? "border-accent bg-accent text-white" : "border-border dark:border-border-dark"
+            }`}
+          >
+            {accepted && <Check className="h-3 w-3" />}
+          </button>
+          {editing ? (
+            <Input
+              value={currentValue}
+              onChange={(e) => onValueChange(e.target.value)}
+              onBlur={() => setEditing(false)}
+              autoFocus
+              className="h-8 flex-1 text-sm"
+            />
+          ) : (
+            <span className="flex-1 font-medium">
+              {currentValue || <em className="opacity-50">{t("common.dash")}</em>}
+            </span>
+          )}
+          <button type="button" onClick={() => setEditing(!editing)} className="text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {isDiff && (
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => onAcceptChange(false)}
+            className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm transition ${
+              !accepted ? "bg-surface-elev ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark" : "opacity-40"
+            }`}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted dark:text-muted-dark">
+              {t("review.existing")}
+            </span>
+            <span className="font-medium">{existingValue}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onAcceptChange(true)}
+            className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm transition ${
+              accepted ? "bg-accent/10 ring-1 ring-accent/50 dark:bg-accent/15" : "opacity-40"
+            }`}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted dark:text-muted-dark">
+              {t("review.fromOcr")}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {editing && accepted ? (
+                <Input
+                  value={currentValue}
+                  onChange={(e) => { e.stopPropagation(); onValueChange(e.target.value); }}
+                  onBlur={() => setEditing(false)}
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                  className="h-7 w-28 text-right text-sm"
+                />
+              ) : (
+                <span className="font-medium">{currentValue}</span>
+              )}
+              {accepted && (
+                <Pencil
+                  className="h-3 w-3 shrink-0 text-accent"
+                  onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+                />
+              )}
+            </div>
+          </button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ─── date-doc form ────────────────────────────────────────────────────────────
+
+function DateDocReviewForm({
+  bikeId, docType, plate, dates, appliedDatedItemId, confidence,
+}: {
+  bikeId?: string;
+  docType: "sigorta" | "kasko" | "muayene" | "unknown";
+  plate: string | null;
+  dates: { sigortaExpiresOn?: string | null; kaskoExpiresOn?: string | null; muayeneExpiresOn?: string | null } | null;
+  appliedDatedItemId: string | null;
+  confidence: number;
+}) {
+  const { t } = useTranslation();
+  const applied = !!appliedDatedItemId;
+
+  const sigortaDate = dates?.sigortaExpiresOn ?? null;
+  const kaskoDate   = dates?.kaskoExpiresOn   ?? null;
+  const muayeneDate = dates?.muayeneExpiresOn  ?? null;
+
+  const relevantDate =
+    docType === "sigorta" ? sigortaDate :
+    docType === "kasko"   ? kaskoDate :
+    docType === "muayene" ? muayeneDate :
+    sigortaDate ?? kaskoDate ?? muayeneDate;
+
+  const newItemType = docType !== "unknown" ? docType : "sigorta";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="inline-flex items-center gap-2">
+          {applied
+            ? <><CheckCircle2 className="h-5 w-5 text-success" /> {t("review.appliedTitle")}</>
+            : <><Pencil className="h-5 w-5" /> {t("review.pendingTitle")}</>}
+        </CardTitle>
+        <CardDescription>{applied ? t("review.appliedSub") : t("review.pendingSub")}</CardDescription>
+      </CardHeader>
+      <CardContent className="gap-3">
+        <ul className="grid gap-2">
+          <FieldRow label={t("review.docType")} value={docType} />
+          {plate && <FieldRow label={t("review.plate")} value={plate} />}
+          {sigortaDate && <FieldRow label={t("review.sigortaExpires")} value={sigortaDate} />}
+          {kaskoDate   && <FieldRow label={t("review.kaskoExpires")}   value={kaskoDate} />}
+          {muayeneDate && <FieldRow label={t("review.muayeneExpires")} value={muayeneDate} />}
+          <FieldRow label={t("review.confidence")} value={`${Math.round(confidence * 100)}%`} />
+        </ul>
+
+        <div className="flex gap-2">
+          {applied && appliedDatedItemId ? (
+            <Button asChild variant="accent" className="flex-1">
+              <Link to={`/dated-items/${appliedDatedItemId}`}>{t("review.goToRecord")}</Link>
+            </Button>
+          ) : bikeId && relevantDate ? (
+            <Button asChild variant="accent" className="flex-1">
+              <Link to={`/bikes/${bikeId}/dated-items/new?type=${newItemType}&expiresOn=${relevantDate}`}>
+                {t("items.manualAdd")}
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="accent" className="flex-1">
+              <Link to="/dashboard">{t("items.manualAdd")}</Link>
+            </Button>
+          )}
+          <Button asChild variant="ghost" className="flex-1">
+            <Link to="/dashboard"><X className="h-4 w-4" /> {t("review.close")}</Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FieldRow({ label, value }: { label: string; value: string | null }) {
   return (
     <li className="flex items-center justify-between gap-2 rounded-xl border border-border p-3 text-sm dark:border-border-dark">
       <span className="text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
         {label}
       </span>
-      <span className={mono ? "font-mono" : undefined}>{value ?? <em className="opacity-60">—</em>}</span>
+      <span>{value ?? <em className="opacity-60">—</em>}</span>
     </li>
   );
 }
