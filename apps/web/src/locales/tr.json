@@ -194,6 +194,20 @@
     "no": "Hayır",
     "dash": "—"
   },
+  "landing": {
+    "headline": "Motosikletinin belgelerini fotoğrafla, vadelerini takip et.",
+    "sub": "Sigorta, kasko, muayene ve bakım tarihlerini otomatik oku. Süresi dolmadan haberdar ol.",
+    "features": {
+      "scan": "Belgeni Tara",
+      "scanSub": "Ruhsat, sigorta veya kasko fotoğrafını çek — tarihler otomatik okunur.",
+      "remind": "Zamanında Uyarı",
+      "remindSub": "Poliçe ve muayene tarihlerine yaklaştığında bildirim al.",
+      "maintain": "Bakım Takibi",
+      "maintainSub": "Motor yağı, zincir ve frenleri kilometre veya tarihe göre takip et.",
+      "km": "Kilometre Takibi",
+      "kmSub": "Güncel km bilgini güncelle, bakım vadelerini otomatik hesapla."
+    }
+  },
   "install": {
     "title": "Ana Ekrana Ekle",
     "subtitle": "En iyi deneyim için MotoTracker'ı yükle.",
