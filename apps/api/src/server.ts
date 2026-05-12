@@ -2,6 +2,8 @@ import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "node:path";
+import fs from "node:fs";
 import { config } from "./config.js";
 import { healthRouter } from "./routes/health.js";
 import { meRouter } from "./routes/me.js";
@@ -23,19 +25,27 @@ export interface BuildAppOptions {
 export function buildApp(opts: BuildAppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
-  app.use(helmet({ contentSecurityPolicy: false }));
+  if (config.TRUST_PROXY) {
+    app.set("trust proxy", true);
+  }
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+
+  // Same-origin in production (web served from API), so CORS is a no-op there.
+  // In dev the React app runs at WEB_ORIGIN (e.g. http://localhost:5173).
+  const corsOrigins: (string | RegExp)[] = [config.APP_BASE_URL];
+  if (config.WEB_ORIGIN) corsOrigins.push(config.WEB_ORIGIN);
   app.use(
     cors({
-      origin: config.WEB_ORIGIN,
+      origin: corsOrigins,
       credentials: true,
     }),
   );
+
   if (!opts.silent && config.NODE_ENV !== "test") {
     app.use(morgan("dev"));
   }
 
   // BetterAuth must mount BEFORE express.json so it can read raw bodies.
-  // Use a request-time handler so tests can reset the db between tests.
   app.all("/api/auth/*", (req, res) => {
     toNodeHandler(getAuth())(req, res);
   });
@@ -53,6 +63,31 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/documents", documentsRouter);
   app.use("/api/push", pushSubscriptionsRouter);
+
+  // ---- Static SPA hosting (single-origin production mode) ----
+  // If WEB_ROOT points at a built React dist, serve it and fall back to
+  // index.html for any non-/api path so client-side routes work.
+  if (config.WEB_ROOT && fs.existsSync(path.join(config.WEB_ROOT, "index.html"))) {
+    const root = path.resolve(config.WEB_ROOT);
+    app.use(
+      express.static(root, {
+        maxAge: "1h",
+        setHeaders: (res, filePath) => {
+          // The service worker must never be cached aggressively.
+          if (filePath.endsWith("sw.js") || filePath.endsWith("sw.mjs")) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Service-Worker-Allowed", "/");
+          }
+          if (filePath.endsWith(".webmanifest") || filePath.endsWith("manifest.json")) {
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        },
+      }),
+    );
+    app.get(/^(?!\/api\/).*/, (_req, res) => {
+      res.sendFile(path.join(root, "index.html"));
+    });
+  }
 
   app.use(errorHandler);
   return app;

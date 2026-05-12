@@ -9,7 +9,10 @@ services:
       NODE_ENV: production
       PORT: 8787
       DATABASE_PATH: /data/app.db
-      WEB_ORIGIN: ${WEB_ORIGIN}
+      UPLOADS_DIR: /data/uploads
+      WEB_ROOT: /app/public
+      TRUST_PROXY: "true"
+      # Public origin where the app is reachable through ngrok.
       APP_BASE_URL: ${APP_BASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
@@ -19,7 +22,6 @@ services:
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4}
       OCR_AUTO_APPLY_THRESHOLD: ${OCR_AUTO_APPLY_THRESHOLD:-0.7}
-      UPLOADS_DIR: /data/uploads
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@mototracker.app}
@@ -28,6 +30,7 @@ services:
       CRON_ENABLED: ${CRON_ENABLED:-true}
     volumes:
       - ./data:/data
+    # Bind to loopback only — public access goes through ngrok.
     ports:
       - "127.0.0.1:8787:8787"
 
@@ -40,12 +43,21 @@ services:
     volumes:
       - ./ollama:/root/.ollama
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: mototracker-tunnel
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: mototracker-ngrok
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARED_TOKEN}
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    # If NGROK_DOMAIN is set, ngrok will reserve that hostname (free static
+    # subdomain — `you-something.ngrok-free.app`). Otherwise ngrok emits an
+    # ephemeral URL on each start that you can discover at http://localhost:4040.
+    command: >-
+      http
+      ${NGROK_DOMAIN:+--url=${NGROK_DOMAIN}}
+      api:8787
+    ports:
+      # ngrok local web inspector — useful for debugging.
+      - "127.0.0.1:4040:4040"
     depends_on:
       - api

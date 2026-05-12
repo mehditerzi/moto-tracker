@@ -7,15 +7,21 @@ import { sendMagicLinkEmail } from "./email.js";
 
 function makeAuth() {
   const isProd = config.NODE_ENV === "production";
+  const trustedOrigins = [config.APP_BASE_URL];
+  if (config.WEB_ORIGIN && config.WEB_ORIGIN !== config.APP_BASE_URL) {
+    trustedOrigins.push(config.WEB_ORIGIN);
+  }
 
   return betterAuth({
     database: getDb() as unknown as Database.Database,
     baseURL: config.APP_BASE_URL,
-    trustedOrigins: [config.WEB_ORIGIN],
+    trustedOrigins,
     secret: config.SESSION_SECRET,
     advanced: {
       defaultCookieAttributes: {
-        sameSite: isProd ? "none" : "lax",
+        // Single-origin same-site requests work with "lax". Behind HTTPS (ngrok),
+        // mark cookies Secure so browsers persist them.
+        sameSite: "lax",
         secure: isProd,
       },
     },
