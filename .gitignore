@@ -18,3 +18,5 @@ uploads/
 .idea
 .vscode
 .audit/
+ngrok.yml
+ollama/

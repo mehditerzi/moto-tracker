@@ -135,6 +135,24 @@ else
   fi
 fi
 
+# --- write ngrok.yml (tunnel definition) ------------------------------------
+# Docker compose can't conditionally include a CLI flag in `command:`, so we
+# template the tunnel via ngrok's config file instead. The authtoken stays in
+# the env (NGROK_AUTHTOKEN), so the YAML below is safe to commit if you want
+# (though .gitignore excludes it by default).
+say "Writing ngrok.yml"
+{
+  echo "version: \"3\""
+  echo "tunnels:"
+  echo "  api:"
+  echo "    proto: http"
+  echo "    addr: api:8787"
+  if [ -n "$existing_domain" ]; then
+    echo "    domain: $existing_domain"
+  fi
+} > "$REPO_ROOT/ngrok.yml"
+ok "ngrok.yml written ($([ -n "$existing_domain" ] && echo "reserved domain: $existing_domain" || echo "ephemeral URL"))"
+
 # --- compose up -------------------------------------------------------------
 say "Building images (first run can take a few minutes)"
 docker compose build
