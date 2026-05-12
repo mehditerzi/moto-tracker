@@ -49,13 +49,11 @@ services:
     restart: unless-stopped
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    # If NGROK_DOMAIN is set, ngrok will reserve that hostname (free static
-    # subdomain — `you-something.ngrok-free.app`). Otherwise ngrok emits an
-    # ephemeral URL on each start that you can discover at http://localhost:4040.
-    command: >-
-      http
-      ${NGROK_DOMAIN:+--url=${NGROK_DOMAIN}}
-      api:8787
+    # Tunnel definition comes from ./ngrok.yml — bootstrap.sh writes this file
+    # with `domain:` set when NGROK_DOMAIN is configured, omitted otherwise.
+    command: ["start", "--all", "--log=stdout", "--config", "/etc/ngrok.yml"]
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml:ro
     ports:
       # ngrok local web inspector — useful for debugging.
       - "127.0.0.1:4040:4040"
