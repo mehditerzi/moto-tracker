@@ -44,7 +44,10 @@
     "loadFailed": "Failed to load.",
     "myBikes": "My bikes",
     "add": "Add",
-    "edit": "Edit"
+    "edit": "Edit",
+    "upcoming": "Upcoming",
+    "updateKm": "Update km",
+    "addKm": "Add km"
   },
   "items": {
     "sigorta": "Insurance",
