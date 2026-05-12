@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import { pushToast } from "@/hooks/useToast";
 
 export function SignInPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -40,36 +39,9 @@ export function SignInPage() {
       });
       return;
     }
-    // Hard navigation so the SPA re-mounts with the fresh session cookie;
-    // useSession()'s cached `data: null` from before sign-in otherwise
-    // bounces RequireAuth straight back to /sign-in.
+    // Hard nav so RequireAuth re-mounts against the freshly-set session cookie.
     window.location.assign("/dashboard");
   });
-
-  const onMagic = async () => {
-    const email = form.getValues("email");
-    if (!email) {
-      form.setError("email", { message: t("auth.emailFirst") });
-      return;
-    }
-    setBusy(true);
-    const res = await signIn.magicLink({ email, callbackURL: "/auth/callback" });
-    setBusy(false);
-    if (res.error) {
-      pushToast({
-        variant: "danger",
-        title: t("auth.magicFailed"),
-        description: res.error.message,
-      });
-      return;
-    }
-    navigate("/magic-link-sent");
-  };
-
-  const onGoogle = async () => {
-    setBusy(true);
-    await signIn.social({ provider: "google", callbackURL: "/auth/callback" });
-  };
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 pl-safe pr-safe pt-safe pb-safe">
@@ -136,21 +108,6 @@ export function SignInPage() {
               </Button>
             </form>
 
-            <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wider text-muted dark:text-muted-dark">
-              <div className="h-px flex-1 bg-border dark:bg-border-dark" />
-              {t("auth.or")}
-              <div className="h-px flex-1 bg-border dark:bg-border-dark" />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Button variant="outline" onClick={onMagic} disabled={busy}>
-                <Mail className="h-4 w-4" /> {t("auth.magicLink")}
-              </Button>
-              <Button variant="outline" onClick={onGoogle} disabled={busy}>
-                <GoogleIcon /> {t("auth.google")}
-              </Button>
-            </div>
-
             <p className="mt-5 text-center text-sm text-muted dark:text-muted-dark">
               {t("auth.noAccountYet")}{" "}
               <Link
@@ -164,28 +121,5 @@ export function SignInPage() {
         </Card>
       </motion.div>
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 18 18" aria-hidden>
-      <path
-        fill="#4285F4"
-        d="M17.64 9.2c0-.64-.06-1.25-.17-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.61Z"
-      />
-      <path
-        fill="#34A853"
-        d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.27c-.81.55-1.85.87-3.04.87-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A9 9 0 0 0 9 18Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M3.97 10.71A5.41 5.41 0 0 1 3.68 9c0-.59.1-1.17.29-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3.01-2.33Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"
-      />
-    </svg>
   );
 }
