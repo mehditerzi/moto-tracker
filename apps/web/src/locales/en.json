@@ -173,7 +173,15 @@
     "close": "Close",
     "chassisNo": "Chassis no",
     "engineNo": "Engine no",
-    "cylinderCc": "Displacement"
+    "cylinderCc": "Displacement",
+    "compareTitle": "Update bike details",
+    "compareSub": "Review detected values and choose which to apply.",
+    "existing": "Current",
+    "fromOcr": "Detected",
+    "applySelected": "Apply selected",
+    "nothingToApply": "Nothing to update",
+    "addMuayeneRecord": "Add inspection record",
+    "createBike": "Create bike"
   },
   "common": {
     "save": "Save",

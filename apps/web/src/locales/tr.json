@@ -169,7 +169,15 @@
     "goToRecord": "Kayda git",
     "applyToBike": "Motosiklete uygula",
     "appliedToBike": "Motosiklete uygulandı",
-    "close": "Kapat"
+    "close": "Kapat",
+    "compareTitle": "Motosiklet bilgilerini güncelle",
+    "compareSub": "OCR'dan gelen değerleri incele, kabul ettiklerini uygula.",
+    "existing": "Mevcut",
+    "fromOcr": "Taranan",
+    "applySelected": "Seçilenleri uygula",
+    "nothingToApply": "Güncellenecek alan yok",
+    "addMuayeneRecord": "Muayene kaydı ekle",
+    "createBike": "Motosiklet oluştur"
   },
   "common": {
     "save": "Kaydet",
