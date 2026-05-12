@@ -11,6 +11,10 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Single source of truth for the grid texture — keeps body::before tidy. */
+  --dot-color: rgba(10, 10, 15, 0.06);
+  --dot-size: 18px;
 }
 
 html {
@@ -23,34 +27,54 @@ html {
   html {
     background: theme(colors.bg.dark);
     color: theme(colors.text.dark);
+    --dot-color: rgba(255, 255, 255, 0.04);
   }
 }
 
 body {
   font-family: theme(fontFamily.sans);
+  font-feature-settings:
+    "ss01", /* alternate g/y for cleaner look */
+    "cv11", /* alternate single-storey a */
+    "ss03"; /* alternate l with hook */
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "ss01", "cv11";
   overscroll-behavior-y: none;
 }
 
-/* Subtle ambient backdrop — barely visible in light, more present in dark. */
+/* Workshop / blueprint backdrop:
+ *   • a barely-visible dot-grid (instrument-panel surface)
+ *   • two soft lime ambients top-right + bottom-left (signal glow)
+ *   • a slow vignette in dark mode for depth
+ * All static / GPU-cheap. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -1;
-  background:
-    radial-gradient(60% 40% at 80% 0%, rgba(225, 255, 77, 0.08), transparent 60%),
+  background-image:
+    radial-gradient(var(--dot-color) 1px, transparent 1px),
+    radial-gradient(60% 40% at 100% 0%, rgba(225, 255, 77, 0.07), transparent 60%),
     radial-gradient(50% 35% at 0% 100%, rgba(225, 255, 77, 0.05), transparent 60%);
+  background-size:
+    var(--dot-size) var(--dot-size),
+    100% 100%,
+    100% 100%;
 }
 
 @media (prefers-color-scheme: dark) {
   body::before {
-    background:
-      radial-gradient(60% 40% at 80% 0%, rgba(225, 255, 77, 0.1), transparent 60%),
-      radial-gradient(50% 35% at 0% 100%, rgba(225, 255, 77, 0.07), transparent 60%);
+    background-image:
+      radial-gradient(var(--dot-color) 1px, transparent 1px),
+      radial-gradient(60% 40% at 100% 0%, rgba(225, 255, 77, 0.10), transparent 60%),
+      radial-gradient(50% 35% at 0% 100%, rgba(225, 255, 77, 0.07), transparent 60%),
+      radial-gradient(80% 80% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.35) 100%);
+    background-size:
+      var(--dot-size) var(--dot-size),
+      100% 100%,
+      100% 100%,
+      100% 100%;
   }
 }
 
@@ -64,6 +88,18 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Native date picker on iOS — match our visual rhythm. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+/* Selection styling: lime ribbon. */
+::selection {
+  background: rgba(225, 255, 77, 0.35);
+  color: theme(colors.text.DEFAULT);
+}
+
 @layer utilities {
   .pt-safe { padding-top: max(theme(spacing.3), var(--safe-top)); }
   .pb-safe { padding-bottom: max(theme(spacing.3), var(--safe-bottom)); }
@@ -72,4 +108,19 @@ input[type="number"] {
   .mb-safe { margin-bottom: max(theme(spacing.6), calc(var(--safe-bottom) + theme(spacing.4))); }
   .text-balance { text-wrap: balance; }
   .text-pretty { text-wrap: pretty; }
+
+  /* Wraps a numeric for tabular display + zero-width slash etc. */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "zero", "cv11";
+    letter-spacing: -0.01em;
+  }
+
+  /* Small-caps "instrument label" — title-row above the hero numerals. */
+  .label-micro {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: theme(letterSpacing.micro);
+    text-transform: uppercase;
+  }
 }

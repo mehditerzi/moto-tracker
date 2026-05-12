@@ -1,7 +1,13 @@
 import { motion } from "framer-motion";
 import { Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { BrandMark } from "@/components/BrandMark";
 
 export function MagicLinkSentPage() {
@@ -13,15 +19,15 @@ export function MagicLinkSentPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="mb-6 flex justify-center">
-          <BrandMark className="text-lg" />
+        <div className="mb-8 flex justify-center">
+          <BrandMark />
         </div>
         <Card className="p-6 sm:p-7">
           <CardHeader>
-            <div className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-accent/15 text-accent">
-              <Mail className="h-5 w-5" />
+            <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-accent/15 text-accent ring-1 ring-accent/30">
+              <Mail className="h-5 w-5" strokeWidth={2} />
             </div>
-            <CardTitle className="text-balance text-2xl tracking-tight">
+            <CardTitle className="text-balance text-[24px] tracking-tight">
               {t("auth.magicSent")}
             </CardTitle>
             <CardDescription>{t("auth.magicSentSub")}</CardDescription>

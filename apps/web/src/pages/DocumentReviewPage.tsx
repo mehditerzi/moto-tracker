@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useDocument } from "@/hooks/useDocuments";
 import { useUpdateBike } from "@/hooks/useBikes";
 import { pushToast } from "@/hooks/useToast";
+import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
 
 export function DocumentReviewPage() {
@@ -39,15 +40,7 @@ export function DocumentReviewPage() {
             <CardDescription>{t("review.readingSub")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border-dark">
-              <img src={fileUrl} alt="" className="block h-64 w-full object-cover" />
-              <motion.div
-                initial={{ y: "-100%" }}
-                animate={{ y: "100%" }}
-                transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-accent/50 to-transparent"
-              />
-            </div>
+            <ScanFrame src={fileUrl} active />
           </CardContent>
         </Card>
       </motion.div>

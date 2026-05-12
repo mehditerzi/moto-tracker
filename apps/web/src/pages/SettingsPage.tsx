@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Bell, BellOff, LogOut, Globe } from "lucide-react";
+import { Bell, BellOff, LogOut, Globe, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,11 @@ export function SettingsPage() {
   const isIos =
     typeof navigator !== "undefined" &&
     /iPhone|iPad|iPod/.test(navigator.userAgent) &&
-    !(window.matchMedia?.("(display-mode: standalone)").matches ||
+    !(
+      window.matchMedia?.("(display-mode: standalone)").matches ||
       // @ts-expect-error: iOS-only Safari property
-      window.navigator?.standalone === true);
+      window.navigator?.standalone === true
+    );
 
   return (
     <motion.div
@@ -62,8 +64,15 @@ export function SettingsPage() {
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto flex max-w-md flex-col gap-3"
     >
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("settings.title")}</h1>
+      <header className="flex items-end justify-between gap-3">
+        <div>
+          <div className="label-micro text-muted dark:text-muted-dark">
+            {t("nav.settings")}
+          </div>
+          <h1 className="mt-1.5 text-[26px] font-semibold leading-none tracking-tight">
+            {t("settings.title")}
+          </h1>
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -75,12 +84,7 @@ export function SettingsPage() {
       </header>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Globe className="h-4 w-4 text-muted dark:text-muted-dark" />
-            {t("settings.language")}
-          </CardTitle>
-        </CardHeader>
+        <SectionHeader icon={<Globe className="h-3.5 w-3.5" />} label={t("settings.language")} />
         <CardContent>
           <div className="flex gap-2">
             <LangButton active={i18n.language.startsWith("tr")} onClick={() => onLang("tr")}>
@@ -94,12 +98,10 @@ export function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Bell className="h-4 w-4 text-muted dark:text-muted-dark" />
-            {t("settings.notifications")}
-          </CardTitle>
-        </CardHeader>
+        <SectionHeader
+          icon={<Bell className="h-3.5 w-3.5" />}
+          label={t("settings.notifications")}
+        />
         <CardContent className="gap-3">
           {push.isLoading ? (
             <p className="text-sm text-muted dark:text-muted-dark">{t("common.loading")}</p>
@@ -145,8 +147,9 @@ export function SettingsPage() {
                         }),
                       )
                   }
+                  className="self-start"
                 >
-                  {t("settings.sendTest")}
+                  {t("settings.sendTest")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
                 </Button>
               )}
             </>
@@ -158,14 +161,27 @@ export function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("settings.leadDays")}</CardTitle>
-        </CardHeader>
+        <SectionHeader label={t("settings.leadDays")} />
         <CardContent className="gap-2">
           {prefs.data?.map((p) => <PrefRow key={p.itemType} pref={p} />)}
         </CardContent>
       </Card>
     </motion.div>
+  );
+}
+
+function SectionHeader({ icon, label }: { icon?: React.ReactNode; label: string }) {
+  return (
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-[15px] font-semibold">
+        {icon && (
+          <span className="text-muted dark:text-muted-dark" aria-hidden>
+            {icon}
+          </span>
+        )}
+        {label}
+      </CardTitle>
+    </CardHeader>
   );
 }
 
@@ -192,15 +208,15 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
         "rounded-xl border p-3 transition",
         pref.enabled
           ? "border-border dark:border-border-dark"
-          : "border-border bg-surface/40 opacity-70 dark:border-border-dark dark:bg-surface-elev-dark/40",
+          : "border-border bg-surface/40 opacity-60 dark:border-border-dark dark:bg-surface-elev-dark/40",
       )}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium">{t(`items.${pref.itemType}`)}</span>
+        <span className="text-[14px] font-medium">{t(`items.${pref.itemType}`)}</span>
         <button
           onClick={toggleEnabled}
           className={cn(
-            "rounded-full px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider transition",
+            "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition",
             pref.enabled
               ? "bg-success/15 text-success"
               : "bg-surface text-muted dark:bg-bg-dark dark:text-muted-dark",
@@ -219,7 +235,7 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
               onClick={() => toggleLead(n)}
               disabled={!pref.enabled}
               className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+                "num rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
                 on
                   ? "border-accent bg-accent/15 text-text dark:text-text-dark"
                   : "border-border text-muted hover:border-text/30 dark:border-border-dark dark:text-muted-dark dark:hover:border-text-dark/30",
@@ -253,6 +269,7 @@ function LangButton({
           ? "border-accent bg-accent/15 text-text dark:text-text-dark"
           : "border-border text-muted hover:border-text/30 dark:border-border-dark dark:text-muted-dark dark:hover:border-text-dark/30",
       )}
+      aria-pressed={active}
     >
       {children}
     </button>
