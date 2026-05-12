@@ -79,11 +79,12 @@ export function BikeFormPage() {
       if (isEdit && id) {
         await updateMut.mutateAsync(payload);
         pushToast({ variant: "success", title: t("bike.updated") });
+        navigate("/bikes");
       } else {
-        await createMut.mutateAsync(payload);
+        const created = await createMut.mutateAsync(payload);
         pushToast({ variant: "success", title: t("bike.added") });
+        navigate(`/capture?bikeId=${created.id}`);
       }
-      navigate("/bikes");
     } catch (e) {
       pushToast({
         variant: "danger",

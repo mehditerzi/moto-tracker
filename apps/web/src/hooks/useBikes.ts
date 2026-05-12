@@ -31,7 +31,10 @@ export function useUpdateBike(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: BikeUpdateInput) => api<Bike>(`/api/bikes/${id}`, { method: "PATCH", json: input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
