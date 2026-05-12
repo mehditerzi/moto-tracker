@@ -32,8 +32,8 @@ export function SignUpPage() {
   const onSubmit = form.handleSubmit(async (v) => {
     setBusy(true);
     const res = await signUp.email({ email: v.email, password: v.password, name: v.name });
-    setBusy(false);
     if (res.error) {
+      setBusy(false);
       pushToast({
         variant: "danger",
         title: t("auth.signUpFailed"),
@@ -41,7 +41,8 @@ export function SignUpPage() {
       });
       return;
     }
-    navigate("/dashboard");
+    // Hard navigation so RequireAuth picks up the fresh session cookie.
+    window.location.assign("/dashboard");
   });
 
   return (
