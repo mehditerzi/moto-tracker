@@ -10,6 +10,9 @@ export const bikeSchema = z.object({
   year: z.number().int().min(1900).max(2100).nullable(),
   currentKm: z.number().int().min(0).nullable(),
   color: z.string().max(40).nullable(),
+  chassisNo: z.string().max(30).nullable(),
+  engineNo: z.string().max(30).nullable(),
+  cylinderCc: z.number().int().min(0).nullable(),
   photoUrl: z.string().url().nullable(),
   archived: z.boolean(),
   createdAt: z.string(),
@@ -26,8 +29,11 @@ export const bikeCreateSchema = bikeSchema
     year: true,
     currentKm: true,
     color: true,
+    chassisNo: true,
+    engineNo: true,
+    cylinderCc: true,
   })
-  .partial({ plate: true, make: true, model: true, year: true, currentKm: true, color: true });
+  .partial({ plate: true, make: true, model: true, year: true, currentKm: true, color: true, chassisNo: true, engineNo: true, cylinderCc: true });
 export type BikeCreateInput = z.infer<typeof bikeCreateSchema>;
 
 export const bikeUpdateSchema = bikeCreateSchema.partial();

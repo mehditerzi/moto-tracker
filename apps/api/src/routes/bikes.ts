@@ -18,6 +18,9 @@ interface BikeRow {
   year: number | null;
   current_km: number | null;
   color: string | null;
+  chassis_no: string | null;
+  engine_no: string | null;
+  cylinder_cc: number | null;
   photo_url: string | null;
   archived: number;
   created_at: string;
@@ -35,6 +38,9 @@ function rowToBike(r: BikeRow) {
     year: r.year,
     currentKm: r.current_km,
     color: r.color,
+    chassisNo: r.chassis_no,
+    engineNo: r.engine_no,
+    cylinderCc: r.cylinder_cc,
     photoUrl: r.photo_url,
     archived: r.archived === 1,
     createdAt: r.created_at,
@@ -67,8 +73,8 @@ bikesRouter.post(
     const id = newId();
     const db = getDb();
     db.prepare(
-      `INSERT INTO bike (id, user_id, nickname, plate, make, model, year, current_km, color)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.user!.id,
@@ -79,6 +85,9 @@ bikesRouter.post(
       body.year ?? null,
       body.currentKm ?? null,
       body.color ?? null,
+      body.chassisNo ?? null,
+      body.engineNo ?? null,
+      body.cylinderCc ?? null,
     );
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(id) as BikeRow;
     res.status(201).json(rowToBike(row));
@@ -120,6 +129,9 @@ bikesRouter.patch(
       year: "year",
       currentKm: "current_km",
       color: "color",
+      chassisNo: "chassis_no",
+      engineNo: "engine_no",
+      cylinderCc: "cylinder_cc",
     };
     const sets: string[] = [];
     const values: (string | number | null | undefined)[] = [];
