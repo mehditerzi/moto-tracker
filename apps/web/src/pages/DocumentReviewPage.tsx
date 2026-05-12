@@ -137,6 +137,9 @@ export function DocumentReviewPage() {
                   value={ex.year != null ? String(ex.year) : null}
                 />
               )}
+              {ex?.chassisNo && <FieldRow label={t("review.chassisNo")} value={ex.chassisNo} mono />}
+              {ex?.engineNo && <FieldRow label={t("review.engineNo")} value={ex.engineNo} mono />}
+              {ex?.cylinderCc && <FieldRow label={t("review.cylinderCc")} value={`${ex.cylinderCc} cc`} />}
               {/* Date-bearing docs */}
               {!isRuhsat && (
                 <>
@@ -169,6 +172,9 @@ export function DocumentReviewPage() {
                 make: ex.make ?? undefined,
                 model: ex.model ?? undefined,
                 year: ex.year ?? undefined,
+                chassisNo: (ex as any).chassisNo ?? undefined,
+                engineNo: (ex as any).engineNo ?? undefined,
+                cylinderCc: (ex as any).cylinderCc ?? undefined,
               }}
             />
           )}
@@ -212,6 +218,9 @@ interface RuhsatPayload {
   make?: string;
   model?: string;
   year?: number;
+  chassisNo?: string;
+  engineNo?: string;
+  cylinderCc?: number;
 }
 
 function ApplyRuhsatToBike({
@@ -226,7 +235,13 @@ function ApplyRuhsatToBike({
   const [applied, setApplied] = useState(false);
 
   const hasAnything =
-    !!extracted.plate || !!extracted.make || !!extracted.model || extracted.year != null;
+    !!extracted.plate ||
+    !!extracted.make ||
+    !!extracted.model ||
+    extracted.year != null ||
+    !!extracted.chassisNo ||
+    !!extracted.engineNo ||
+    extracted.cylinderCc != null;
   if (!hasAnything) return null;
 
   const onApply = async () => {
@@ -236,7 +251,10 @@ function ApplyRuhsatToBike({
         ...(extracted.make ? { make: extracted.make } : {}),
         ...(extracted.model ? { model: extracted.model } : {}),
         ...(extracted.year != null ? { year: extracted.year } : {}),
-      });
+        ...(extracted.chassisNo ? { chassisNo: extracted.chassisNo } : {}),
+        ...(extracted.engineNo ? { engineNo: extracted.engineNo } : {}),
+        ...(extracted.cylinderCc != null ? { cylinderCc: extracted.cylinderCc } : {}),
+      } as any);
       setApplied(true);
       pushToast({ variant: "success", title: t("review.appliedToBike") });
     } catch (e) {
@@ -265,13 +283,13 @@ function ApplyRuhsatToBike({
   );
 }
 
-function FieldRow({ label, value }: { label: string; value: string | null }) {
+function FieldRow({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
     <li className="flex items-center justify-between gap-2 rounded-xl border border-border p-3 text-sm dark:border-border-dark">
       <span className="text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
         {label}
       </span>
-      <span className="font-mono">{value ?? <em className="opacity-60">—</em>}</span>
+      <span className={mono ? "font-mono" : undefined}>{value ?? <em className="opacity-60">—</em>}</span>
     </li>
   );
 }

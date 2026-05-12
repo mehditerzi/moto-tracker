@@ -84,7 +84,11 @@
     "archiveConfirm": "Bu motosikleti arşivlemek istiyor musun?",
     "optional": "isteğe bağlı",
     "added": "Eklendi",
-    "updated": "Güncellendi"
+    "updated": "Güncellendi",
+    "chassisNo": "Şase numarası",
+    "engineNo": "Motor blok numarası",
+    "cylinderCc": "Silindir hacmi (cc)",
+    "documents": "Belgeler"
   },
   "maintenance": {
     "title": "Bakım",
@@ -155,6 +159,9 @@
     "make": "Marka",
     "model": "Model",
     "year": "Yıl",
+    "chassisNo": "Şase no",
+    "engineNo": "Motor no",
+    "cylinderCc": "Silindir hacmi",
     "sigortaExpires": "Sigorta bitiş",
     "kaskoExpires": "Kasko bitiş",
     "muayeneExpires": "Muayene bitiş",
