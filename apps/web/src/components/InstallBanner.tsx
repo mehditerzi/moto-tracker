@@ -8,7 +8,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISSED_KEY = "pwa-install-dismissed";
+const DISMISSED_KEY = "pwa-install-dismissed-session";
 
 function isStandalone() {
   return (
@@ -30,7 +30,7 @@ export function InstallBanner() {
   const [ios, setIos] = useState(false);
 
   useEffect(() => {
-    if (isStandalone() || localStorage.getItem(DISMISSED_KEY)) return;
+    if (isStandalone() || sessionStorage.getItem(DISMISSED_KEY)) return;
 
     if (isIosSafari()) {
       setIos(true);
@@ -49,7 +49,7 @@ export function InstallBanner() {
 
   const dismiss = () => {
     setShow(false);
-    localStorage.setItem(DISMISSED_KEY, "1");
+    sessionStorage.setItem(DISMISSED_KEY, "1");
   };
 
   const install = async () => {
@@ -58,7 +58,7 @@ export function InstallBanner() {
     const { outcome } = await prompt.userChoice;
     setPrompt(null);
     setShow(false);
-    if (outcome === "accepted") localStorage.setItem(DISMISSED_KEY, "1");
+    if (outcome === "accepted") sessionStorage.setItem(DISMISSED_KEY, "1");
   };
 
   return (
