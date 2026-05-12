@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   CheckCircle2, AlertTriangle, FileText, X, Pencil, Check, ChevronRight, Plus,
@@ -435,58 +435,95 @@ function DateDocReviewForm({
   confidence: number;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const applied = !!appliedDatedItemId;
 
-  const sigortaDate = dates?.sigortaExpiresOn ?? null;
-  const kaskoDate   = dates?.kaskoExpiresOn   ?? null;
-  const muayeneDate = dates?.muayeneExpiresOn  ?? null;
+  const detectedDate =
+    docType === "sigorta" ? (dates?.sigortaExpiresOn ?? null) :
+    docType === "kasko"   ? (dates?.kaskoExpiresOn   ?? null) :
+    docType === "muayene" ? (dates?.muayeneExpiresOn  ?? null) :
+    (dates?.sigortaExpiresOn ?? dates?.kaskoExpiresOn ?? dates?.muayeneExpiresOn ?? null);
 
-  const relevantDate =
-    docType === "sigorta" ? sigortaDate :
-    docType === "kasko"   ? kaskoDate :
-    docType === "muayene" ? muayeneDate :
-    sigortaDate ?? kaskoDate ?? muayeneDate;
+  const itemType = docType !== "unknown" ? docType : "sigorta";
+  const [editedDate, setEditedDate] = useState(detectedDate ?? "");
 
-  const newItemType = docType !== "unknown" ? docType : "sigorta";
+  if (applied && appliedDatedItemId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="inline-flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-success" /> {t("review.appliedTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="gap-3">
+          <div className="flex gap-2">
+            <Button asChild variant="accent" className="flex-1">
+              <Link to={`/dated-items/${appliedDatedItemId}`}>{t("review.goToRecord")}</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/dashboard"><X className="h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const onApply = () => {
+    if (!bikeId || !editedDate) return;
+    navigate(`/bikes/${bikeId}/dated-items/new?type=${itemType}&expiresOn=${editedDate}`);
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="inline-flex items-center gap-2">
-          {applied
-            ? <><CheckCircle2 className="h-5 w-5 text-success" /> {t("review.appliedTitle")}</>
-            : <><Pencil className="h-5 w-5" /> {t("review.pendingTitle")}</>}
+          <Pencil className="h-5 w-5" /> {t("review.pendingTitle")}
         </CardTitle>
-        <CardDescription>{applied ? t("review.appliedSub") : t("review.pendingSub")}</CardDescription>
       </CardHeader>
       <CardContent className="gap-3">
-        <ul className="grid gap-2">
-          <FieldRow label={t("review.docType")} value={docType} />
-          {plate && <FieldRow label={t("review.plate")} value={plate} />}
-          {sigortaDate && <FieldRow label={t("review.sigortaExpires")} value={sigortaDate} />}
-          {kaskoDate   && <FieldRow label={t("review.kaskoExpires")}   value={kaskoDate} />}
-          {muayeneDate && <FieldRow label={t("review.muayeneExpires")} value={muayeneDate} />}
-          <FieldRow label={t("review.confidence")} value={`${Math.round(confidence * 100)}%`} />
-        </ul>
+        {/* Type pill */}
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-border px-3 py-1 text-[12px] font-semibold uppercase tracking-wider dark:border-border-dark">
+            {t(`items.${itemType}`)}
+          </span>
+          {plate && (
+            <span className="num text-xs text-muted dark:text-muted-dark">{plate}</span>
+          )}
+        </div>
+
+        {/* Editable date — the main interaction */}
+        <div className="flex flex-col items-center gap-2 py-2">
+          <label className="label-micro text-muted dark:text-muted-dark" htmlFor="doc-date">
+            {t("items.expiresOn")}
+          </label>
+          <input
+            id="doc-date"
+            type="date"
+            value={editedDate}
+            onChange={(e) => setEditedDate(e.target.value)}
+            className="w-full rounded-2xl border border-border bg-surface px-4 py-4 text-center text-[22px] font-semibold tracking-tight transition
+              focus:outline-none focus:ring-2 focus:ring-accent/50
+              dark:border-border-dark dark:bg-surface-dark dark:text-text-dark text-text"
+          />
+        </div>
+
+        <p className="text-right text-xs text-muted dark:text-muted-dark">
+          {t("review.confidence")}: {Math.round(confidence * 100)}%
+        </p>
 
         <div className="flex gap-2">
-          {applied && appliedDatedItemId ? (
-            <Button asChild variant="accent" className="flex-1">
-              <Link to={`/dated-items/${appliedDatedItemId}`}>{t("review.goToRecord")}</Link>
-            </Button>
-          ) : bikeId && relevantDate ? (
-            <Button asChild variant="accent" className="flex-1">
-              <Link to={`/bikes/${bikeId}/dated-items/new?type=${newItemType}&expiresOn=${relevantDate}`}>
-                {t("items.manualAdd")}
-              </Link>
+          {bikeId ? (
+            <Button onClick={onApply} variant="accent" className="flex-1" disabled={!editedDate}>
+              {t("review.applySelected")}
             </Button>
           ) : (
             <Button asChild variant="accent" className="flex-1">
               <Link to="/dashboard">{t("items.manualAdd")}</Link>
             </Button>
           )}
-          <Button asChild variant="ghost" className="flex-1">
-            <Link to="/dashboard"><X className="h-4 w-4" /> {t("review.close")}</Link>
+          <Button asChild variant="ghost">
+            <Link to="/dashboard"><X className="h-4 w-4" /></Link>
           </Button>
         </div>
       </CardContent>
