@@ -12,10 +12,23 @@ export function usePushStatus() {
     queryKey: ["push", "status"],
     queryFn: async () => {
       const supported = "serviceWorker" in navigator && "PushManager" in window;
-      const permission = supported ? Notification.permission : "unsupported";
-      const sub = supported ? await getCurrentSubscription() : null;
-      return { supported, permission, subscribed: !!sub };
+      const permission: NotificationPermission | "unsupported" = supported
+        ? Notification.permission
+        : "unsupported";
+      let subscribed = false;
+      if (supported) {
+        try {
+          const sub = await getCurrentSubscription();
+          subscribed = !!sub;
+        } catch {
+          // Service worker not registered yet (e.g. dev mode) — treat as not subscribed.
+          subscribed = false;
+        }
+      }
+      return { supported, permission, subscribed };
     },
+    retry: false,
+    staleTime: 5_000,
   });
 }
 

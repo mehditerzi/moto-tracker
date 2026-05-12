@@ -1,20 +1,12 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Wrench } from "lucide-react";
-import type { MaintenanceItem } from "@mototracker/shared";
+import { Plus, Wrench, ChevronRight } from "lucide-react";
 import { addMonths, parseISO, differenceInCalendarDays, format } from "date-fns";
+import { useTranslation } from "react-i18next";
+import type { MaintenanceItem } from "@mototracker/shared";
 import { useMaintenanceForBike } from "@/hooks/useMaintenanceItems";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-
-const KIND_LABEL_TR: Record<string, string> = {
-  engine_oil: "Motor yağı",
-  chain: "Zincir",
-  brakes: "Fren",
-  tires: "Lastik",
-  coolant: "Soğutma",
-  custom: "Bakım",
-};
 
 function dueDate(m: MaintenanceItem): string | null {
   if (!m.lastDoneOn || !m.intervalMonths) return null;
@@ -26,61 +18,69 @@ interface Props {
 }
 
 export function MaintenancePanel({ bikeId }: Props) {
+  const { t } = useTranslation();
   const q = useMaintenanceForBike(bikeId);
   const items = q.data ?? [];
 
   return (
     <motion.div
       layout
-      className="rounded-xl border border-border p-4 dark:border-border-dark"
+      className="rounded-2xl border border-border bg-surface/40 p-4 dark:border-border-dark dark:bg-surface-elev-dark/40"
     >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wrench className="h-4 w-4 text-muted dark:text-muted-dark" />
-          <h2 className="text-sm font-medium uppercase tracking-wider">Bakım</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted dark:text-muted-dark">
+            {t("maintenance.title")}
+          </h2>
         </div>
-        <Button asChild variant="ghost" size="sm">
+        <Button asChild variant="ghost" size="sm" aria-label={t("dashboard.add")}>
           <Link to={`/bikes/${bikeId}/maintenance/new`}>
-            <Plus className="h-4 w-4" /> Ekle
+            <Plus className="h-4 w-4" />
           </Link>
         </Button>
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted dark:text-muted-dark">
-          Henüz bakım kaydı yok.
-        </p>
+        <p className="text-sm text-muted dark:text-muted-dark">{t("items.noMaintenance")}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map((m) => {
             const due = dueDate(m);
             const days = due ? differenceInCalendarDays(parseISO(due), new Date()) : null;
             const danger = days !== null && days <= 7;
-            const label = m.kind === "custom" ? m.customLabel ?? "Bakım" : KIND_LABEL_TR[m.kind];
+            const label =
+              m.kind === "custom"
+                ? m.customLabel ?? t("maintenance.fallbackLabel")
+                : t(`maintenance.kinds.${m.kind}`);
             return (
               <li key={m.id}>
                 <Link
                   to={`/bikes/${bikeId}/maintenance/${m.id}`}
                   className={cn(
-                    "flex items-center justify-between rounded-xl border p-3 text-sm",
+                    "flex items-center justify-between gap-3 rounded-xl border bg-bg/60 p-3 text-sm transition hover:border-text/20 dark:bg-bg-dark/40 dark:hover:border-text-dark/20",
                     "border-border dark:border-border-dark",
-                    danger && "border-danger/40 bg-danger/5",
+                    danger && "border-danger/40 bg-danger/5 hover:border-danger/60",
                   )}
                 >
                   <span className="font-medium">{label}</span>
-                  <span className="font-mono text-xs">
-                    {due ? (
-                      days === null ? (
-                        "—"
-                      ) : days < 0 ? (
-                        "Geçti"
-                      ) : (
-                        `${days} gün`
-                      )
-                    ) : (
-                      "—"
-                    )}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "font-mono text-xs",
+                        danger ? "text-danger" : "text-muted dark:text-muted-dark",
+                      )}
+                    >
+                      {due
+                        ? days === null
+                          ? "—"
+                          : days < 0
+                            ? t("items.expired")
+                            : `${days} ${t("items.daysLeft").replace(/kaldı|left/i, "").trim() || "gün"}`
+                        : "—"}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted dark:text-muted-dark" />
+                  </div>
                 </Link>
               </li>
             );
