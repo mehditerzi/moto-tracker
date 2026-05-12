@@ -21,6 +21,7 @@ const optionalInt = z
 
 const RawSchema = z.object({
   doc_type: z.enum(["ruhsat", "sigorta", "kasko", "muayene", "unknown"]).default("unknown"),
+  visible_text: optionalString,
   plate: optionalString,
   make: optionalString,
   model: optionalString,
@@ -51,6 +52,7 @@ const RawSchema = z.object({
 
 export interface ParsedOcr {
   docType: "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown";
+  visibleText: string | null;
   plate: string | null;
   make: string | null;
   model: string | null;
@@ -104,6 +106,7 @@ export function parseOcr(rawText: string): ParsedOcr {
   const parsed = RawSchema.parse(raw);
   return {
     docType: parsed.doc_type,
+    visibleText: parsed.visible_text,
     plate: parsed.plate,
     make: parsed.make,
     model: parsed.model,

@@ -11,8 +11,12 @@ SADECE aşağıdaki JSON şemasında yanıt ver. Açıklama, yorum veya kod blo�
 Tarihler ISO 8601 (YYYY-MM-DD) formatında olmalı; bilmediğin alanları null bırak.
 confidence değeri 0.0 ile 1.0 arasında, çıkardığın bilgiye olan güvenini gösterir.
 
+Önce visible_text alanını doldur — görseldeki her kelimeyi, tarihi, numarayı ve plakayı olduğu gibi yaz.
+Bu metin diğer alanları doğru doldurmana yardımcı olacak.
+
 Şema:
 {
+  "visible_text": "görseldeki tüm görünür metin",
   "doc_type": "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown",
   "plate": "string veya null",
   "make": "string veya null",
@@ -29,9 +33,6 @@ confidence değeri 0.0 ile 1.0 arasında, çıkardığın bilgiye olan güvenini
   "confidence": 0.0
 }`;
 
-export function buildUserPrompt(extractedText?: string): string {
-  if (extractedText && extractedText.trim().length > 0) {
-    return `Görselden çıkarılan ham metin:\n"""\n${extractedText}\n"""\n\nBu metni ve görseli birlikte kullanarak şemaya göre JSON döndür.`;
-  }
+export function buildUserPrompt(): string {
   return "Bu fotoğrafı incele ve şemaya göre JSON döndür.";
 }
