@@ -48,9 +48,11 @@ read_env() {
   awk -F= -v k="$key" '$1==k { sub(/^[^=]+=/,""); print; exit }' "$ENV_FILE" | sed 's/^"//;s/"$//'
 }
 
-# Set (or replace) KEY=VALUE in .env. Wraps VALUE in quotes if it contains spaces.
+# Set (or replace) KEY=VALUE in .env. Sanitizes the value (drops control chars,
+# trims whitespace) and quotes when it contains spaces.
 set_env() {
-  local key="$1" val="$2"
+  local key="$1" val
+  val="$(sanitize "$2")"
   local quoted="$val"
   if [[ "$val" == *" "* ]]; then quoted="\"$val\""; fi
   if [ -f "$ENV_FILE" ] && grep -q "^${key}=" "$ENV_FILE"; then
@@ -76,7 +78,19 @@ prompt() {
     printf "%s%s%s: " "$bold" "$label" "$reset" >&2
   fi
   read -r reply
-  printf "%s" "${reply:-$default}"
+  printf "%s" "$(sanitize "${reply:-$default}")"
+}
+
+# Strip ALL control characters (C0 + DEL: NUL..US, \t, \n, \r included) that
+# can sneak in via paste from rich-text sources (e.g. ngrok dashboard → terminal).
+# Then trim surrounding whitespace. Prevents downstream parsers (ngrok's YAML,
+# dotenv, etc.) from blowing up with "control characters are not allowed".
+sanitize() {
+  local v
+  v="$(printf "%s" "$1" | LC_ALL=C tr -d '[:cntrl:]')"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  printf "%s" "$v"
 }
 
 # --- create .env from .env.example if missing -------------------------------
@@ -110,7 +124,17 @@ if [ -z "$(read_env VAPID_PUBLIC_KEY)" ] || [ -z "$(read_env VAPID_PRIVATE_KEY)"
 fi
 
 # --- ngrok authtoken --------------------------------------------------------
-if [ -z "$(read_env NGROK_AUTHTOKEN)" ]; then
+existing_token="$(read_env NGROK_AUTHTOKEN)"
+# Re-prompt if the stored token contains control characters / whitespace from
+# a bad copy-paste — ngrok will refuse to parse its auth-config.yml otherwise
+# ("control characters are not allowed").
+if [ -n "$existing_token" ] && \
+   ! printf "%s" "$existing_token" | LC_ALL=C grep -qE '^[A-Za-z0-9_-]+$'; then
+  warn "Stored NGROK_AUTHTOKEN contains unexpected characters — clearing it."
+  set_env NGROK_AUTHTOKEN ""
+  existing_token=""
+fi
+if [ -z "$existing_token" ]; then
   warn "NGROK_AUTHTOKEN is required. Sign in at https://dashboard.ngrok.com/get-started/your-authtoken"
   token="$(prompt "ngrok authtoken")"
   [ -n "$token" ] || fail "No authtoken provided."
