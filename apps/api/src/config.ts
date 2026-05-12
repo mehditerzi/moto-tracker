@@ -5,9 +5,32 @@ const Env = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().int().positive().default(8787),
   DATABASE_PATH: z.string().default("./data/app.db"),
-  WEB_ORIGIN: z.string().url(),
-  SESSION_SECRET: z.string().min(16),
+  /**
+   * Public origin of the app. In single-origin deploys (API serves the React build
+   * behind ngrok), this is the ngrok URL. Used as BetterAuth `baseURL` and as the
+   * trusted origin for CSRF.
+   */
   APP_BASE_URL: z.string().url(),
+  /**
+   * Extra trusted origin for CORS (e.g. a separate dev frontend on :5173). Empty
+   * in production single-origin mode.
+   */
+  WEB_ORIGIN: z.string().url().optional(),
+  /**
+   * Where the built React app lives on disk. If unset, the API runs without
+   * static serving (dev mode — Vite handles the UI). In Docker we copy the build
+   * into `/app/public`.
+   */
+  WEB_ROOT: z.string().optional(),
+  /**
+   * Trust the X-Forwarded-* headers from a reverse proxy (ngrok, Cloudflare).
+   * Required for BetterAuth cookies to be issued as Secure behind HTTPS.
+   */
+  TRUST_PROXY: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("false"),
+  SESSION_SECRET: z.string().min(16),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("MotoTracker <noreply@example.com>"),
   GOOGLE_CLIENT_ID: z.string().optional(),

@@ -24,9 +24,8 @@ export interface UploadDocumentInput {
 async function uploadDocument(input: UploadDocumentInput): Promise<Document> {
   const fd = new FormData();
   fd.append("file", input.file);
-  const url = new URL(`${env.VITE_API_URL}/api/documents`);
-  if (input.bikeId) url.searchParams.set("bikeId", input.bikeId);
-  const res = await fetch(url.toString(), {
+  const qs = input.bikeId ? `?bikeId=${encodeURIComponent(input.bikeId)}` : "";
+  const res = await fetch(`${env.VITE_API_URL}/api/documents${qs}`, {
     method: "POST",
     body: fd,
     credentials: "include",
