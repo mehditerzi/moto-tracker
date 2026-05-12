@@ -19,7 +19,11 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-MotoTracker <noreply@example.com>}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      # By default the api talks to an Ollama already running on the host
+      # (Docker Desktop / Linux with host-gateway). To run a bundled Ollama
+      # container instead, set OLLAMA_URL=http://ollama:11434 in .env and
+      # `docker compose --profile bundled-ollama up -d`.
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4}
       OCR_AUTO_APPLY_THRESHOLD: ${OCR_AUTO_APPLY_THRESHOLD:-0.7}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -33,11 +37,17 @@ services:
     # Bind to loopback only — public access goes through ngrok.
     ports:
       - "127.0.0.1:8787:8787"
+    # Allow the container to reach an Ollama running on the host
+    # (Docker Desktop has this built-in; Linux needs host-gateway).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   ollama:
     image: ollama/ollama:latest
     container_name: mototracker-ollama
     restart: unless-stopped
+    # Opt-in: not started unless `docker compose --profile bundled-ollama up`.
+    profiles: ["bundled-ollama"]
     ports:
       - "127.0.0.1:11434:11434"
     volumes:

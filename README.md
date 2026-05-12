@@ -191,8 +191,13 @@ You haven't run `./scripts/bootstrap.sh` yet, or your `.env` was deleted. Run th
 **Ngrok URL changed after restart**
 Either reserve a free domain at <https://dashboard.ngrok.com/domains> and set `NGROK_DOMAIN` in `.env`, or re-run `./scripts/bootstrap.sh` which auto-detects the new URL and rewrites `APP_BASE_URL`.
 
+**Ollama: host vs bundled**
+The bootstrap script auto-detects whether you already have Ollama running on the host. If yes, the api container talks to it via `host.docker.internal:11434` and no bundled Ollama is started. If not, it starts a bundled `ollama` container (via `--profile bundled-ollama`) and pulls the model into it. To force the bundled mode, set `OLLAMA_URL=http://ollama:11434` in `.env` and run `docker compose --profile bundled-ollama up -d`.
+
 **OCR returns `model 'X' not found`**
-Either pull it: `docker exec mototracker-ollama ollama pull <name>`. Or change `OLLAMA_VISION_MODEL` in `.env` to a tag you have.
+- Bundled mode: `docker exec mototracker-ollama ollama pull <name>`
+- Host mode: `ollama pull <name>` (on the host)
+- Or change `OLLAMA_VISION_MODEL` in `.env` to a tag you already have.
 
 **OCR returns `OCR response did not contain a JSON object`**
 The vision model isn't producing usable output. Likely it's not multimodal or doesn't follow instructions well. Try a stronger vision model (e.g. a `:12b` or `:27b` variant of Gemma) or a different family. Increase `OCR_AUTO_APPLY_THRESHOLD` if you'd rather always confirm manually.
