@@ -69,13 +69,14 @@ set_env() {
 prompt() {
   local label="$1" default="${2:-}"
   local reply
+  # The label goes to stderr so $(prompt ...) only captures the user's reply.
   if [ -n "$default" ]; then
-    printf "%s%s%s [%s]: " "$bold" "$label" "$reset" "$default"
+    printf "%s%s%s [%s]: " "$bold" "$label" "$reset" "$default" >&2
   else
-    printf "%s%s%s: " "$bold" "$label" "$reset"
+    printf "%s%s%s: " "$bold" "$label" "$reset" >&2
   fi
   read -r reply
-  echo "${reply:-$default}"
+  printf "%s" "${reply:-$default}"
 }
 
 # --- create .env from .env.example if missing -------------------------------
@@ -118,6 +119,17 @@ fi
 
 # --- ngrok domain (optional but recommended) --------------------------------
 existing_domain="$(read_env NGROK_DOMAIN)"
+# Sanity-check: a valid ngrok hostname has no spaces and contains at least one
+# dot. If we read something garbled (e.g. captured prompt text from an older
+# buggy bootstrap), clear it so we re-prompt below.
+if [ -n "$existing_domain" ]; then
+  if printf "%s" "$existing_domain" | grep -q '[[:space:]]' || ! printf "%s" "$existing_domain" | grep -q '\.'; then
+    warn "Stored NGROK_DOMAIN looks invalid ('$existing_domain') — clearing it."
+    set_env NGROK_DOMAIN ""
+    set_env APP_BASE_URL ""
+    existing_domain=""
+  fi
+fi
 if [ -z "$existing_domain" ]; then
   echo
   warn "No NGROK_DOMAIN set. ngrok will hand out an ephemeral URL that changes"

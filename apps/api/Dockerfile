@@ -1,10 +1,19 @@
-FROM node:20-alpine AS base
-RUN apk add --no-cache python3 make g++ sqlite vips-dev
+# Debian slim — sharp ships reliable prebuilt binaries for linux/{amd64,arm64}
+# (no source compile, no libvips-dev needed), and better-sqlite3 ships prebuilt
+# napi binaries here too. Alpine + arm64 doesn't have prebuilt sharp.
+FROM node:20-bookworm-slim AS base
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 # ---- build stage ----
 FROM base AS build
+# Tooling needed only if any prebuild is missing for this arch.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
 COPY tsconfig.base.json ./
 COPY packages ./packages
@@ -19,8 +28,7 @@ RUN pnpm --filter @mototracker/web build
 RUN pnpm --filter @mototracker/api deploy --prod /out
 
 # ---- runtime stage ----
-FROM node:20-alpine AS runtime
-RUN apk add --no-cache vips
+FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /out ./
