@@ -81,7 +81,9 @@ function pickOrCreateBike(
     }
   }
 
-  if (allBikes.length === 1) {
+  // Only fall back to the user's sole bike when OCR found no plate to compare.
+  // If a plate was extracted but didn't match, don't silently merge.
+  if (allBikes.length === 1 && !np) {
     return { bikeId: allBikes[0]!.id, action: "matched" };
   }
 
