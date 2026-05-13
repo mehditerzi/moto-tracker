@@ -3,7 +3,7 @@ import { magicLink } from "better-auth/plugins";
 import Database from "better-sqlite3";
 import { config } from "../config.js";
 import { getDb } from "../db/index.js";
-import { sendMagicLinkEmail } from "./email.js";
+import { sendMagicLinkEmail, sendPasswordResetEmail } from "./email.js";
 
 function makeAuth() {
   const isProd = config.NODE_ENV === "production";
@@ -33,6 +33,9 @@ function makeAuth() {
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
+      sendResetPassword: async ({ user, url }) => {
+        await sendPasswordResetEmail(user.email, url);
+      },
     },
     socialProviders:
       config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET

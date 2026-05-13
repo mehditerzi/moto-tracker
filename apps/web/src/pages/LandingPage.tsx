@@ -196,6 +196,12 @@ function SignInForm() {
       <Button type="submit" variant="accent" size="lg" disabled={busy} className="mt-1 shadow-ignite">
         {t("auth.signIn")}
       </Button>
+
+      <p className="text-center text-sm">
+        <a href="/forgot-password" className="text-muted underline-offset-4 hover:underline dark:text-muted-dark">
+          {t("auth.forgotPassword")}
+        </a>
+      </p>
     </form>
   );
 }

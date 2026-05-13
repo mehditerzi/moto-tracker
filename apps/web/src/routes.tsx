@@ -3,6 +3,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { AppShell } from "@/components/AppShell";
 import { LandingPage } from "@/pages/LandingPage";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { MagicLinkSentPage } from "@/pages/MagicLinkSentPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { BikesPage } from "@/pages/BikesPage";
@@ -40,6 +42,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 const router = createBrowserRouter([
   { path: "/sign-in", element: <LandingPage mode="signin" /> },
   { path: "/sign-up", element: <LandingPage mode="signup" /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   { path: "/magic-link-sent", element: <MagicLinkSentPage /> },
   { path: "/auth/callback", element: <AuthCallbackPage /> },
   {
