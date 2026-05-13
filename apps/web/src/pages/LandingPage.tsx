@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -279,24 +279,24 @@ function Field({
   );
 }
 
-const PasswordInput = ({
-  id, autoComplete, show, onToggle, toggleLabel, ...rest
-}: {
+const PasswordInput = forwardRef<HTMLInputElement, {
   id: string;
   autoComplete: string;
   show: boolean;
   onToggle: () => void;
   toggleLabel: string;
-} & React.InputHTMLAttributes<HTMLInputElement>) => (
-  <div className="relative">
-    <Input id={id} type={show ? "text" : "password"} autoComplete={autoComplete} className="pr-11" {...rest} />
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={toggleLabel}
-      className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:bg-surface hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:text-muted-dark dark:hover:bg-surface-elev-dark dark:hover:text-text-dark"
-    >
-      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-    </button>
-  </div>
+} & React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ id, autoComplete, show, onToggle, toggleLabel, ...rest }, ref) => (
+    <div className="relative">
+      <Input ref={ref} id={id} type={show ? "text" : "password"} autoComplete={autoComplete} className="pr-11" {...rest} />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={toggleLabel}
+        className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:bg-surface hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:text-muted-dark dark:hover:bg-surface-elev-dark dark:hover:text-text-dark"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  ),
 );

@@ -46,17 +46,17 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
     app.use(morgan("dev"));
   }
 
-  // Strict rate limit on auth endpoints to slow brute-force attempts.
-  app.use(
-    "/api/auth",
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 20,
-      standardHeaders: false,
-      legacyHeaders: false,
-      message: { error: "too_many_requests" },
-    }),
-  );
+  // Rate limit credential submissions only (POST sign-in / sign-up / magic-link).
+  // Excludes GET session checks so normal page loads don't drain the quota.
+  const authPostLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: false,
+    legacyHeaders: false,
+    message: { error: "too_many_requests" },
+    skip: (req) => req.method !== "POST",
+  });
+  app.use("/api/auth", authPostLimiter);
 
   // BetterAuth must mount BEFORE express.json so it can read raw bodies.
   app.all("/api/auth/*", (req, res) => {
