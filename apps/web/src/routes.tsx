@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { registerNativePush } from "@/lib/nativePush";
 import { queryClient } from "@/lib/queryClient";
 import { AppShell } from "@/components/AppShell";
 import { LandingPage } from "@/pages/LandingPage";
@@ -26,6 +28,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   // useSession's initial render flashes `data: null, isPending: false` which
   // causes a false redirect before the fetch resolves.
   const me = useMe();
+  // Once signed in, register for native APNs push (no-op on web / off-device).
+  const authed = !!me.data;
+  useEffect(() => {
+    if (authed) void registerNativePush();
+  }, [authed]);
   if (me.isPending) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
