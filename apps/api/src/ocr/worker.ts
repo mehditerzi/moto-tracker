@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { runVisionOcr as runVisionOcrDefault, runTextOcr as runTextOcrDefault } from "./ollamaClient.js";
 import { extractTextWithTesseract } from "./tesseractClient.js";
 import { parseOcr } from "./parser.js";
+import { validateAndCorrect } from "./validators.js";
 import { autoApply } from "./autoApply.js";
 
 interface DocRow {
@@ -42,6 +43,24 @@ async function defaultOcrPipeline(filePath: string): Promise<{ rawText: string; 
   return runVisionOcrDefault(filePath);
 }
 
+// Reject if the wrapped promise hasn't settled within `ms`. Used so a hung
+// OCR backend can't leave a document stuck in `pending` (and block the queue).
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
+}
+
 let _ocrPipeline: OcrFn = defaultOcrPipeline;
 
 export function __setRunVisionOcrForTests(impl: (filePath: string) => Promise<{ rawText: string; model: string }>): void {
@@ -69,8 +88,18 @@ export async function processDocument(documentId: string): Promise<void> {
   if (!doc) return;
 
   try {
-    const { rawText, model } = await _ocrPipeline(doc.file_path);
-    const parsed = parseOcr(rawText);
+    const { rawText, model } = await withTimeout(
+      _ocrPipeline(doc.file_path),
+      config.OCR_TIMEOUT_MS,
+      "OCR pipeline",
+    );
+    // Deterministic post-checks: correct provable mistakes (chassis/engine
+    // swap, plate normalization) and cap confidence on anything suspect so it
+    // won't silently auto-apply.
+    const { parsed, issues } = validateAndCorrect(parseOcr(rawText));
+    if (issues.length > 0) {
+      console.log(`[ocr] validators: ${issues.map((i) => `${i.field}:${i.kind}`).join(", ")}`);
+    }
 
     const apply = autoApply({
       db,

@@ -56,4 +56,52 @@ describe("parseOcr", () => {
     const r = parseOcr(JSON.stringify({ doc_type: "ruhsat", plate: "   ", dates: {}, confidence: 0.4 }));
     expect(r.plate).toBeNull();
   });
+
+  it("rejects an impossible Turkish date (month > 12 / day > 31) as null", () => {
+    const r = parseOcr(
+      JSON.stringify({
+        doc_type: "muayene",
+        plate: null,
+        dates: { muayene_expires_on: "32.13.2027" },
+        confidence: 0.9,
+      }),
+    );
+    expect(r.dates.muayeneExpiresOn).toBeNull();
+  });
+
+  it("rejects an impossible ISO date (e.g. 30 February) as null", () => {
+    const r = parseOcr(
+      JSON.stringify({
+        doc_type: "sigorta",
+        plate: null,
+        dates: { sigorta_expires_on: "2027-02-30" },
+        confidence: 0.9,
+      }),
+    );
+    expect(r.dates.sigortaExpiresOn).toBeNull();
+  });
+
+  it("accepts a real leap day", () => {
+    const r = parseOcr(
+      JSON.stringify({
+        doc_type: "sigorta",
+        plate: null,
+        dates: { sigorta_expires_on: "29.02.2028" },
+        confidence: 0.9,
+      }),
+    );
+    expect(r.dates.sigortaExpiresOn).toBe("2028-02-29");
+  });
+
+  it("rejects a non-leap-year Feb 29 as null", () => {
+    const r = parseOcr(
+      JSON.stringify({
+        doc_type: "sigorta",
+        plate: null,
+        dates: { sigorta_expires_on: "29.02.2027" },
+        confidence: 0.9,
+      }),
+    );
+    expect(r.dates.sigortaExpiresOn).toBeNull();
+  });
 });

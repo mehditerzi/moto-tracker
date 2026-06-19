@@ -36,7 +36,9 @@ const RawSchema = z.object({
       const n = typeof v === "number" ? v : Number(v);
       if (!Number.isFinite(n)) return null;
       const i = Math.trunc(n);
-      if (i < 0 || i > 10000) return null;
+      // <= 0 means absent (a missing field coerces null→0 through the union)
+      // or nonsensical — no engine is 0 cm³.
+      if (i <= 0 || i > 10000) return null;
       return i;
     }),
   dates: z
@@ -66,18 +68,41 @@ export interface ParsedOcr {
   confidence: number;
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TR_DATE = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/;
 
+/**
+ * Normalize a date to ISO `YYYY-MM-DD`, accepting either ISO or Turkish
+ * `DD.MM.YYYY`. Rejects impossible calendar dates (month > 12, day out of
+ * range for the month, e.g. 30 February) — these are almost always OCR
+ * garbage, and silently storing them as a deadline would surface as
+ * "Invalid Date"/NaN day-counts downstream. Returns null when unparseable,
+ * which routes the document to manual review instead of auto-applying.
+ */
 function normalizeDate(s: string | null | undefined): string | null {
   if (!s) return null;
   const t = s.trim();
-  if (ISO_DATE.test(t)) return t;
-  const m = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-  if (m) {
-    const [, d, mo, y] = m;
-    return `${y}-${mo!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+
+  let y: number, mo: number, d: number;
+  const iso = t.match(ISO_DATE);
+  if (iso) {
+    y = Number(iso[1]);
+    mo = Number(iso[2]);
+    d = Number(iso[3]);
+  } else {
+    const m = t.match(TR_DATE);
+    if (!m) return null;
+    d = Number(m[1]);
+    mo = Number(m[2]);
+    y = Number(m[3]);
   }
-  return null;
+
+  if (mo < 1 || mo > 12 || d < 1) return null;
+  // Last day of month `mo` (1-based) — Date handles leap years for us.
+  const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  if (d > daysInMonth) return null;
+
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
 export function parseOcr(rawText: string): ParsedOcr {
