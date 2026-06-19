@@ -24,10 +24,12 @@ function makeAuth() {
     secret: config.SESSION_SECRET,
     advanced: {
       defaultCookieAttributes: {
-        // Single-origin same-site requests work with "lax". Behind HTTPS (ngrok),
-        // mark cookies Secure so browsers persist them.
-        sameSite: "lax",
-        secure: isProd,
+        // Same-origin web works with "lax". When the API serves a cross-origin
+        // native wrapper (Capacitor iOS, origin capacitor://localhost), the
+        // cookie must be SameSite=None; Secure or WKWebView won't send it.
+        // SameSite=None requires Secure, so force it on in that mode.
+        sameSite: config.CROSS_SITE_COOKIES ? "none" : "lax",
+        secure: config.CROSS_SITE_COOKIES ? true : isProd,
       },
     },
     emailAndPassword: {
