@@ -30,90 +30,94 @@ export function LandingPage({ mode }: Props) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-dvh bg-bg dark:bg-bg-dark">
-      {/* ── nav ── */}
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 pb-3 pl-safe pr-safe pt-safe">
-        <BrandMark />
-      </header>
+    <div className="relative min-h-dvh overflow-x-hidden bg-bg dark:bg-bg-dark">
+      {/* Ignition glow — the one splash of colour, like an LED behind the cluster */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55dvh] [mask-image:radial-gradient(75%_60%_at_50%_0%,#000,transparent)]"
+      >
+        <div className="absolute left-1/2 top-[-20%] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-accent/25 blur-[110px] dark:bg-accent/20" />
+      </div>
+      {/* Hairline grid for instrument-cluster depth */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 text-border-strong opacity-[0.06] [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:38px_38px] [mask-image:radial-gradient(80%_50%_at_50%_0%,#000,transparent)] dark:text-border"
+      />
 
-      {/* ── two-column layout ── */}
-      <main className="mx-auto grid max-w-5xl grid-cols-1 gap-10 px-6 pb-20 pt-6 pl-safe pr-safe lg:grid-cols-2 lg:items-start lg:gap-14 lg:pt-12">
-
-        {/* ── LEFT: hero + features ── */}
+      <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6 pb-10 pl-safe pr-safe pt-safe">
+        {/* ── hero ── */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, ease: [0.2, 0.8, 0.2, 1] }}
-          className="flex flex-col gap-8"
+          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+          className="flex flex-col items-center gap-5 pt-6 text-center"
         >
-          {/* hero */}
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-1.5">
-              {(["sigorta", "kasko", "muayene", "bakım"] as const).map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-micro text-muted dark:border-border-dark dark:text-muted-dark"
-                >
-                  {tag}
-                </span>
-              ))}
+          {/* app-icon tile */}
+          <div className="relative">
+            <div aria-hidden className="absolute inset-0 -z-10 rounded-[1.4rem] bg-accent/30 blur-2xl" />
+            <div className="grid h-[68px] w-[68px] place-items-center rounded-[1.4rem] border border-border bg-surface text-text shadow-card dark:border-border-dark dark:bg-surface-dark dark:text-text-dark">
+              <BrandMark showWordmark={false} className="[&>svg]:h-9 [&>svg]:w-auto" />
             </div>
+          </div>
 
-            <h1 className="text-balance text-[30px] font-semibold leading-[1.15] tracking-tight sm:text-[38px]">
+          <div className="flex flex-col items-center gap-2.5">
+            <span className="text-[13px] font-semibold uppercase tracking-micro text-muted dark:text-muted-dark">
+              MotoTracker
+            </span>
+            <h1 className="text-balance text-[30px] font-semibold leading-[1.12] tracking-tight sm:text-[34px]">
               {t("landing.headline")}
             </h1>
-
-            <p className="max-w-prose text-[15px] leading-relaxed text-muted dark:text-muted-dark">
+            <p className="max-w-[34ch] text-[14.5px] leading-relaxed text-muted dark:text-muted-dark">
               {t("landing.sub")}
             </p>
           </div>
 
-          {/* feature grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {FEATURES.map(({ Icon, key }, i) => (
-              <motion.div
-                key={key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.08 + i * 0.06, ease: [0.2, 0.8, 0.2, 1] }}
-                className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface p-4 dark:border-border-dark dark:bg-surface-dark"
+          {/* what it tracks */}
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {(["sigorta", "kasko", "muayene", "bakım"] as const).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-border bg-surface/60 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-micro text-muted backdrop-blur dark:border-border-dark dark:bg-surface-dark/60 dark:text-muted-dark"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent/15">
-                  <Icon className="h-4 w-4 text-accent-dim" />
-                </div>
-                <p className="text-sm font-semibold leading-snug">
-                  {t(`landing.features.${key}`)}
-                </p>
-                <p className="text-xs leading-relaxed text-muted dark:text-muted-dark">
-                  {t(`landing.features.${key}Sub`)}
-                </p>
-              </motion.div>
+                {tag}
+              </span>
             ))}
           </div>
         </motion.div>
 
-        {/* ── RIGHT: auth card ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
+        {/* ── feature strip ── */}
+        <motion.ul
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, delay: 0.1, ease: [0.2, 0.8, 0.2, 1] }}
-          className="lg:sticky lg:top-10"
+          transition={{ duration: 0.36, delay: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
+          className="grid grid-cols-2 gap-2"
+        >
+          {FEATURES.map(({ Icon, key }) => (
+            <li
+              key={key}
+              className="flex items-center gap-2.5 rounded-2xl border border-border bg-surface/70 px-3 py-2.5 backdrop-blur dark:border-border-dark dark:bg-surface-dark/70"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent/15">
+                <Icon className="h-3.5 w-3.5 text-accent-dim" />
+              </span>
+              <span className="text-[12.5px] font-semibold leading-tight">
+                {t(`landing.features.${key}`)}
+              </span>
+            </li>
+          ))}
+        </motion.ul>
+
+        {/* ── auth ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.36, delay: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <Card className="overflow-hidden">
-            {/* tab switcher */}
             <div className="grid grid-cols-2 gap-1 bg-surface-elev p-1 dark:bg-surface-elev-dark">
-              <TabBtn
-                label={t("auth.signIn")}
-                active={mode === "signin"}
-                onClick={() => navigate("/sign-in")}
-              />
-              <TabBtn
-                label={t("auth.signUp")}
-                active={mode === "signup"}
-                onClick={() => navigate("/sign-up")}
-              />
+              <TabBtn label={t("auth.signIn")} active={mode === "signin"} onClick={() => navigate("/sign-in")} />
+              <TabBtn label={t("auth.signUp")} active={mode === "signup"} onClick={() => navigate("/sign-up")} />
             </div>
-
             <CardContent className="p-6">
               {mode === "signin" ? <SignInForm /> : <SignUpForm />}
             </CardContent>
