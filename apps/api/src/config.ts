@@ -55,6 +55,17 @@ const Env = z.object({
     .union([z.literal("true"), z.literal("false")])
     .transform((v) => v === "true")
     .default("true"),
+  /**
+   * Issue the session cookie as SameSite=None; Secure so it is sent on
+   * cross-origin requests — required when a native wrapper (Capacitor iOS,
+   * origin `capacitor://localhost`) calls this API. Forces Secure (browsers
+   * reject SameSite=None without it), so only enable behind HTTPS. Leave off
+   * for the same-origin web app, which works with the default Lax.
+   */
+  CROSS_SITE_COOKIES: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("false"),
 });
 
 export type AppEnv = z.infer<typeof Env>;
