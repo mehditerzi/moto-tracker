@@ -129,7 +129,7 @@ export function StatusChip({ type, bikeId, item, index = 0 }: Props) {
           )}
           {info.status === "expired" && info.daysRemaining !== null && (
             <div className="mt-1 num text-[11px] text-danger/80">
-              {Math.abs(info.daysRemaining)} {t("items.daysLeft").split(" ")[0]}
+              {t("items.daysAgo", { count: Math.abs(info.daysRemaining) })}
             </div>
           )}
         </div>

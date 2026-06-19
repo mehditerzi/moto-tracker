@@ -5,7 +5,11 @@ import { cn } from "@/lib/cn";
 export function Toaster() {
   const toasts = useToasts();
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center">
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex w-full max-w-sm flex-col gap-2 px-4">
         <AnimatePresence>
           {toasts.map((t) => (

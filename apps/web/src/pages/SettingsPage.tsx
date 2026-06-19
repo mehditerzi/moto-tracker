@@ -42,7 +42,7 @@ export function SettingsPage() {
             (e as Error).message === "push/permission-denied"
               ? t("settings.permissionDenied")
               : (e as Error).message === "VAPID public key not configured on server"
-              ? "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın."
+              ? t("settings.vapidNotConfigured")
               : (e as Error).message,
         });
       }
@@ -155,10 +155,10 @@ export function SettingsPage() {
                         } else {
                           const desc =
                             r.error === "vapid_not_configured"
-                              ? "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın."
+                              ? t("settings.vapidNotConfigured")
                               : r.error === "VAPID keys not configured"
-                              ? "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın."
-                              : (r.error ?? "Bildirim gönderilemedi.");
+                              ? t("settings.vapidNotConfigured")
+                              : (r.error ?? t("settings.testFailed"));
                           pushToast({
                             variant: "danger",
                             title: t("common.error"),
@@ -190,7 +190,7 @@ export function SettingsPage() {
                   setIosHintDismissed(true);
                 }}
                 className="shrink-0 text-xs text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
-                aria-label="Dismiss"
+                aria-label={t("common.dismiss")}
               >
                 ✕
               </button>
