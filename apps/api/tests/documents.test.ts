@@ -8,6 +8,7 @@ import {
   __setRunVisionOcrForTests,
   __resetRunVisionOcrForTests,
 } from "../src/ocr/worker.js";
+import { config } from "../src/config.js";
 
 async function makeJpeg(): Promise<Buffer> {
   return sharp({
@@ -127,6 +128,71 @@ describe("/api/documents", () => {
     const finished = await waitForDoc(app, cookie, post.body.id);
     expect(finished.ocrStatus).toBe("failed");
     expect(finished.ocrError).toMatch(/ollama unreachable/);
+  });
+
+  it("marks failed (does not stay pending) when OCR hangs past the timeout", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    await createBike(app, cookie);
+
+    const original = config.OCR_TIMEOUT_MS;
+    (config as { OCR_TIMEOUT_MS: number }).OCR_TIMEOUT_MS = 100;
+    // Pipeline that never settles — simulates a hung Ollama/Tesseract.
+    __setRunVisionOcrForTests(() => new Promise(() => {}));
+
+    try {
+      const post = await request(app)
+        .post("/api/documents")
+        .set("Cookie", cookie)
+        .attach("file", await makeJpeg(), { filename: "x.jpg", contentType: "image/jpeg" });
+      const finished = await waitForDoc(app, cookie, post.body.id);
+      expect(finished.ocrStatus).toBe("failed");
+      expect(finished.ocrError).toMatch(/timed out/i);
+    } finally {
+      (config as { OCR_TIMEOUT_MS: number }).OCR_TIMEOUT_MS = original;
+    }
+  });
+
+  it("a hung document does not block later documents in the queue", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    await createBike(app, cookie, "34 ABC 123");
+
+    const original = config.OCR_TIMEOUT_MS;
+    (config as { OCR_TIMEOUT_MS: number }).OCR_TIMEOUT_MS = 100;
+    let call = 0;
+    __setRunVisionOcrForTests(() => {
+      call += 1;
+      // First doc hangs forever; second resolves immediately.
+      if (call === 1) return new Promise(() => {});
+      return Promise.resolve({
+        rawText: JSON.stringify({
+          doc_type: "sigorta",
+          plate: "34 ABC 123",
+          dates: { sigorta_expires_on: "2027-06-01" },
+          confidence: 0.9,
+        }),
+        model: "test-model",
+      });
+    });
+
+    try {
+      const first = await request(app)
+        .post("/api/documents")
+        .set("Cookie", cookie)
+        .attach("file", await makeJpeg(), { filename: "a.jpg", contentType: "image/jpeg" });
+      const second = await request(app)
+        .post("/api/documents")
+        .set("Cookie", cookie)
+        .attach("file", await makeJpeg(), { filename: "b.jpg", contentType: "image/jpeg" });
+
+      const firstDone = await waitForDoc(app, cookie, first.body.id);
+      const secondDone = await waitForDoc(app, cookie, second.body.id);
+      expect(firstDone.ocrStatus).toBe("failed");
+      expect(secondDone.ocrStatus).toBe("done");
+    } finally {
+      (config as { OCR_TIMEOUT_MS: number }).OCR_TIMEOUT_MS = original;
+    }
   });
 
   it("rejects non-image uploads", async () => {

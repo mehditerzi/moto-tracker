@@ -40,6 +40,12 @@ const Env = z.object({
   OLLAMA_VISION_MODEL: z.string().default("gemma4:26b"),
   OLLAMA_PARSE_MODEL: z.string().optional(),
   OCR_AUTO_APPLY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+  /**
+   * Hard ceiling (ms) on a single document's OCR pipeline. Guards against a
+   * hung Ollama/Tesseract leaving the document stuck in `pending` forever and
+   * stalling the serialized worker queue behind it.
+   */
+  OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default("mailto:noreply@mototracker.app"),

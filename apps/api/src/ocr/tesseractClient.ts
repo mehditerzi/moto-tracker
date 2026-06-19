@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { readFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { config } from "../config.js";
 
 const execAsync = promisify(exec);
 
@@ -12,7 +13,10 @@ export async function extractTextWithTesseract(imagePath: string): Promise<strin
   try {
     // --psm 3 = fully automatic page segmentation (best for mixed layouts)
     // -l tur = Turkish language model
-    await execAsync(`tesseract "${imagePath}" "${outBase}" -l tur --psm 3`);
+    await execAsync(`tesseract "${imagePath}" "${outBase}" -l tur --psm 3`, {
+      timeout: config.OCR_TIMEOUT_MS,
+      killSignal: "SIGKILL",
+    });
     const text = await readFile(outFile, "utf-8");
     return text.trim();
   } catch {

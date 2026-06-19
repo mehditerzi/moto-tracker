@@ -64,6 +64,7 @@ export async function runVisionOcr(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(config.OCR_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -97,6 +98,7 @@ export async function runTextOcr(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(config.OCR_TIMEOUT_MS),
   });
 
   if (!res.ok) {
