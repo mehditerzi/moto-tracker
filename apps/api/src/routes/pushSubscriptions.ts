@@ -3,7 +3,7 @@ import { requireUser } from "../middleware/requireUser.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
-import { pushSubscriptionInputSchema } from "@mototracker/shared";
+import { pushSubscriptionInputSchema, deviceTokenInputSchema } from "@mototracker/shared";
 import { config } from "../config.js";
 import { sendPush } from "../notify/webPushClient.js";
 
@@ -56,6 +56,46 @@ pushSubscriptionsRouter.post(
       endpoint,
       req.user!.id,
     );
+    res.status(204).end();
+  }),
+);
+
+// Native push (APNs) — the Capacitor iOS app registers its device token here.
+pushSubscriptionsRouter.post(
+  "/device-token",
+  asyncHandler(async (req, res) => {
+    const body = deviceTokenInputSchema.parse(req.body);
+    const db = getDb();
+    const existing = db
+      .prepare("SELECT id FROM device_token WHERE token = ?")
+      .get(body.token) as { id: string } | undefined;
+    if (existing) {
+      db.prepare(
+        "UPDATE device_token SET user_id = ?, platform = ?, last_seen_at = datetime('now') WHERE id = ?",
+      ).run(req.user!.id, body.platform, existing.id);
+      res.json({ id: existing.id, status: "updated" });
+      return;
+    }
+    const id = newId();
+    db.prepare(
+      `INSERT INTO device_token (id, user_id, platform, token, last_seen_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`,
+    ).run(id, req.user!.id, body.platform, body.token);
+    res.status(201).json({ id, status: "created" });
+  }),
+);
+
+pushSubscriptionsRouter.post(
+  "/device-token/remove",
+  asyncHandler(async (req, res) => {
+    const token = (req.body && (req.body as { token?: string }).token) ?? null;
+    if (!token) {
+      res.status(400).json({ error: "token_required" });
+      return;
+    }
+    getDb()
+      .prepare("DELETE FROM device_token WHERE token = ? AND user_id = ?")
+      .run(token, req.user!.id);
     res.status(204).end();
   }),
 );

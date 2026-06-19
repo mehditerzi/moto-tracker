@@ -54,6 +54,16 @@ const Env = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default("mailto:noreply@mototracker.app"),
+  // APNs (native iOS push). All optional — native push stays off until the
+  // four below are set. APNS_KEY is the .p8 contents, PEM or base64-encoded.
+  APNS_KEY: z.string().optional(),
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
+  APNS_BUNDLE_ID: z.string().optional(),
+  APNS_PRODUCTION: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("false"),
   CRON_TIMEZONE: z.string().default("Europe/Istanbul"),
   CRON_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   CRON_ENABLED: z

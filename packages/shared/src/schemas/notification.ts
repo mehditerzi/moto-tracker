@@ -26,3 +26,10 @@ export const pushSubscriptionInputSchema = z.object({
   userAgent: z.string().max(500).optional(),
 });
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;
+
+// Native push (APNs) device token, registered by the Capacitor iOS app.
+export const deviceTokenInputSchema = z.object({
+  platform: z.literal("ios"),
+  token: z.string().min(8).max(200),
+});
+export type DeviceTokenInput = z.infer<typeof deviceTokenInputSchema>;
