@@ -151,7 +151,9 @@
     "on": "Açık",
     "off": "Kapalı",
     "onTheDay": "Aynı gün",
-    "daysBefore": "{{n}} gün önce"
+    "daysBefore": "{{n}} gün önce",
+    "vapidNotConfigured": "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın.",
+    "testFailed": "Bildirim gönderilemedi."
   },
   "capture": {
     "title": "Belge yükle",
@@ -160,7 +162,18 @@
     "gallery": "Galeriden seç",
     "uploading": "Yükleniyor ve okunuyor...",
     "uploadFailed": "Yüklenemedi",
-    "skip": "Geç, sonra manuel eklerim"
+    "skip": "Geç, sonra manuel eklerim",
+    "frameHint": "Belgeyi çerçeveye sığdır",
+    "shutter": "Çek",
+    "retake": "Tekrar çek",
+    "useAnyway": "Yine de kullan",
+    "close": "Kapat",
+    "starting": "Kamera başlatılıyor...",
+    "permissionError": "Kameraya erişilemedi. Galeriden seçebilir veya kamera iznini verebilirsin.",
+    "qualityTitle": "Okunabilirlik düşük olabilir",
+    "qualityBlurry": "Görüntü bulanık görünüyor",
+    "qualityDark": "Görüntü çok karanlık",
+    "qualityGlare": "Çok fazla parlama/yansıma var"
   },
   "review": {
     "reading": "Belge okunuyor",
@@ -198,7 +211,13 @@
     "applySelected": "Seçilenleri uygula",
     "nothingToApply": "Güncellenecek alan yok",
     "addMuayeneRecord": "Muayene kaydı ekle",
-    "createBike": "Motosiklet oluştur"
+    "createBike": "Motosiklet oluştur",
+    "addDatesTitle": "Yenileme tarihleri",
+    "addDatesSub": "Ruhsatta olmayan veya okunamayan tarihleri buradan elle ekleyebilirsin.",
+    "addDate": "Ekle",
+    "dateAdded": "Eklendi",
+    "lowConfidence": "Düşük güven — lütfen okunan değerleri kontrol et.",
+    "missingHint": "Okunamayan alanları elle doldurabilirsin."
   },
   "common": {
     "save": "Kaydet",
@@ -209,7 +228,8 @@
     "error": "Hata",
     "yes": "Evet",
     "no": "Hayır",
-    "dash": "—"
+    "dash": "—",
+    "dismiss": "Kapat"
   },
   "landing": {
     "headline": "Motosikletinin belgelerini fotoğrafla, vadelerini takip et.",
