@@ -12,10 +12,15 @@ const Env = z.object({
    */
   APP_BASE_URL: z.string().url(),
   /**
-   * Extra trusted origin for CORS (e.g. a separate dev frontend on :5173). Empty
-   * in production single-origin mode.
+   * Extra trusted origin for CORS (e.g. a separate dev frontend on :5173, or
+   * `capacitor://localhost` for the iOS wrapper). Empty in production
+   * single-origin mode. An empty string is treated as unset so compose's
+   * `${WEB_ORIGIN:-}` default doesn't trip the URL validation on boot.
    */
-  WEB_ORIGIN: z.string().url().optional(),
+  WEB_ORIGIN: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().url().optional(),
+  ),
   /**
    * Where the built React app lives on disk. If unset, the API runs without
    * static serving (dev mode — Vite handles the UI). In Docker we copy the build

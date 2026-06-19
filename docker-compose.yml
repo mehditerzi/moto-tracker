@@ -15,6 +15,12 @@ services:
       # Public origin where the app is reachable through ngrok.
       APP_BASE_URL: ${APP_BASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
+      # iOS (Capacitor) wrapper support — leave both unset for the web deploy.
+      # When shipping the native app, set in .env:
+      #   WEB_ORIGIN=capacitor://localhost   (adds it to CORS + auth trusted origins)
+      #   CROSS_SITE_COOKIES=true             (session cookie SameSite=None; Secure)
+      WEB_ORIGIN: ${WEB_ORIGIN:-}
+      CROSS_SITE_COOKIES: ${CROSS_SITE_COOKIES:-false}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-MotoTracker <noreply@example.com>}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
