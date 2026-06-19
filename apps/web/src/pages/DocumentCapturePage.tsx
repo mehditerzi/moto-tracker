@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useUploadDocument } from "@/hooks/useDocuments";
 import { pushToast } from "@/hooks/useToast";
+import { CameraCapture } from "@/components/CameraCapture";
 
 export function DocumentCapturePage() {
   const { t } = useTranslation();
@@ -21,9 +22,17 @@ export function DocumentCapturePage() {
   const bikeId = params.get("bikeId") ?? undefined;
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const cameraInput = useRef<HTMLInputElement | null>(null);
   const galleryInput = useRef<HTMLInputElement | null>(null);
   const upload = useUploadDocument();
+
+  function openCamera() {
+    // Live viewfinder with the document guide when supported; otherwise fall
+    // back to the OS camera via the file input.
+    if (typeof navigator.mediaDevices?.getUserMedia === "function") setCameraOpen(true);
+    else cameraInput.current?.click();
+  }
 
   useEffect(
     () => () => {
@@ -54,6 +63,19 @@ export function DocumentCapturePage() {
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-md"
     >
+      {cameraOpen && (
+        <CameraCapture
+          onCapture={(file) => {
+            setCameraOpen(false);
+            void handleFile(file);
+          }}
+          onClose={() => setCameraOpen(false)}
+          onPickGallery={() => {
+            setCameraOpen(false);
+            galleryInput.current?.click();
+          }}
+        />
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-[22px] tracking-tight">{t("capture.title")}</CardTitle>
@@ -73,7 +95,7 @@ export function DocumentCapturePage() {
                   type="button"
                   variant="accent"
                   size="lg"
-                  onClick={() => cameraInput.current?.click()}
+                  onClick={openCamera}
                 >
                   <Camera className="h-4 w-4" /> {t("capture.camera")}
                 </Button>

@@ -155,7 +155,9 @@
     "on": "On",
     "off": "Off",
     "onTheDay": "Same day",
-    "daysBefore": "{{n}} days before"
+    "daysBefore": "{{n}} days before",
+    "vapidNotConfigured": "VAPID keys are not configured. Run the bootstrap script.",
+    "testFailed": "Couldn't send notification."
   },
   "capture": {
     "title": "Upload document",
@@ -164,7 +166,18 @@
     "gallery": "Pick from gallery",
     "uploading": "Uploading and reading...",
     "uploadFailed": "Couldn't upload",
-    "skip": "Skip, add manually later"
+    "skip": "Skip, add manually later",
+    "frameHint": "Fit the document inside the frame",
+    "shutter": "Capture",
+    "retake": "Retake",
+    "useAnyway": "Use anyway",
+    "close": "Close",
+    "starting": "Starting camera...",
+    "permissionError": "Couldn't access the camera. Pick from gallery or grant camera permission.",
+    "qualityTitle": "Readability may be low",
+    "qualityBlurry": "The image looks blurry",
+    "qualityDark": "The image is too dark",
+    "qualityGlare": "Too much glare/reflection"
   },
   "review": {
     "reading": "Reading document",
@@ -202,7 +215,13 @@
     "applySelected": "Apply selected",
     "nothingToApply": "Nothing to update",
     "addMuayeneRecord": "Add inspection record",
-    "createBike": "Create bike"
+    "createBike": "Create bike",
+    "addDatesTitle": "Renewal dates",
+    "addDatesSub": "Add any dates that weren't on the ruhsat or couldn't be read.",
+    "addDate": "Add",
+    "dateAdded": "Added",
+    "lowConfidence": "Low confidence — please double-check the values.",
+    "missingHint": "You can fill in anything that wasn't read."
   },
   "common": {
     "save": "Save",
@@ -213,7 +232,8 @@
     "error": "Error",
     "yes": "Yes",
     "no": "No",
-    "dash": "—"
+    "dash": "—",
+    "dismiss": "Dismiss"
   },
   "landing": {
     "headline": "Track your motorcycle documents. Never miss a deadline.",
