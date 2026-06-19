@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  CheckCircle2, AlertTriangle, FileText, X, Pencil, Check, ChevronRight, Plus,
+  CheckCircle2, AlertTriangle, FileText, X, Pencil, Check, Plus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDocument } from "@/hooks/useDocuments";
 import { useBike, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
+import { useCreateDatedItem } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
 import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
@@ -128,6 +129,9 @@ interface ExtractedBikeFields {
 type FieldKey = keyof ExtractedBikeFields;
 const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "chassisNo", "engineNo", "cylinderCc"];
 
+/** Below this OCR confidence, nudge the user to double-check every value. */
+const LOW_CONFIDENCE = 0.7;
+
 function bikeToFields(bike: Bike): ExtractedBikeFields {
   return {
     plate: bike.plate ?? "",
@@ -155,6 +159,7 @@ function RuhsatReviewForm({
   const update = useUpdateBike(bikeId ?? "");
   const create = useCreateBike();
   const [saved, setSaved] = useState(false);
+  const [createdBikeId, setCreatedBikeId] = useState<string | null>(null);
   const [nickname, setNickname] = useState(extracted.plate || extracted.make || "");
   const [showNicknameInput, setShowNicknameInput] = useState(false);
 
@@ -168,6 +173,7 @@ function RuhsatReviewForm({
   const existingBike = bike.data;
   const hasComparison = !!existingBike;
   const hasAnyAccepted = FIELD_KEYS.some((k) => accepted[k] && values[k] !== "");
+  const effectiveBikeId = bikeId ?? createdBikeId ?? undefined;
 
   const buildPatch = () => {
     const patch: Record<string, unknown> = {};
@@ -199,7 +205,7 @@ function RuhsatReviewForm({
     if (!nickname.trim()) { setShowNicknameInput(true); return; }
     const patch = buildPatch();
     try {
-      await create.mutateAsync({
+      const newBike = await create.mutateAsync({
         nickname: nickname.trim(),
         plate:      (patch.plate      as string | undefined) || undefined,
         make:       (patch.make       as string | undefined) || undefined,
@@ -209,6 +215,7 @@ function RuhsatReviewForm({
         engineNo:   (patch.engineNo   as string | undefined) || undefined,
         cylinderCc: (patch.cylinderCc as number | undefined) || undefined,
       });
+      setCreatedBikeId(newBike.id);
       setSaved(true);
       pushToast({ variant: "success", title: t("bike.added") });
     } catch (e) {
@@ -217,6 +224,7 @@ function RuhsatReviewForm({
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="inline-flex items-center gap-2">
@@ -232,11 +240,19 @@ function RuhsatReviewForm({
           <p className="text-center text-sm text-muted dark:text-muted-dark">{t("common.loading")}</p>
         )}
 
+        {confidence < LOW_CONFIDENCE && (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs">{t("review.lowConfidence")}</p>
+          </div>
+        )}
+
         <ul className="grid gap-2">
           {FIELD_KEYS.map((key) => {
             const ocrVal = extracted[key];
             const existingVal = existingBike ? bikeToFields(existingBike)[key] : null;
-            if (!ocrVal && !existingVal) return null;
+            // Show every field, even empty ones, so the user can fill in
+            // anything OCR couldn't read.
             return (
               <CompareFieldRow
                 key={key}
@@ -247,27 +263,15 @@ function RuhsatReviewForm({
                 accepted={accepted[key]}
                 hasComparison={hasComparison}
                 onAcceptChange={(v) => setAccepted((s) => ({ ...s, [key]: v }))}
-                onValueChange={(v) => setValues((s) => ({ ...s, [key]: v }))}
+                onValueChange={(v) => {
+                  setValues((s) => ({ ...s, [key]: v }));
+                  if (v.trim() !== "") setAccepted((a) => ({ ...a, [key]: true }));
+                }}
               />
             );
           })}
         </ul>
-
-        {muayeneDate && bikeId && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 dark:border-border-dark">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
-                {t("review.muayeneExpires")}
-              </p>
-              <p className="text-sm font-medium">{muayeneDate}</p>
-            </div>
-            <Button size="sm" variant="outline" asChild>
-              <Link to={`/bikes/${bikeId}/dated-items/new?type=muayene&expiresOn=${muayeneDate}`}>
-                {t("review.addMuayeneRecord")} <ChevronRight className="ml-1 h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-        )}
+        <p className="text-xs text-muted dark:text-muted-dark">{t("review.missingHint")}</p>
 
         <p className="text-right text-xs text-muted dark:text-muted-dark">
           {t("review.confidence")}: {Math.round(confidence * 100)}%
@@ -302,6 +306,101 @@ function RuhsatReviewForm({
         </div>
       </CardContent>
     </Card>
+
+      {effectiveBikeId && (
+        <ReminderDatesPanel bikeId={effectiveBikeId} initialMuayene={muayeneDate} />
+      )}
+    </>
+  );
+}
+
+// ─── reminder dates panel ─────────────────────────────────────────────────────
+
+const REMINDER_TYPES = ["muayene", "sigorta", "kasko"] as const;
+type ReminderType = (typeof REMINDER_TYPES)[number];
+
+/**
+ * Post-scan prompt for the expiry dates a ruhsat doesn't reliably carry. The
+ * inspection date is pre-filled when OCR found it; sigorta/kasko start empty so
+ * the user can add what wasn't on the document. Each saves independently.
+ */
+function ReminderDatesPanel({
+  bikeId,
+  initialMuayene,
+}: {
+  bikeId: string;
+  initialMuayene: string | null;
+}) {
+  const { t } = useTranslation();
+  const create = useCreateDatedItem(bikeId);
+  const [dates, setDates] = useState<Record<ReminderType, string>>({
+    muayene: initialMuayene ?? "",
+    sigorta: "",
+    kasko: "",
+  });
+  const [savedTypes, setSavedTypes] = useState<Record<string, boolean>>({});
+  const [pending, setPending] = useState<ReminderType | null>(null);
+
+  const add = async (type: ReminderType) => {
+    const expiresOn = dates[type];
+    if (!expiresOn) return;
+    setPending(type);
+    try {
+      await create.mutateAsync({ type, expiresOn });
+      setSavedTypes((s) => ({ ...s, [type]: true }));
+      pushToast({ variant: "success", title: t("review.dateAdded") });
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(e) });
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="inline-flex items-center gap-2 text-base">
+          <Plus className="h-4 w-4" /> {t("review.addDatesTitle")}
+        </CardTitle>
+        <CardDescription>{t("review.addDatesSub")}</CardDescription>
+      </CardHeader>
+      <CardContent className="gap-2">
+        {REMINDER_TYPES.map((type) => {
+          const done = savedTypes[type];
+          return (
+            <div
+              key={type}
+              className="flex items-center gap-2 rounded-xl border border-border p-2.5 dark:border-border-dark"
+            >
+              <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
+                {t(`items.${type}`)}
+              </span>
+              <input
+                type="date"
+                value={dates[type]}
+                disabled={done}
+                onChange={(e) => setDates((s) => ({ ...s, [type]: e.target.value }))}
+                className="h-9 flex-1 rounded-lg border border-border bg-surface px-2 text-sm text-text transition focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-60 dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+              />
+              {done ? (
+                <span className="inline-flex items-center gap-1 px-2 text-xs text-success">
+                  <Check className="h-4 w-4" /> {t("review.dateAdded")}
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!dates[type] || pending === type}
+                  onClick={() => void add(type)}
+                >
+                  {t("review.addDate")}
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -325,7 +424,10 @@ function CompareFieldRow({
 
   const isMatch  = hasComparison && !!existingValue && !!ocrValue && existingValue === ocrValue;
   const isDiff   = hasComparison && !!existingValue && !!ocrValue && existingValue !== ocrValue;
-  const isSimple = !hasComparison || (!existingValue && !!ocrValue);
+  // Anything that isn't a confident match/diff gets a plain, always-editable
+  // input — including fields OCR left blank, so they can be filled in here.
+  const isSimple = !isMatch && !isDiff;
+  const displayVal = currentValue !== "" ? currentValue : existingValue ?? "";
 
   return (
     <li className="flex flex-col gap-1.5 rounded-xl border border-border p-3 text-sm dark:border-border-dark">
@@ -351,22 +453,12 @@ function CompareFieldRow({
           >
             {accepted && <Check className="h-3 w-3" />}
           </button>
-          {editing ? (
-            <Input
-              value={currentValue}
-              onChange={(e) => onValueChange(e.target.value)}
-              onBlur={() => setEditing(false)}
-              autoFocus
-              className="h-8 flex-1 text-sm"
-            />
-          ) : (
-            <span className="flex-1 font-medium">
-              {currentValue || <em className="opacity-50">{t("common.dash")}</em>}
-            </span>
-          )}
-          <button type="button" onClick={() => setEditing(!editing)} className="text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+          <Input
+            value={displayVal}
+            onChange={(e) => onValueChange(e.target.value)}
+            placeholder={label}
+            className="h-8 flex-1 text-sm"
+          />
         </div>
       )}
 
