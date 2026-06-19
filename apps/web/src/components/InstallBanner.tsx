@@ -94,7 +94,7 @@ export function InstallBanner() {
 
             <button
               onClick={dismiss}
-              aria-label="Dismiss"
+              aria-label={t("common.dismiss")}
               className="flex-shrink-0 rounded-lg p-1 text-muted transition hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
             >
               <X className="h-4 w-4" />

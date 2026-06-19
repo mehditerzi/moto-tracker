@@ -3,12 +3,15 @@ import { createRoot } from "react-dom/client";
 import { MotionConfig } from "framer-motion";
 import "./lib/i18n";
 import { App } from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles.css";
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <MotionConfig reducedMotion="user">
-      <App />
-    </MotionConfig>
+    <ErrorBoundary>
+      <MotionConfig reducedMotion="user">
+        <App />
+      </MotionConfig>
+    </ErrorBoundary>
   </React.StrictMode>,
 );
