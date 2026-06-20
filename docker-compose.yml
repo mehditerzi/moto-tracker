@@ -35,6 +35,14 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@mototracker.app}
+      # Native push (APNs) for the iOS app — off until all four below are set.
+      # Web Push (VAPID) does not fire inside the iOS WebView; see
+      # docs/app-store/native-push.md.
+      APNS_KEY: ${APNS_KEY:-}
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
+      APNS_PRODUCTION: ${APNS_PRODUCTION:-true}
       CRON_TIMEZONE: ${CRON_TIMEZONE:-Europe/Istanbul}
       CRON_HOUR: ${CRON_HOUR:-9}
       CRON_ENABLED: ${CRON_ENABLED:-true}
