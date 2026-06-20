@@ -15,6 +15,7 @@ import { notificationPreferencesRouter } from "./routes/notificationPreferences.
 import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
+import { privacyRouter } from "./routes/privacy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { getAuth } from "./auth/index.js";
 import { toNodeHandler } from "better-auth/node";
@@ -76,6 +77,11 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/documents", documentsRouter);
   app.use("/api/push", pushSubscriptionsRouter);
+
+  // Public, login-free Privacy Policy page (App Store Connect requires a URL
+  // reviewers can open without authenticating). Mounted before the SPA static
+  // block so /privacy resolves to this page rather than the index.html fallback.
+  app.use("/privacy", privacyRouter);
 
   // ---- Static SPA hosting (single-origin production mode) ----
   // If WEB_ROOT points at a built React dist, serve it and fall back to

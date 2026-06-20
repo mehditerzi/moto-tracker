@@ -7,10 +7,11 @@ dates. This policy explains what data the app collects, why, and how it is
 handled. The service is operated by the app's owner on self-hosted
 infrastructure.
 
-> **Hosting note:** you must publish this document at a public URL (e.g.
-> `https://mototracker.mehditerzi.com/privacy`) and enter that URL in App Store
-> Connect → App Information → Privacy Policy URL. Update the contact email and
-> any details below before publishing.
+> **Hosting note:** this document is served live (no login required) at
+> `https://mototracker.mehditerzi.com/privacy` by the API
+> (`apps/api/src/routes/privacy.ts`). Enter that URL in App Store Connect →
+> App Information → Privacy Policy URL. Keep this Markdown source and the HTML in
+> `privacy.ts` in sync when the policy changes.
 
 ## What we collect
 
@@ -72,4 +73,4 @@ revision.
 
 ## Contact
 
-Questions or deletion requests: **__your-contact-email__**
+Questions or deletion requests: **mehditerzi32@hotmail.com**
