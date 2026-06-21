@@ -278,12 +278,13 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
       <div className="flex flex-wrap gap-1.5">
         {LEAD_OPTIONS.map((n) => {
           const on = pref.leadDays.includes(n);
-          const label = n === 0 ? t("settings.onTheDay") : `-${n}g`;
+          const label = n === 0 ? t("settings.onTheDay") : t("settings.daysBeforeShort", { count: n });
           return (
             <button
               key={n}
               onClick={() => toggleLead(n)}
               disabled={!pref.enabled}
+              aria-label={n !== 0 ? t("settings.daysBefore", { n }) : undefined}
               className={cn(
                 "num rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
                 on
