@@ -58,4 +58,9 @@ describe("locale key parity", () => {
       expect(enKeys.has(key)).toBe(true);
     }
   });
+
+  it("includes settings.daysBeforeShort in both locales", () => {
+    expect(trKeys.has("settings.daysBeforeShort")).toBe(true);
+    expect(enKeys.has("settings.daysBeforeShort")).toBe(true);
+  });
 });

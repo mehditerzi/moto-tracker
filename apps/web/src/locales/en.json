@@ -159,7 +159,8 @@
     "onTheDay": "Same day",
     "daysBefore": "{{n}} days before",
     "vapidNotConfigured": "VAPID keys are not configured. Run the bootstrap script.",
-    "testFailed": "Couldn't send notification."
+    "testFailed": "Couldn't send notification.",
+    "daysBeforeShort": "-{{count}}d"
   },
   "capture": {
     "title": "Upload document",
