@@ -6,7 +6,6 @@ import { queryClient } from "@/lib/queryClient";
 import { AppShell } from "@/components/AppShell";
 import { LandingPage } from "@/pages/LandingPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
-import { isOnboarded } from "@/lib/onboarding";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { MagicLinkSentPage } from "@/pages/MagicLinkSentPage";
@@ -43,19 +42,15 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     );
   }
   if (me.isError || !me.data) {
-    return <Navigate to={isOnboarded() ? "/sign-in" : "/welcome"} replace />;
+    // Logged-out users always enter through onboarding; its Skip / Get Started
+    // lead to /sign-in.
+    return <Navigate to="/welcome" replace />;
   }
   return <>{children}</>;
 }
 
-// Show onboarding only until it's been seen; afterwards skip straight to auth.
-function WelcomeRoute() {
-  if (isOnboarded()) return <Navigate to="/sign-in" replace />;
-  return <OnboardingPage />;
-}
-
 const router = createBrowserRouter([
-  { path: "/welcome", element: <WelcomeRoute /> },
+  { path: "/welcome", element: <OnboardingPage /> },
   { path: "/sign-in", element: <LandingPage mode="signin" /> },
   { path: "/sign-up", element: <LandingPage mode="signup" /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
