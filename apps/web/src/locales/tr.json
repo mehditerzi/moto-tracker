@@ -253,6 +253,25 @@
     "iosHint": "Paylaş'a bas, ardından \"Ana Ekrana Ekle\"yi seç.",
     "add": "Ekle"
   },
+  "onboarding": {
+    "skip": "Geç",
+    "next": "İleri",
+    "getStarted": "Başla",
+    "slides": {
+      "scan": {
+        "title": "Belgeni çek",
+        "body": "Sigorta, kasko ve muayene belgelerini çek — tarihler otomatik okunur."
+      },
+      "remind": {
+        "title": "Vadeyi kaçırma",
+        "body": "Sigorta, kasko, muayene ve bakım dolmadan önce seni uyarırız."
+      },
+      "garage": {
+        "title": "Tüm araçların tek garajda",
+        "body": "Araçlarını ekle; bakım ve kilometre takibini tek yerden yap."
+      }
+    }
+  },
   "notFound": {
     "title": "Sayfa bulunamadı",
     "sub": "Aradığın sayfa burada değil.",

@@ -257,6 +257,25 @@
     "iosHint": "Tap the Share button then \"Add to Home Screen\".",
     "add": "Add"
   },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get Started",
+    "slides": {
+      "scan": {
+        "title": "Scan your documents",
+        "body": "Photograph your insurance, kasko and inspection papers — dates are read automatically."
+      },
+      "remind": {
+        "title": "Never miss a deadline",
+        "body": "We warn you before insurance, kasko, inspection and maintenance fall due."
+      },
+      "garage": {
+        "title": "All your vehicles, one garage",
+        "body": "Add your vehicles and track maintenance and mileage in one place."
+      }
+    }
+  },
   "notFound": {
     "title": "Page not found",
     "sub": "The page you're looking for isn't here.",
