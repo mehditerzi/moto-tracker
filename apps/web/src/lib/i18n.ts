@@ -11,7 +11,10 @@ void i18n
     fallbackLng: "tr",
     supportedLngs: ["tr", "en"],
     detection: {
-      order: ["localStorage", "navigator"],
+      // Turkish-market app: default to TR (fallbackLng) for everyone, ignoring
+      // the browser language. Only an explicit in-app choice (saved to
+      // localStorage) switches it — e.g. to EN.
+      order: ["localStorage"],
       caches: ["localStorage"],
       lookupLocalStorage: "lang",
     },
