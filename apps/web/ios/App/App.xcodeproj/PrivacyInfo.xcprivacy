@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Declare the types of data your app collects -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <!--
+            Add or remove entries below based on what your app actually collects.
+            Common examples are shown. Review Apple's documentation for the full list:
+            https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
+        -->
+
+        <!-- Example: If you collect user identifiers (e.g., user ID for push notifications) -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeUserID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Example: If you collect device identifiers for push notifications -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Declare required reason APIs your app uses -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <!--
+            Add entries here for any required-reason APIs your app (or its SDKs) use.
+            Review Apple's list: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api
+        -->
+
+        <!-- UserDefaults is commonly used by Capacitor internally -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- CA92.1: Access info from the same app that wrote it -->
+                <string>CA92.1</string>
+            </array>
+        </dict>
+
+        <!-- File timestamp APIs are used by many SDKs -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- C617.1: Read timestamps of files inside app container -->
+                <string>C617.1</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Set to true only if your app uses data for tracking as defined by Apple -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <!-- Required if NSPrivacyTracking is true; leave empty otherwise -->
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+</dict>
+</plist>
