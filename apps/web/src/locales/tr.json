@@ -224,6 +224,7 @@
   "common": {
     "save": "Kaydet",
     "cancel": "İptal",
+    "confirm": "Onayla",
     "back": "Geri",
     "loading": "Yükleniyor...",
     "notFound": "Bulunamadı.",
