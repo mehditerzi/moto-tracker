@@ -17,7 +17,11 @@ const config: CapacitorConfig = {
   appName: "Garajım",
   webDir: "dist",
   ios: {
-    contentInset: "always",
+    // The web app handles safe areas itself via CSS env() insets (pt-safe /
+    // pl-safe / pr-safe / pb-safe). "always" makes WKWebView ALSO inset content
+    // below the status bar, doubling the top gap — so use "never" and let CSS
+    // own the insets.
+    contentInset: "never",
   },
 };
 
