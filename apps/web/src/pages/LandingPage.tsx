@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, ScanLine, Bell, Wrench, Gauge } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,19 +18,13 @@ interface Props {
   mode: "signin" | "signup";
 }
 
-const FEATURES = [
-  { Icon: ScanLine, key: "scan" },
-  { Icon: Bell,     key: "remind" },
-  { Icon: Wrench,   key: "maintain" },
-  { Icon: Gauge,    key: "km" },
-] as const;
 
 export function LandingPage({ mode }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-dvh overflow-x-hidden bg-bg dark:bg-bg-dark">
+    <div className="relative h-[100dvh] overflow-hidden bg-bg dark:bg-bg-dark">
       {/* Ignition glow — the one splash of colour, like an LED behind the cluster */}
       <div
         aria-hidden
@@ -44,74 +38,30 @@ export function LandingPage({ mode }: Props) {
         className="pointer-events-none absolute inset-0 text-border-strong opacity-[0.06] [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:38px_38px] [mask-image:radial-gradient(80%_50%_at_50%_0%,#000,transparent)] dark:text-border"
       />
 
-      <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6 pb-10 pl-safe pr-safe pt-safe">
-        {/* ── hero ── */}
+      <main className="relative mx-auto flex h-[100dvh] max-w-md flex-col justify-center gap-8 px-6 pb-10 pl-safe pr-safe pt-safe">
+        {/* ── compact brand header ── */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-          className="flex flex-col items-center gap-5 pt-6 text-center"
+          className="flex flex-col items-center gap-3 text-center"
         >
-          {/* app-icon tile */}
           <div className="relative">
             <div aria-hidden className="absolute inset-0 -z-10 rounded-[1.4rem] bg-accent/30 blur-2xl" />
             <div className="grid h-[68px] w-[68px] place-items-center rounded-[1.4rem] border border-border bg-surface text-text shadow-card dark:border-border-dark dark:bg-surface-dark dark:text-text-dark">
               <BrandMark showWordmark={false} className="[&>svg]:h-9 [&>svg]:w-auto" />
             </div>
           </div>
-
-          <div className="flex flex-col items-center gap-2.5">
-            <span className="text-[13px] font-semibold uppercase tracking-micro text-muted dark:text-muted-dark">
-              Garajım
-            </span>
-            <h1 className="text-balance text-[30px] font-semibold leading-[1.12] tracking-tight sm:text-[34px]">
-              {t("landing.headline")}
-            </h1>
-            <p className="max-w-[34ch] text-[14.5px] leading-relaxed text-muted dark:text-muted-dark">
-              {t("landing.sub")}
-            </p>
-          </div>
-
-          {/* what it tracks */}
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {(["sigorta", "kasko", "muayene", "bakım"] as const).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-border bg-surface/60 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-micro text-muted backdrop-blur dark:border-border-dark dark:bg-surface-dark/60 dark:text-muted-dark"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+          <span className="text-[13px] font-semibold uppercase tracking-micro text-muted dark:text-muted-dark">
+            Garajım
+          </span>
         </motion.div>
-
-        {/* ── feature strip ── */}
-        <motion.ul
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, delay: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
-          className="grid grid-cols-2 gap-2"
-        >
-          {FEATURES.map(({ Icon, key }) => (
-            <li
-              key={key}
-              className="flex items-center gap-2.5 rounded-2xl border border-border bg-surface/70 px-3 py-2.5 backdrop-blur dark:border-border-dark dark:bg-surface-dark/70"
-            >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent/15">
-                <Icon className="h-3.5 w-3.5 text-accent-dim" />
-              </span>
-              <span className="text-[12.5px] font-semibold leading-tight">
-                {t(`landing.features.${key}`)}
-              </span>
-            </li>
-          ))}
-        </motion.ul>
 
         {/* ── auth ── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, delay: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.36, delay: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <Card className="overflow-hidden">
             <div className="grid grid-cols-2 gap-1 bg-surface-elev p-1 dark:bg-surface-elev-dark">
