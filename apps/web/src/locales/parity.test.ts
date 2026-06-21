@@ -41,4 +41,21 @@ describe("locale key parity", () => {
       expect(enKeys.has(key)).toBe(true);
     }
   });
+
+  it("includes the onboarding keys in both locales", () => {
+    for (const key of [
+      "onboarding.skip",
+      "onboarding.next",
+      "onboarding.getStarted",
+      "onboarding.slides.scan.title",
+      "onboarding.slides.scan.body",
+      "onboarding.slides.remind.title",
+      "onboarding.slides.remind.body",
+      "onboarding.slides.garage.title",
+      "onboarding.slides.garage.body",
+    ]) {
+      expect(trKeys.has(key)).toBe(true);
+      expect(enKeys.has(key)).toBe(true);
+    }
+  });
 });
