@@ -13,9 +13,11 @@ import { Label } from "@/components/ui/label";
 import { useBike, useCreateBike, useUpdateBike, useArchiveBike } from "@/hooks/useBikes";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
+import { useConfirm } from "@/components/ConfirmSheet";
 
 export function BikeFormPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -96,9 +98,14 @@ export function BikeFormPage() {
 
   const onArchive = async () => {
     if (!id) return;
-    if (!confirm(t("bike.archiveConfirm"))) return;
-    await archiveMut.mutateAsync(id);
-    navigate("/bikes");
+    const ok = await confirm({ title: t("bike.archiveConfirm"), confirmLabel: t("bike.archive"), destructive: true });
+    if (!ok) return;
+    try {
+      await archiveMut.mutateAsync(id);
+      navigate("/bikes");
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
+    }
   };
 
   return (
@@ -193,7 +200,7 @@ export function BikeFormPage() {
               <Button asChild variant="ghost" className="flex-1">
                 <Link to="/bikes">{t("common.cancel")}</Link>
               </Button>
-              <Button type="submit" variant="accent" className="flex-1">
+              <Button type="submit" variant="accent" className="flex-1" disabled={createMut.isPending || updateMut.isPending}>
                 {isEdit ? t("common.save") : t("dashboard.add")}
               </Button>
             </div>
@@ -203,6 +210,7 @@ export function BikeFormPage() {
                 variant="outline"
                 className="mt-1 text-danger border-danger/40 hover:bg-danger/10 hover:border-danger/60"
                 onClick={onArchive}
+                disabled={archiveMut.isPending}
               >
                 <Trash2 className="h-4 w-4" /> {t("bike.archive")}
               </Button>

@@ -12,11 +12,13 @@ import { useDisablePush, useEnablePush, usePushStatus, useSendTestPush } from "@
 import { pushToast } from "@/hooks/useToast";
 import { cn } from "@/lib/cn";
 import type { NotifPreference } from "@mototracker/shared";
+import { useConfirm } from "@/components/ConfirmSheet";
 
 const LEAD_OPTIONS = [60, 30, 14, 7, 3, 1, 0];
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const prefs = useNotifPrefs();
   const push = usePushStatus();
@@ -50,7 +52,7 @@ export function SettingsPage() {
   };
 
   const onSignOut = async () => {
-    if (!confirm(t("settings.signOutConfirm"))) return;
+    if (!(await confirm({ title: t("settings.signOutConfirm"), confirmLabel: t("settings.signOut"), destructive: true }))) return;
     await signOut();
     navigate("/sign-in");
   };

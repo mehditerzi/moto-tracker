@@ -17,6 +17,7 @@ import {
   useMaintenanceItem,
   useUpdateMaintenance,
 } from "@/hooks/useMaintenanceItems";
+import { useConfirm } from "@/components/ConfirmSheet";
 
 const KINDS = ["engine_oil", "brakes", "tires", "battery", "coolant", "air_filter", "chain", "custom"] as const;
 
@@ -37,6 +38,7 @@ interface Props {
 
 export function MaintenanceFormPage({ mode }: Props) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const navigate = useNavigate();
   const bikeId = params.bikeId!;
@@ -95,7 +97,7 @@ export function MaintenanceFormPage({ mode }: Props) {
 
   const onDelete = async () => {
     if (!itemId) return;
-    if (!confirm(t("maintenance.deleteConfirm"))) return;
+    if (!(await confirm({ title: t("maintenance.deleteConfirm"), confirmLabel: t("items.delete"), destructive: true }))) return;
     await deleteMut.mutateAsync(itemId);
     navigate("/dashboard");
   };
@@ -180,7 +182,7 @@ export function MaintenanceFormPage({ mode }: Props) {
               <Button asChild variant="ghost" className="flex-1">
                 <Link to="/dashboard">{t("common.cancel")}</Link>
               </Button>
-              <Button type="submit" variant="accent" className="flex-1">
+              <Button type="submit" variant="accent" className="flex-1" disabled={createMut.isPending || updateMut.isPending}>
                 {t("common.save")}
               </Button>
             </div>
@@ -190,6 +192,7 @@ export function MaintenanceFormPage({ mode }: Props) {
                 variant="outline"
                 className="mt-1 text-danger border-danger/40 hover:bg-danger/10 hover:border-danger/60"
                 onClick={onDelete}
+                disabled={deleteMut.isPending}
               >
                 <Trash2 className="h-4 w-4" /> {t("items.delete")}
               </Button>

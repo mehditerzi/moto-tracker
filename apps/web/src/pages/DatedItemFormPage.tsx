@@ -15,6 +15,7 @@ import {
   useUpdateDatedItem,
 } from "@/hooks/useDatedItems";
 import type { DatedItemType } from "@mototracker/shared";
+import { useConfirm } from "@/components/ConfirmSheet";
 
 const TYPES: DatedItemType[] = ["sigorta", "kasko", "muayene"];
 
@@ -24,6 +25,7 @@ interface Props {
 
 export function DatedItemFormPage({ mode }: Props) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const [search] = useSearchParams();
   const navigate = useNavigate();
@@ -77,7 +79,7 @@ export function DatedItemFormPage({ mode }: Props) {
 
   const onDelete = async () => {
     if (!itemId) return;
-    if (!confirm(t("items.confirmDelete"))) return;
+    if (!(await confirm({ title: t("items.confirmDelete"), confirmLabel: t("items.delete"), destructive: true }))) return;
     await deleteMut.mutateAsync(itemId);
     navigate("/dashboard");
   };
