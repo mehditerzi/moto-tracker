@@ -14,7 +14,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "com.mehditerzi.mototracker",
-  appName: "MotoTracker",
+  appName: "Garajım",
   webDir: "dist",
   ios: {
     contentInset: "always",

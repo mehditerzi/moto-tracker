@@ -62,7 +62,7 @@ export function LandingPage({ mode }: Props) {
 
           <div className="flex flex-col items-center gap-2.5">
             <span className="text-[13px] font-semibold uppercase tracking-micro text-muted dark:text-muted-dark">
-              MotoTracker
+              Garajım
             </span>
             <h1 className="text-balance text-[30px] font-semibold leading-[1.12] tracking-tight sm:text-[34px]">
               {t("landing.headline")}

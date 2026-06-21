@@ -1,7 +1,7 @@
 {
-  "brand": "MotoTracker",
+  "brand": "Garajım",
   "nav": {
-    "bikes": "Bikes",
+    "bikes": "Vehicles",
     "settings": "Settings",
     "signOut": "Sign out"
   },
@@ -14,7 +14,7 @@
     "welcomeBack": "Welcome back",
     "welcomeBackSub": "Sign in to your account.",
     "newAccount": "Create account",
-    "newAccountSub": "Start tracking your motorcycle with MotoTracker.",
+    "newAccountSub": "Start tracking your vehicle with Garajım.",
     "magicSent": "Link sent",
     "magicSentSub": "Check your email and tap the sign-in link.",
     "magicSentBody": "The link is valid for 15 minutes. Don't forget to check spam.",
@@ -52,14 +52,14 @@
     "resetInvalidLink": "Invalid or expired reset link."
   },
   "dashboard": {
-    "active": "Active bike",
-    "empty": "You haven't added a bike yet",
-    "emptySub": "Start by adding your first motorcycle.",
-    "addBike": "Add a bike",
-    "manageBikes": "Manage bikes",
+    "active": "Active vehicle",
+    "empty": "You haven't added a vehicle yet",
+    "emptySub": "Start by adding your first vehicle.",
+    "addBike": "Add a vehicle",
+    "manageBikes": "Manage vehicles",
     "loading": "Loading...",
     "loadFailed": "Failed to load.",
-    "myBikes": "My bikes",
+    "myBikes": "My vehicles",
     "add": "Add",
     "edit": "Edit",
     "upcoming": "Upcoming",
@@ -95,8 +95,8 @@
     "editRecord": "Edit record"
   },
   "bike": {
-    "newTitle": "New motorcycle",
-    "editTitle": "Edit motorcycle",
+    "newTitle": "New vehicle",
+    "editTitle": "Edit vehicle",
     "nickname": "Nickname",
     "plate": "Plate",
     "make": "Make",
@@ -105,7 +105,7 @@
     "currentKm": "Current km",
     "color": "Color",
     "archive": "Archive",
-    "archiveConfirm": "Archive this motorcycle?",
+    "archiveConfirm": "Archive this vehicle?",
     "optional": "optional",
     "added": "Added",
     "updated": "Updated",
@@ -120,10 +120,12 @@
     "editTitle": "Edit maintenance record",
     "kinds": {
       "engine_oil": "Engine oil",
-      "chain": "Chain",
       "brakes": "Brakes",
       "tires": "Tires",
+      "battery": "Battery",
       "coolant": "Coolant",
+      "air_filter": "Air filter",
+      "chain": "Chain",
       "custom": "Other"
     },
     "fallbackLabel": "Maintenance",
@@ -191,7 +193,7 @@
     "pendingTitle": "Awaiting confirmation",
     "pendingSub": "Some fields are missing or low-confidence. Review and add manually.",
     "ruhsatTitle": "Registration details detected",
-    "ruhsatSub": "Want to copy these to your motorcycle?",
+    "ruhsatSub": "Want to copy these to your vehicle?",
     "docType": "Document type",
     "plate": "Plate",
     "make": "Make",
@@ -202,20 +204,20 @@
     "muayeneExpires": "Inspection expires",
     "confidence": "Confidence",
     "goToRecord": "Go to record",
-    "applyToBike": "Apply to bike",
-    "appliedToBike": "Applied to bike",
+    "applyToBike": "Apply to vehicle",
+    "appliedToBike": "Applied to vehicle",
     "close": "Close",
     "chassisNo": "Chassis no",
     "engineNo": "Engine no",
     "cylinderCc": "Displacement",
-    "compareTitle": "Update bike details",
+    "compareTitle": "Update vehicle details",
     "compareSub": "Review detected values and choose which to apply.",
     "existing": "Current",
     "fromOcr": "Detected",
     "applySelected": "Apply selected",
     "nothingToApply": "Nothing to update",
     "addMuayeneRecord": "Add inspection record",
-    "createBike": "Create bike",
+    "createBike": "Create vehicle",
     "addDatesTitle": "Renewal dates",
     "addDatesSub": "Add any dates that weren't on the ruhsat or couldn't be read.",
     "addDate": "Add",
@@ -236,7 +238,7 @@
     "dismiss": "Dismiss"
   },
   "landing": {
-    "headline": "Track your motorcycle documents. Never miss a deadline.",
+    "headline": "Track your vehicle documents. Never miss a deadline.",
     "sub": "Scan your insurance, kasko and inspection certificates — dates are read automatically. Get notified before they expire.",
     "features": {
       "scan": "Scan Documents",
@@ -244,14 +246,14 @@
       "remind": "Smart Reminders",
       "remindSub": "Get push notifications before your policies and inspection expire.",
       "maintain": "Maintenance Log",
-      "maintainSub": "Track oil changes, chain, brakes and more by km or date.",
+      "maintainSub": "Track oil changes, brakes, battery and more by km or date.",
       "km": "Odometer Tracking",
       "kmSub": "Keep your km current and maintenance due dates calculated automatically."
     }
   },
   "install": {
     "title": "Add to Home Screen",
-    "subtitle": "Install MotoTracker for the best experience.",
+    "subtitle": "Install Garajım for the best experience.",
     "iosHint": "Tap the Share button then \"Add to Home Screen\".",
     "add": "Add"
   },

@@ -22,9 +22,9 @@ export interface FieldIssue {
 /** Confidence ceiling applied when a field is flagged suspect. */
 const SUSPECT_CONFIDENCE_CAP = 0.5;
 
-/** Plausible engine displacement window for a motorcycle-centric app (cm³). */
+/** Plausible engine displacement window for vehicles (cm³). */
 const CC_MIN = 20;
-const CC_MAX = 3000;
+const CC_MAX = 8000;
 
 /** Strip spaces and uppercase a plate; null when empty. */
 export function normalizePlate(plate: string | null): string | null {
@@ -90,7 +90,7 @@ export function validateAndCorrect(input: ParsedOcr): {
     }
   }
 
-  // ── cylinder cc: plausibility for a motorcycle app ───────────────────────
+  // ── cylinder cc: plausibility for vehicles ───────────────────────
   if (parsed.cylinderCc != null && parsed.cylinderCc > 0 && (parsed.cylinderCc < CC_MIN || parsed.cylinderCc > CC_MAX)) {
     issues.push({
       field: "cylinderCc",

@@ -18,9 +18,9 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: "MotoTracker", body: event.data?.text() ?? "" };
+    payload = { title: "Garajım", body: event.data?.text() ?? "" };
   }
-  const title = payload.title ?? "MotoTracker";
+  const title = payload.title ?? "Garajım";
   const options: NotificationOptions = {
     body: payload.body,
     tag: payload.tag,

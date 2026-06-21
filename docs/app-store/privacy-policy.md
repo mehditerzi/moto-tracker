@@ -1,8 +1,8 @@
-# MotoTracker — Privacy Policy
+# Garajım — Privacy Policy
 
 _Last updated: 2026-06-19_
 
-MotoTracker ("the app") helps you track your vehicle documents and their expiry
+Garajım ("the app") helps you track your vehicle documents and their expiry
 dates. This policy explains what data the app collects, why, and how it is
 handled. The service is operated by the app's owner on self-hosted
 infrastructure.

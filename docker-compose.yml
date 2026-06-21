@@ -22,7 +22,7 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-}
       CROSS_SITE_COOKIES: ${CROSS_SITE_COOKIES:-false}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-MotoTracker <noreply@example.com>}
+      EMAIL_FROM: ${EMAIL_FROM:-Garajım <noreply@example.com>}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # By default the api talks to an Ollama already running on the host

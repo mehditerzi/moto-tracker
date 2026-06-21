@@ -14,7 +14,7 @@ const PAGE = `<!doctype html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="all" />
-<title>MotoTracker — Privacy Policy</title>
+<title>Garajım — Privacy Policy</title>
 <style>
   :root { color-scheme: light dark; }
   body {
@@ -39,10 +39,10 @@ const PAGE = `<!doctype html>
 </head>
 <body>
 <main>
-  <h1>MotoTracker — Privacy Policy</h1>
+  <h1>Garajım — Privacy Policy</h1>
   <p class="updated">Last updated: ${LAST_UPDATED}</p>
 
-  <p>MotoTracker (&ldquo;the app&rdquo;) helps you track your vehicle documents and
+  <p>Garajım (&ldquo;the app&rdquo;) helps you track your vehicle documents and
   their expiry dates. This policy explains what data the app collects, why, and how
   it is handled. The service is operated by the app&rsquo;s owner on self-hosted
   infrastructure.</p>

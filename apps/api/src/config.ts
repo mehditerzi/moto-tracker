@@ -37,7 +37,7 @@ const Env = z.object({
     .default("false"),
   SESSION_SECRET: z.string().min(16),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("MotoTracker <noreply@example.com>"),
+  EMAIL_FROM: z.string().default("Garajım <noreply@example.com>"),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   UPLOADS_DIR: z.string().default("./data/uploads"),
