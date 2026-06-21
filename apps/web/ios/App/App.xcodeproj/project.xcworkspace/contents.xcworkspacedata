@@ -4,13 +4,4 @@
    <FileRef
       location = "self:">
    </FileRef>
-   <FileRef
-      location = "group:release.xcconfig">
-   </FileRef>
-   <FileRef
-      location = "group:PrivacyInfo.xcprivacy">
-   </FileRef>
-   <FileRef
-      location = "group:AppDelegate.swift">
-   </FileRef>
 </Workspace>

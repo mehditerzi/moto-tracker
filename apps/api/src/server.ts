@@ -40,6 +40,9 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
     cors({
       origin: corsOrigins,
       credentials: true,
+      // The native app reads its bearer token from this response header on
+      // sign-in; it must be exposed for cross-origin (capacitor://localhost) JS.
+      exposedHeaders: ["set-auth-token"],
     }),
   );
 

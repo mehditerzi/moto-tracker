@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { magicLink } from "better-auth/plugins";
+import { magicLink, bearer } from "better-auth/plugins";
 import Database from "better-sqlite3";
 import { config } from "../config.js";
 import { getDb } from "../db/index.js";
@@ -55,6 +55,11 @@ function makeAuth() {
         },
         expiresIn: 15 * 60, // 15 minutes
       }),
+      // Native (Capacitor iOS) can't rely on the cross-site session cookie —
+      // WKWebView drops it — so the app authenticates with a bearer token
+      // instead. The token is returned in the `set-auth-token` response header
+      // on sign-in and accepted as `Authorization: Bearer …` on every request.
+      bearer(),
     ],
   });
 }
