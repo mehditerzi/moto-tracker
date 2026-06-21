@@ -145,6 +145,7 @@ export function SettingsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  disabled={test.isPending}
                   onClick={() =>
                     test
                       .mutateAsync()
@@ -230,17 +231,25 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
   const { t } = useTranslation();
   const update = useUpdateNotifPref(pref.itemType);
 
-  const toggleLead = (n: number) => {
+  const toggleLead = async (n: number) => {
     const set = new Set(pref.leadDays);
     if (set.has(n)) set.delete(n);
     else set.add(n);
-    void update.mutateAsync({
-      enabled: pref.enabled,
-      leadDays: [...set].sort((a, b) => b - a),
-    });
+    try {
+      await update.mutateAsync({
+        enabled: pref.enabled,
+        leadDays: [...set].sort((a, b) => b - a),
+      });
+    } catch {
+      pushToast({ variant: "danger", title: t("settings.testFailed") });
+    }
   };
-  const toggleEnabled = () => {
-    void update.mutateAsync({ enabled: !pref.enabled, leadDays: pref.leadDays });
+  const toggleEnabled = async () => {
+    try {
+      await update.mutateAsync({ enabled: !pref.enabled, leadDays: pref.leadDays });
+    } catch {
+      pushToast({ variant: "danger", title: t("settings.testFailed") });
+    }
   };
 
   return (

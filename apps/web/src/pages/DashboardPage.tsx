@@ -221,6 +221,7 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
   }, [bikeId, currentKm]);
 
   const save = async () => {
+    if (update.isPending) return;
     const n = parseInt(value, 10);
     if (!isNaN(n) && n >= 0 && n !== currentKm) {
       try {
@@ -245,6 +246,7 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
           onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
           className="h-7 w-28 text-sm"
+          disabled={update.isPending}
           autoFocus
         />
         <span className="text-xs text-muted dark:text-muted-dark">km</span>
