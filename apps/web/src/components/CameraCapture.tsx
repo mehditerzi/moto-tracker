@@ -244,7 +244,7 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
       )}
 
       {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4 pt-safe">
         <button
           type="button"
           onClick={() => {
@@ -283,7 +283,7 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
 
       {/* Shutter row */}
       {phase === "live" && (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-10 p-8">
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-10 p-8 pb-safe">
           <button
             type="button"
             onClick={() => {
