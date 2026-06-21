@@ -156,6 +156,7 @@
     "daysBefore": "{{n}} gün önce",
     "vapidNotConfigured": "VAPID anahtarları yapılandırılmamış. Bootstrap script'i çalıştırın.",
     "testFailed": "Bildirim gönderilemedi.",
+    "updateFailed": "Kaydedilemedi",
     "daysBeforeShort": "-{{count}}g"
   },
   "capture": {

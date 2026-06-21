@@ -98,8 +98,12 @@ export function MaintenanceFormPage({ mode }: Props) {
   const onDelete = async () => {
     if (!itemId) return;
     if (!(await confirm({ title: t("maintenance.deleteConfirm"), confirmLabel: t("items.delete"), destructive: true }))) return;
-    await deleteMut.mutateAsync(itemId);
-    navigate("/dashboard");
+    try {
+      await deleteMut.mutateAsync(itemId);
+      navigate("/dashboard");
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
+    }
   };
 
   return (

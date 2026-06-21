@@ -160,6 +160,7 @@
     "daysBefore": "{{n}} days before",
     "vapidNotConfigured": "VAPID keys are not configured. Run the bootstrap script.",
     "testFailed": "Couldn't send notification.",
+    "updateFailed": "Couldn't save",
     "daysBeforeShort": "-{{count}}d"
   },
   "capture": {
