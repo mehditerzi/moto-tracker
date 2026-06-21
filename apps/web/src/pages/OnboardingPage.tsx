@@ -4,7 +4,6 @@ import { ScanLine, Bell, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/BrandMark";
-import { markOnboarded } from "@/lib/onboarding";
 
 // `Icon: null` → render the garage BrandMark instead of a lucide glyph.
 const SLIDES: { key: string; Icon: LucideIcon | null }[] = [
@@ -21,7 +20,6 @@ export function OnboardingPage() {
   const last = index >= SLIDES.length - 1;
 
   function finish() {
-    markOnboarded();
     navigate("/sign-in", { replace: true });
   }
 
