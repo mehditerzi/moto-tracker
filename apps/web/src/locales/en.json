@@ -237,20 +237,6 @@
     "dash": "—",
     "dismiss": "Dismiss"
   },
-  "landing": {
-    "headline": "Track your vehicle documents. Never miss a deadline.",
-    "sub": "Scan your insurance, kasko and inspection certificates — dates are read automatically. Get notified before they expire.",
-    "features": {
-      "scan": "Scan Documents",
-      "scanSub": "Photograph your ruhsat, insurance or kasko — dates extracted instantly.",
-      "remind": "Smart Reminders",
-      "remindSub": "Get push notifications before your policies and inspection expire.",
-      "maintain": "Maintenance Log",
-      "maintainSub": "Track oil changes, brakes, battery and more by km or date.",
-      "km": "Odometer Tracking",
-      "kmSub": "Keep your km current and maintenance due dates calculated automatically."
-    }
-  },
   "install": {
     "title": "Add to Home Screen",
     "subtitle": "Install Garajım for the best experience.",

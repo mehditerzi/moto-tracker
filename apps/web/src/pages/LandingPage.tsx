@@ -18,7 +18,6 @@ interface Props {
   mode: "signin" | "signup";
 }
 
-
 export function LandingPage({ mode }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
