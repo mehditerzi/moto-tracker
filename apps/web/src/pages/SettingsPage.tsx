@@ -241,14 +241,14 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
         leadDays: [...set].sort((a, b) => b - a),
       });
     } catch {
-      pushToast({ variant: "danger", title: t("settings.testFailed") });
+      pushToast({ variant: "danger", title: t("settings.updateFailed") });
     }
   };
   const toggleEnabled = async () => {
     try {
       await update.mutateAsync({ enabled: !pref.enabled, leadDays: pref.leadDays });
     } catch {
-      pushToast({ variant: "danger", title: t("settings.testFailed") });
+      pushToast({ variant: "danger", title: t("settings.updateFailed") });
     }
   };
 

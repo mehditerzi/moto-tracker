@@ -27,10 +27,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const resolver = useRef<((v: boolean) => void) | null>(null);
 
   const confirm = useCallback<ConfirmFn>((o) => {
+    resolver.current?.(false);   // settle any in-flight promise before replacing it
     setOpts(o);
-    return new Promise<boolean>((resolve) => {
-      resolver.current = resolve;
-    });
+    return new Promise<boolean>((resolve) => { resolver.current = resolve; });
   }, []);
 
   const close = useCallback((result: boolean) => {
@@ -66,7 +65,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <motion.div
                 role="alertdialog"
                 aria-modal="true"
-                aria-label={opts.title}
+                aria-labelledby="confirm-title"
+                aria-describedby={opts.message ? "confirm-desc" : undefined}
                 className="mx-auto mb-2 w-full max-w-md overflow-hidden rounded-2xl"
                 initial={{ y: 40, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -75,9 +75,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="rounded-2xl bg-surface-elev p-4 text-center dark:bg-surface-elev-dark">
-                  <p className="text-[15px] font-semibold">{opts.title}</p>
+                  <p id="confirm-title" className="text-[15px] font-semibold">{opts.title}</p>
                   {opts.message && (
-                    <p className="mt-1 text-[13px] text-muted dark:text-muted-dark">{opts.message}</p>
+                    <p id="confirm-desc" className="mt-1 text-[13px] text-muted dark:text-muted-dark">{opts.message}</p>
                   )}
                   <button
                     type="button"

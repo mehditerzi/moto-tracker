@@ -80,8 +80,12 @@ export function DatedItemFormPage({ mode }: Props) {
   const onDelete = async () => {
     if (!itemId) return;
     if (!(await confirm({ title: t("items.confirmDelete"), confirmLabel: t("items.delete"), destructive: true }))) return;
-    await deleteMut.mutateAsync(itemId);
-    navigate("/dashboard");
+    try {
+      await deleteMut.mutateAsync(itemId);
+      navigate("/dashboard");
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
+    }
   };
 
   const isPending = createMut.isPending || updateMut.isPending;
