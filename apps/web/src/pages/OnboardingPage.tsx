@@ -68,9 +68,10 @@ export function OnboardingPage() {
         onScroll={onScroll}
         className="relative flex flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {SLIDES.map(({ key, Icon }) => (
+        {SLIDES.map(({ key, Icon }, i) => (
           <section
             key={key}
+            aria-hidden={i !== index}
             className="flex h-full w-full shrink-0 snap-center flex-col items-center justify-center gap-6 px-8 text-center"
           >
             <div className="relative">
