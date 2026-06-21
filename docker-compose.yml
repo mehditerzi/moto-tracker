@@ -48,7 +48,8 @@ services:
       CRON_ENABLED: ${CRON_ENABLED:-true}
     volumes:
       - ./data:/data
-    # Bind to loopback only — public access goes through ngrok.
+    # Bind to loopback only — public access goes through the tunnel
+    # (Cloudflare in production; ngrok is legacy/opt-in).
     ports:
       - "127.0.0.1:8787:8787"
     # Allow the container to reach an Ollama running on the host
@@ -67,10 +68,26 @@ services:
     volumes:
       - ./ollama:/root/.ollama
 
+  # Cloudflare Tunnel (production). Opt-in service: started only with
+  # `docker compose --profile cloudflare up -d`. The public hostname + ingress
+  # (→ http://api:8787) are configured in the Cloudflare Zero Trust dashboard;
+  # this just runs the connector using the tunnel token. If you already run
+  # cloudflared elsewhere (host service / separate container), leave this off.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: mototracker-cloudflared
+    restart: unless-stopped
+    profiles: ["cloudflare"]
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TOKEN}"]
+    depends_on:
+      - api
+
+  # ngrok (legacy). Opt-in: `docker compose --profile ngrok up -d`.
   ngrok:
     image: ngrok/ngrok:latest
     container_name: mototracker-ngrok
     restart: unless-stopped
+    profiles: ["ngrok"]
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     # Tunnel definition comes from ./ngrok.yml — bootstrap.sh writes this file

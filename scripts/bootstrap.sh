@@ -123,7 +123,26 @@ if [ -z "$(read_env VAPID_PUBLIC_KEY)" ] || [ -z "$(read_env VAPID_PRIVATE_KEY)"
   ok "VAPID keypair stored"
 fi
 
+# --- tunnel selection: Cloudflare (token) preferred, else ngrok -------------
+# Production is fronted by Cloudflare Tunnel. If CLOUDFLARED_TOKEN is set we use
+# it and skip ngrok entirely. (cloudflared itself is run separately or via
+# `docker compose --profile cloudflare up`; the public hostname is configured
+# in the Cloudflare dashboard, so it can't be auto-discovered here.)
+TUNNEL_MODE="ngrok"; NGROK_EPHEMERAL=false; existing_domain=""
+[ -n "$(read_env CLOUDFLARED_TOKEN)" ] && TUNNEL_MODE="cloudflare"
+
+if [ "$TUNNEL_MODE" = "cloudflare" ]; then
+  say "Cloudflare tunnel token detected — using Cloudflare (ngrok skipped)."
+  if [ -z "$(read_env APP_BASE_URL)" ]; then
+    cf_url="$(prompt "Public URL (e.g. https://mototracker.mehditerzi.com)")"
+    [ -n "$cf_url" ] || fail "APP_BASE_URL is required."
+    set_env APP_BASE_URL "$cf_url"
+  fi
+  ok "Public URL: $(read_env APP_BASE_URL)"
+fi
+
 # --- ngrok authtoken --------------------------------------------------------
+if [ "$TUNNEL_MODE" = "ngrok" ]; then
 existing_token="$(read_env NGROK_AUTHTOKEN)"
 # Re-prompt if the stored token contains control characters / whitespace from
 # a bad copy-paste — ngrok will refuse to parse its auth-config.yml otherwise
@@ -190,6 +209,8 @@ say "Writing ngrok.yml"
   fi
 } > "$REPO_ROOT/ngrok.yml"
 ok "ngrok.yml written ($([ -n "$existing_domain" ] && echo "reserved domain: $existing_domain" || echo "ephemeral URL"))"
+[ -z "$existing_domain" ] && NGROK_EPHEMERAL=true
+fi  # end ngrok-mode setup
 
 # --- Ollama: host or bundled? ----------------------------------------------
 # Prefer an Ollama already running on the host (cheaper, keeps GPU access,
@@ -207,7 +228,12 @@ fi
 
 COMPOSE_PROFILE_ARGS=""
 if [ "$USE_BUNDLED_OLLAMA" = "true" ]; then
-  COMPOSE_PROFILE_ARGS="--profile bundled-ollama"
+  COMPOSE_PROFILE_ARGS="$COMPOSE_PROFILE_ARGS --profile bundled-ollama"
+fi
+# Cloudflare mode assumes cloudflared runs separately (host service or
+# `docker compose --profile cloudflare up`), so we don't auto-start it here.
+if [ "$TUNNEL_MODE" = "ngrok" ]; then
+  COMPOSE_PROFILE_ARGS="$COMPOSE_PROFILE_ARGS --profile ngrok"
 fi
 
 # --- compose up -------------------------------------------------------------
@@ -219,8 +245,8 @@ say "Starting stack"
 # shellcheck disable=SC2086
 docker compose $COMPOSE_PROFILE_ARGS up -d
 
-# Discover ephemeral ngrok URL if none was reserved.
-if [ -z "$existing_domain" ]; then
+# Discover ephemeral ngrok URL if none was reserved (ngrok mode only).
+if [ "$TUNNEL_MODE" = "ngrok" ] && [ "$NGROK_EPHEMERAL" = "true" ]; then
   say "Waiting for ngrok to publish a URL…"
   url=""
   for _ in $(seq 1 20); do
@@ -261,9 +287,9 @@ fi
 # --- final summary ----------------------------------------------------------
 echo
 final_url="$(read_env APP_BASE_URL)"
-ok "MotoTracker is up."
+ok "Garajım is up."
 printf "   %sPublic URL:%s %s\n" "$bold" "$reset" "$final_url"
-printf "   %sngrok inspector:%s http://localhost:4040\n" "$bold" "$reset"
+[ "$TUNNEL_MODE" = "ngrok" ] && printf "   %sngrok inspector:%s http://localhost:4040\n" "$bold" "$reset"
 printf "   %sAPI (local):%s    http://localhost:8787\n" "$bold" "$reset"
 if [ "$USE_BUNDLED_OLLAMA" = "true" ]; then
   printf "   %sOllama:%s         bundled container at http://localhost:11434\n" "$bold" "$reset"
