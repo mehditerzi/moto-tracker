@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Settings, Bike as BikeIcon } from "lucide-react";
@@ -12,10 +13,16 @@ export function AppShell() {
   const me = useMe();
   const navigate = useNavigate();
   const location = useLocation();
+  const [signingOut, setSigningOut] = useState(false);
 
   const onSignOut = async () => {
-    await signOut();
-    navigate("/sign-in");
+    setSigningOut(true);
+    try {
+      await signOut();
+      navigate("/sign-in");
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -37,6 +44,7 @@ export function AppShell() {
                 size="icon"
                 aria-label={t("nav.signOut")}
                 onClick={onSignOut}
+                disabled={signingOut}
                 className="h-9 w-9"
               >
                 <LogOut className="h-[18px] w-[18px]" />

@@ -20,7 +20,6 @@ interface Props {
 export function MaintenancePanel({ bikeId }: Props) {
   const { t } = useTranslation();
   const q = useMaintenanceForBike(bikeId);
-  const items = q.data ?? [];
 
   return (
     <motion.section
@@ -41,11 +40,15 @@ export function MaintenancePanel({ bikeId }: Props) {
         </Button>
       </div>
 
-      {items.length === 0 ? (
+      {q.isLoading ? (
+        <p className="text-sm text-muted dark:text-muted-dark">{t("dashboard.loading")}</p>
+      ) : q.isError ? (
+        <p className="text-sm text-danger">{t("dashboard.loadFailed")}</p>
+      ) : (q.data ?? []).length === 0 ? (
         <p className="text-sm text-muted dark:text-muted-dark">{t("items.noMaintenance")}</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {items.map((m) => {
+          {(q.data ?? []).map((m) => {
             const due = dueDate(m);
             const days = due ? differenceInCalendarDays(parseISO(due), new Date()) : null;
             const danger = days !== null && days <= 7;
