@@ -228,6 +228,7 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "back": "Back",
     "loading": "Loading...",
     "notFound": "Not found.",

@@ -23,6 +23,7 @@ import { MaintenanceFormPage } from "@/pages/MaintenanceFormPage";
 import { useMe } from "@/hooks/useMe";
 import { Toaster } from "@/components/ui/toaster";
 import { InstallBanner } from "@/components/InstallBanner";
+import { ConfirmProvider } from "@/components/ConfirmSheet";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   // Use our own /api/me TanStack Query rather than BetterAuth's useSession —
@@ -95,7 +96,9 @@ const router = createBrowserRouter([
 export function Routes() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ConfirmProvider>
+        <RouterProvider router={router} />
+      </ConfirmProvider>
       <Toaster />
       <InstallBanner />
     </QueryClientProvider>
