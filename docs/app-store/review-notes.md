@@ -13,7 +13,7 @@ fill the **Sign-In required** demo account fields.
 
 ## What the app does
 
-MotoTracker helps a motorcycle owner track the expiry dates of their Turkish
+Garajım helps a vehicle owner track the expiry dates of their Turkish
 vehicle documents — **sigorta** (insurance), **kasko**, and **muayene**
 (periodic inspection) — and reminds them before each expires. The user
 photographs a document; the app reads the dates and vehicle details

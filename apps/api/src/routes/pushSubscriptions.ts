@@ -121,7 +121,7 @@ pushSubscriptionsRouter.post(
           endpoint: s.endpoint,
           keys: { p256dh: s.p256dh, auth: s.auth },
           payload: {
-            title: "MotoTracker test",
+            title: "Garajım test",
             body: "Bildirimler çalışıyor.",
             url: "/dashboard",
             tag: "test",

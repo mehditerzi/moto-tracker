@@ -95,7 +95,7 @@ function pickOrCreateBike(
     const nickname =
       [parsed.make, parsed.model].filter(Boolean).join(" ").trim() ||
       parsed.plate ||
-      "Motosiklet";
+      "Araç";
     db.prepare(
       `INSERT INTO bike (id, user_id, nickname, plate, make, model, year, chassis_no, engine_no, cylinder_cc)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

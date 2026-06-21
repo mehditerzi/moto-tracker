@@ -18,7 +18,7 @@ import {
   useUpdateMaintenance,
 } from "@/hooks/useMaintenanceItems";
 
-const KINDS = ["engine_oil", "chain", "brakes", "tires", "coolant", "custom"] as const;
+const KINDS = ["engine_oil", "brakes", "tires", "battery", "coolant", "air_filter", "chain", "custom"] as const;
 
 const schema = z.object({
   kind: z.enum(KINDS),

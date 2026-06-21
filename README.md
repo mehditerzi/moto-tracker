@@ -1,6 +1,6 @@
 # MotoTracker
 
-A self-hosted PWA that tracks your motorcycle's **Sigorta / Kasko / Muayene / Bakım** dates so you never miss a renewal again.
+A self-hosted PWA that tracks your vehicle's **Sigorta / Kasko / Muayene / Bakım** dates so you never miss a renewal again.
 
 - 📸 **Photo OCR** — snap your sigorta poliçesi or muayene belgesi; a local Ollama vision model extracts the dates and auto-fills them
 - 🔔 **Web Push reminders** — daily cron sends notifications at lead times you choose (default 30 / 7 / 1 days)

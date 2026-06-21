@@ -9,7 +9,7 @@ interface Row {
   id: string;
   bike_id: string;
   user_id: string;
-  kind: "engine_oil" | "chain" | "brakes" | "tires" | "coolant" | "custom";
+  kind: "engine_oil" | "brakes" | "tires" | "battery" | "coolant" | "air_filter" | "chain" | "custom";
   custom_label: string | null;
   last_done_on: string | null;
   last_done_km: number | null;

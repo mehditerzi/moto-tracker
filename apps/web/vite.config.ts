@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: {
-        name: "MotoTracker",
-        short_name: "MotoTracker",
+        name: "Garajım",
+        short_name: "Garajım",
         description: "Sigorta · Kasko · Muayene · Bakım takibi",
         start_url: "/dashboard",
         scope: "/",

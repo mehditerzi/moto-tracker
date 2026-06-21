@@ -2,10 +2,12 @@ import { z } from "zod";
 
 export const maintenanceKindSchema = z.enum([
   "engine_oil",
-  "chain",
   "brakes",
   "tires",
+  "battery",
   "coolant",
+  "air_filter",
+  "chain",
   "custom",
 ]);
 export type MaintenanceKind = z.infer<typeof maintenanceKindSchema>;

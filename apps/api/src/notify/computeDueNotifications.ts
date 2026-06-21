@@ -58,10 +58,12 @@ function maintenanceDueDate(m: MaintRow): string | null {
 
 const MAINT_LABEL: Record<string, string> = {
   engine_oil: "Motor yağı",
-  chain: "Zincir",
   brakes: "Fren",
   tires: "Lastik",
+  battery: "Akü",
   coolant: "Soğutma",
+  air_filter: "Hava filtresi",
+  chain: "Zincir",
   custom: "Bakım",
 };
 
