@@ -92,7 +92,8 @@
     "type": "Type",
     "expiresOn": "Expiry date",
     "newRecord": "New {{type}} record",
-    "editRecord": "Edit record"
+    "editRecord": "Edit record",
+    "currency": "TL"
   },
   "bike": {
     "newTitle": "New vehicle",
