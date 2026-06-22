@@ -13,6 +13,7 @@ import { pushToast } from "@/hooks/useToast";
 import { cn } from "@/lib/cn";
 import type { NotifPreference } from "@mototracker/shared";
 import { useConfirm } from "@/components/ConfirmSheet";
+import { isNative } from "@/lib/nativeAuth";
 
 const LEAD_OPTIONS = [60, 30, 14, 7, 3, 1, 0];
 
@@ -25,6 +26,32 @@ export function SettingsPage() {
   const enablePush = useEnablePush();
   const disablePush = useDisablePush();
   const test = useSendTestPush();
+
+  // Native (Capacitor iOS) uses APNs, registered automatically on sign-in — it
+  // does NOT use the Web Push subscription flow (unsupported in WKWebView), so
+  // the notifications section gets a dedicated native branch below.
+  const native = isNative();
+
+  const sendTest = () =>
+    test
+      .mutateAsync()
+      .then((r) => {
+        if (r.sent > 0) {
+          pushToast({
+            variant: "success",
+            title: t("settings.testSent", { sent: r.sent, total: r.total }),
+          });
+        } else {
+          const desc =
+            r.error === "vapid_not_configured" || r.error === "VAPID keys not configured"
+              ? t("settings.vapidNotConfigured")
+              : (r.error ?? t("settings.testFailed"));
+          pushToast({ variant: "danger", title: t("common.error"), description: desc });
+        }
+      })
+      .catch((e) =>
+        pushToast({ variant: "danger", title: t("common.error"), description: String(e) }),
+      );
 
   const onLang = (lng: "tr" | "en") => setLanguage(lng);
 
@@ -115,7 +142,22 @@ export function SettingsPage() {
           label={t("settings.notifications")}
         />
         <CardContent className="gap-3">
-          {push.isLoading ? (
+          {native ? (
+            <>
+              <p className="text-sm text-muted dark:text-muted-dark">
+                {t("settings.nativePushInfo")}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={test.isPending}
+                onClick={sendTest}
+                className="self-start"
+              >
+                {t("settings.sendTest")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </>
+          ) : push.isLoading ? (
             <p className="text-sm text-muted dark:text-muted-dark">{t("common.loading")}</p>
           ) : !push.data?.supported ? (
             <p className="text-sm text-muted dark:text-muted-dark">{t("settings.unsupported")}</p>
@@ -146,37 +188,7 @@ export function SettingsPage() {
                   variant="ghost"
                   size="sm"
                   disabled={test.isPending}
-                  onClick={() =>
-                    test
-                      .mutateAsync()
-                      .then((r) => {
-                        if (r.sent > 0) {
-                          pushToast({
-                            variant: "success",
-                            title: t("settings.testSent", { sent: r.sent, total: r.total }),
-                          });
-                        } else {
-                          const desc =
-                            r.error === "vapid_not_configured"
-                              ? t("settings.vapidNotConfigured")
-                              : r.error === "VAPID keys not configured"
-                              ? t("settings.vapidNotConfigured")
-                              : (r.error ?? t("settings.testFailed"));
-                          pushToast({
-                            variant: "danger",
-                            title: t("common.error"),
-                            description: desc,
-                          });
-                        }
-                      })
-                      .catch((e) =>
-                        pushToast({
-                          variant: "danger",
-                          title: t("common.error"),
-                          description: String(e),
-                        }),
-                      )
-                  }
+                  onClick={sendTest}
                   className="self-start"
                 >
                   {t("settings.sendTest")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
@@ -184,7 +196,7 @@ export function SettingsPage() {
               )}
             </>
           )}
-          {isIos && !push.data?.subscribed && !iosHintDismissed && push.data?.permission !== "denied" && (
+          {!native && isIos && !push.data?.subscribed && !iosHintDismissed && push.data?.permission !== "denied" && (
             <div className="flex items-start gap-2">
               <p className="text-xs text-muted dark:text-muted-dark">{t("settings.iosHint")}</p>
               <button

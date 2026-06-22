@@ -6,6 +6,7 @@ import { newId } from "../lib/ulid.js";
 import { pushSubscriptionInputSchema, deviceTokenInputSchema } from "@mototracker/shared";
 import { config } from "../config.js";
 import { sendPush } from "../notify/webPushClient.js";
+import { sendApns, apnsConfigured } from "../notify/apns.js";
 
 export const pushSubscriptionsRouter: Router = Router();
 pushSubscriptionsRouter.use(requireUser);
@@ -103,34 +104,47 @@ pushSubscriptionsRouter.post(
 pushSubscriptionsRouter.post(
   "/test",
   asyncHandler(async (req, res) => {
-    if (!config.VAPID_PUBLIC_KEY || !config.VAPID_PRIVATE_KEY) {
-      res.status(400).json({ sent: 0, total: 0, error: "vapid_not_configured" });
-      return;
-    }
     const db = getDb();
-    const subs = db
-      .prepare("SELECT endpoint, p256dh, auth FROM push_subscription WHERE user_id = ?")
-      .all(req.user!.id) as { endpoint: string; p256dh: string; auth: string }[];
-    if (subs.length === 0) {
-      res.status(404).json({ error: "no_subscriptions" });
+    const title = "Garajım test";
+    const body = "Bildirimler çalışıyor.";
+    const results: { ok: boolean; message?: string }[] = [];
+
+    // Web Push (browsers / installed PWA) — VAPID.
+    if (config.VAPID_PUBLIC_KEY && config.VAPID_PRIVATE_KEY) {
+      const subs = db
+        .prepare("SELECT endpoint, p256dh, auth FROM push_subscription WHERE user_id = ?")
+        .all(req.user!.id) as { endpoint: string; p256dh: string; auth: string }[];
+      const webResults = await Promise.all(
+        subs.map((s) =>
+          sendPush({
+            endpoint: s.endpoint,
+            keys: { p256dh: s.p256dh, auth: s.auth },
+            payload: { title, body, url: "/dashboard", tag: "test" },
+          }),
+        ),
+      );
+      results.push(...webResults.map((r) => ({ ok: r.ok, message: r.ok ? undefined : r.message })));
+    }
+
+    // Native push (APNs) — the iOS app's device tokens.
+    if (apnsConfigured()) {
+      const tokens = db
+        .prepare("SELECT id, token FROM device_token WHERE user_id = ? AND platform = 'ios'")
+        .all(req.user!.id) as { id: string; token: string }[];
+      for (const d of tokens) {
+        const r = await sendApns(d.token, { title, body, url: "/dashboard" });
+        if (r.gone) db.prepare("DELETE FROM device_token WHERE id = ?").run(d.id);
+        results.push({ ok: r.ok, message: r.ok ? undefined : `apns_${r.status ?? "error"}` });
+      }
+    }
+
+    if (results.length === 0) {
+      // Nothing configured, or the user has no registered web subs / device tokens.
+      res.status(404).json({ sent: 0, total: 0, error: "no_targets" });
       return;
     }
-    const results = await Promise.all(
-      subs.map((s) =>
-        sendPush({
-          endpoint: s.endpoint,
-          keys: { p256dh: s.p256dh, auth: s.auth },
-          payload: {
-            title: "Garajım test",
-            body: "Bildirimler çalışıyor.",
-            url: "/dashboard",
-            tag: "test",
-          },
-        }),
-      ),
-    );
     const sent = results.filter((r) => r.ok).length;
-    const firstError = results.find((r) => !r.ok) as { ok: false; message: string } | undefined;
+    const firstError = results.find((r) => !r.ok);
     res.json({
       sent,
       total: results.length,

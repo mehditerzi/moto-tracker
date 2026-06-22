@@ -162,7 +162,8 @@
     "vapidNotConfigured": "VAPID keys are not configured. Run the bootstrap script.",
     "testFailed": "Couldn't send notification.",
     "updateFailed": "Couldn't save",
-    "daysBeforeShort": "-{{count}}d"
+    "daysBeforeShort": "-{{count}}d",
+    "nativePushInfo": "Notifications are on for this device. Send a test to try them."
   },
   "capture": {
     "title": "Upload document",
