@@ -24,7 +24,7 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect }: Props) {
             key={e.bike.id}
             onClick={() => onSelect(e.bike.id)}
             className={cn(
-              "relative flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] transition",
+              "relative flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] transition min-h-[44px]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
               active
                 ? "border-text/40 text-text dark:border-text-dark/40 dark:text-text-dark"

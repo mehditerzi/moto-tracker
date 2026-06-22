@@ -326,14 +326,14 @@ function BikeDocumentsSection({ bikeId }: { bikeId: string }) {
             {item ? (
               <Link
                 to={`/dated-items/${item.id}/edit`}
-                className="rounded-lg p-1.5 text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Link>
             ) : (
               <Link
                 to={`/bikes/${bikeId}/dated-items/new?type=${type}`}
-                className="rounded-lg p-1.5 text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
               >
                 <Plus className="h-3.5 w-3.5" />
               </Link>
