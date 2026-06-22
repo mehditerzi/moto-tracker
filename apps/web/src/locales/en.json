@@ -226,7 +226,8 @@
     "addDate": "Add",
     "dateAdded": "Added",
     "lowConfidence": "Low confidence — please double-check the values.",
-    "missingHint": "You can fill in anything that wasn't read."
+    "missingHint": "You can fill in anything that wasn't read.",
+    "stillWorking": "This is taking longer than usual…"
   },
   "common": {
     "save": "Save",

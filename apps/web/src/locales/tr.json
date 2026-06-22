@@ -222,7 +222,8 @@
     "addDate": "Ekle",
     "dateAdded": "Eklendi",
     "lowConfidence": "Düşük güven — lütfen okunan değerleri kontrol et.",
-    "missingHint": "Okunamayan alanları elle doldurabilirsin."
+    "missingHint": "Okunamayan alanları elle doldurabilirsin.",
+    "stillWorking": "Bu beklenenden uzun sürüyor…"
   },
   "common": {
     "save": "Kaydet",
