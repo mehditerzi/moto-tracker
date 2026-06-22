@@ -23,7 +23,11 @@ export type PushDiagState =
   | "registering"
   | "registered"
   | "register-error"
+  | "register-timeout"
   | "post-error";
+
+/** How long to wait for APNs before declaring the registration hung. */
+const REGISTER_TIMEOUT_MS = 30_000;
 
 export interface PushDiag {
   state: PushDiagState;
@@ -86,6 +90,13 @@ export async function registerNativePush(): Promise<void> {
 
     setDiag("registering");
     await PushNotifications.register();
+    // register() resolving does NOT mean a token arrived — the APNs callback is
+    // async. On a Simulator that can't issue tokens (Intel Mac without T2, or
+    // iOS < 16) neither callback ever fires, so the state would hang on
+    // "registering" forever. Time out and say so honestly.
+    window.setTimeout(() => {
+      if (getPushDiag().state === "registering") setDiag("register-timeout");
+    }, REGISTER_TIMEOUT_MS);
   } catch (e) {
     setDiag("register-error", (e as Error).message ?? String(e));
   }

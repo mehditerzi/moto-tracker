@@ -167,7 +167,8 @@
     "nativePushSetup": "Süre dolum hatırlatmaları için bu cihazda bildirimleri aç.",
     "nativePushRegister": "Bildirimleri aç",
     "nativePushRegistering": "Apple'a kaydediliyor…",
-    "nativePushError": "Bildirimlere kaydolunamadı"
+    "nativePushError": "Bildirimlere kaydolunamadı",
+    "nativePushTimeout": "Apple yanıt vermedi. Bildirimler gerçek bir cihaz gerektirir — Simulator burada kaydolamaz."
   },
   "capture": {
     "title": "Belge yükle",

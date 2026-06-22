@@ -179,6 +179,8 @@ export function SettingsPage() {
                     ? t("settings.nativePushRegistering")
                     : pushDiag.state === "permission-denied"
                     ? t("settings.permissionDenied")
+                    : pushDiag.state === "register-timeout"
+                    ? t("settings.nativePushTimeout")
                     : `${t("settings.nativePushError")}${pushDiag.message ? `: ${pushDiag.message}` : ""}`}
                 </p>
               )}
