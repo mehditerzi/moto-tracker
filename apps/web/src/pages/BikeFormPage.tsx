@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useBike, useCreateBike, useUpdateBike, useArchiveBike } from "@/hooks/useBikes";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
@@ -107,6 +108,76 @@ export function BikeFormPage() {
       pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
     }
   };
+
+  if (isEdit && bike.isLoading && !bike.data) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mx-auto max-w-md"
+      >
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-11" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-11" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-11" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-11" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-11" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-14" />
+                  <Skeleton className="h-11" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-14" />
+                <Skeleton className="h-11" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-11" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-11" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-11" />
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Skeleton className="h-11 flex-1" />
+                <Skeleton className="h-11 flex-1" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
