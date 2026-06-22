@@ -167,7 +167,8 @@
     "nativePushSetup": "Turn on notifications for this device to get expiry reminders.",
     "nativePushRegister": "Enable notifications",
     "nativePushRegistering": "Registering with Apple…",
-    "nativePushError": "Couldn't register for notifications"
+    "nativePushError": "Couldn't register for notifications",
+    "nativePushTimeout": "Apple didn't respond. Push needs a real device — the Simulator can't register here."
   },
   "capture": {
     "title": "Upload document",
