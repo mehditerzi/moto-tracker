@@ -503,7 +503,7 @@ function CompareFieldRow({
               {accepted && (
                 <button
                   type="button"
-                  aria-label="edit"
+                  aria-label={t("items.edit")}
                   onClick={(e) => { e.stopPropagation(); setEditing(true); }}
                   className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center"
                 >
