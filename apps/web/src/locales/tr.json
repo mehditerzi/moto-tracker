@@ -163,7 +163,11 @@
     "testFailed": "Bildirim gönderilemedi.",
     "updateFailed": "Kaydedilemedi",
     "daysBeforeShort": "-{{count}}g",
-    "nativePushInfo": "Bu cihaz için bildirimler açık. Test göndererek deneyebilirsin."
+    "nativePushInfo": "Bu cihaz için bildirimler açık. Test göndererek deneyebilirsin.",
+    "nativePushSetup": "Süre dolum hatırlatmaları için bu cihazda bildirimleri aç.",
+    "nativePushRegister": "Bildirimleri aç",
+    "nativePushRegistering": "Apple'a kaydediliyor…",
+    "nativePushError": "Bildirimlere kaydolunamadı"
   },
   "capture": {
     "title": "Belge yükle",
