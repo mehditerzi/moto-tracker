@@ -5,6 +5,7 @@ import { Plus, Pencil, Bike as BikeIcon, Settings2, Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useUpdateBike } from "@/hooks/useBikes";
 import { StatusChip } from "@/components/StatusChip";
@@ -28,7 +29,36 @@ export function DashboardPage() {
   }, [dash.data, activeBikeId]);
 
   if (dash.isLoading)
-    return <p className="text-center text-muted dark:text-muted-dark">{t("dashboard.loading")}</p>;
+    return (
+      <div className="flex flex-col gap-5" aria-hidden>
+        {/* upcoming card */}
+        <div className="rounded-2xl border border-border bg-surface/80 px-4 py-3 dark:border-border-dark dark:bg-surface-dark/60">
+          <Skeleton className="mb-2.5 h-3 w-20" />
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-4/5" />
+          </div>
+        </div>
+        {/* bike switcher placeholder */}
+        <Skeleton className="h-10 w-full rounded-2xl" />
+        {/* active vehicle header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-56" />
+            <Skeleton className="mt-1 h-5 w-28" />
+          </div>
+          <Skeleton className="h-9 w-9 rounded-lg" />
+        </div>
+        {/* 3-up status chips */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+      </div>
+    );
   if (dash.isError || !dash.data)
     return <p className="text-center text-danger">{t("dashboard.loadFailed")}</p>;
 
