@@ -266,7 +266,7 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
         <button
           onClick={toggleEnabled}
           className={cn(
-            "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition",
+            "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition min-h-[44px] min-w-[44px]",
             pref.enabled
               ? "bg-success/15 text-success"
               : "bg-surface text-muted dark:bg-bg-dark dark:text-muted-dark",
@@ -286,7 +286,7 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
               disabled={!pref.enabled}
               aria-label={n !== 0 ? t("settings.daysBefore", { n }) : undefined}
               className={cn(
-                "num rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+                "num rounded-full border px-2.5 py-1 text-[11px] font-medium transition min-h-[44px]",
                 on
                   ? "border-accent bg-accent/15 text-text dark:text-text-dark"
                   : "border-border text-muted hover:border-text/30 dark:border-border-dark dark:text-muted-dark dark:hover:border-text-dark/30",
@@ -315,7 +315,7 @@ function LangButton({
     <button
       onClick={onClick}
       className={cn(
-        "flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition",
+        "flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition min-h-[44px]",
         active
           ? "border-accent bg-accent/15 text-text dark:text-text-dark"
           : "border-border text-muted hover:border-text/30 dark:border-border-dark dark:text-muted-dark dark:hover:border-text-dark/30",

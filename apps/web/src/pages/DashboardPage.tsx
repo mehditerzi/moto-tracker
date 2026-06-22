@@ -288,7 +288,7 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
     <button
       type="button"
       onClick={() => { setEditing(true); }}
-      className="mt-2 flex items-center gap-1.5 text-sm text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark transition"
+      className="mt-2 flex min-h-[44px] items-center gap-1.5 text-sm text-muted hover:text-text dark:text-muted-dark dark:hover:text-text-dark transition"
       title={t("dashboard.updateKm")}
     >
       <Gauge className="h-3.5 w-3.5 shrink-0" />

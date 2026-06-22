@@ -501,10 +501,14 @@ function CompareFieldRow({
                 <span className="font-medium">{currentValue}</span>
               )}
               {accepted && (
-                <Pencil
-                  className="h-3 w-3 shrink-0 text-accent"
+                <button
+                  type="button"
+                  aria-label="edit"
                   onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-                />
+                  className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center"
+                >
+                  <Pencil className="h-3 w-3 text-accent" />
+                </button>
               )}
             </div>
           </button>
