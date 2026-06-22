@@ -163,7 +163,11 @@
     "testFailed": "Couldn't send notification.",
     "updateFailed": "Couldn't save",
     "daysBeforeShort": "-{{count}}d",
-    "nativePushInfo": "Notifications are on for this device. Send a test to try them."
+    "nativePushInfo": "Notifications are on for this device. Send a test to try them.",
+    "nativePushSetup": "Turn on notifications for this device to get expiry reminders.",
+    "nativePushRegister": "Enable notifications",
+    "nativePushRegistering": "Registering with Apple…",
+    "nativePushError": "Couldn't register for notifications"
   },
   "capture": {
     "title": "Upload document",

@@ -10,7 +10,52 @@ import { api } from "./api";
  *
  * Requires the Push Notifications capability + Background Modes (remote
  * notifications) enabled in Xcode — see docs/app-store/native-push.md.
+ *
+ * Every step records a {@link PushDiag} so on-device registration failures are
+ * visible in Settings instead of silently swallowed (APNs registration can
+ * fail even with permission granted — e.g. a provisioning profile without
+ * Push — and there is otherwise no signal).
  */
+
+export type PushDiagState =
+  | "idle"
+  | "permission-denied"
+  | "registering"
+  | "registered"
+  | "register-error"
+  | "post-error";
+
+export interface PushDiag {
+  state: PushDiagState;
+  message?: string;
+  at: number;
+}
+
+const DIAG_KEY = "moto.pushDiag";
+export const PUSH_DIAG_EVENT = "moto:push-diag";
+
+function setDiag(state: PushDiagState, message?: string): void {
+  const diag: PushDiag = { state, message, at: Date.now() };
+  try {
+    localStorage.setItem(DIAG_KEY, JSON.stringify(diag));
+    window.dispatchEvent(new CustomEvent<PushDiag>(PUSH_DIAG_EVENT, { detail: diag }));
+  } catch {
+    /* noop */
+  }
+}
+
+export function getPushDiag(): PushDiag {
+  try {
+    const raw = localStorage.getItem(DIAG_KEY);
+    if (raw) return JSON.parse(raw) as PushDiag;
+  } catch {
+    /* noop */
+  }
+  return { state: "idle", at: 0 };
+}
+
+let listenersBound = false;
+
 export async function registerNativePush(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   try {
@@ -18,22 +63,30 @@ export async function registerNativePush(): Promise<void> {
     if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") {
       perm = await PushNotifications.requestPermissions();
     }
-    if (perm.receive !== "granted") return;
+    if (perm.receive !== "granted") {
+      setDiag("permission-denied");
+      return;
+    }
 
-    await PushNotifications.addListener("registration", (token) => {
-      void api("/api/push/device-token", {
-        method: "POST",
-        json: { platform: "ios", token: token.value },
-      }).catch(() => {
-        /* best-effort — retried on next app start */
+    // Bind the result listeners once; re-calling register() reuses them.
+    if (!listenersBound) {
+      listenersBound = true;
+      await PushNotifications.addListener("registration", (token) => {
+        void api("/api/push/device-token", {
+          method: "POST",
+          json: { platform: "ios", token: token.value },
+        })
+          .then(() => setDiag("registered"))
+          .catch((e) => setDiag("post-error", (e as Error).message ?? String(e)));
       });
-    });
-    await PushNotifications.addListener("registrationError", () => {
-      /* swallow — nothing the user can act on */
-    });
+      await PushNotifications.addListener("registrationError", (err) => {
+        setDiag("register-error", (err as { error?: string }).error ?? "unknown");
+      });
+    }
 
+    setDiag("registering");
     await PushNotifications.register();
-  } catch {
-    /* plugin unavailable / not on device — ignore */
+  } catch (e) {
+    setDiag("register-error", (e as Error).message ?? String(e));
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Bell, BellOff, LogOut, Globe, ChevronRight } from "lucide-react";
@@ -14,6 +14,12 @@ import { cn } from "@/lib/cn";
 import type { NotifPreference } from "@mototracker/shared";
 import { useConfirm } from "@/components/ConfirmSheet";
 import { isNative } from "@/lib/nativeAuth";
+import {
+  getPushDiag,
+  registerNativePush,
+  PUSH_DIAG_EVENT,
+  type PushDiag,
+} from "@/lib/nativePush";
 
 const LEAD_OPTIONS = [60, 30, 14, 7, 3, 1, 0];
 
@@ -31,6 +37,17 @@ export function SettingsPage() {
   // does NOT use the Web Push subscription flow (unsupported in WKWebView), so
   // the notifications section gets a dedicated native branch below.
   const native = isNative();
+
+  // Surface APNs registration status on-device (it is otherwise swallowed).
+  const [pushDiag, setPushDiag] = useState<PushDiag>(() => getPushDiag());
+  useEffect(() => {
+    if (!native) return;
+    const onDiag = (e: Event) =>
+      setPushDiag((e as CustomEvent<PushDiag>).detail ?? getPushDiag());
+    window.addEventListener(PUSH_DIAG_EVENT, onDiag);
+    setPushDiag(getPushDiag());
+    return () => window.removeEventListener(PUSH_DIAG_EVENT, onDiag);
+  }, [native]);
 
   const sendTest = () =>
     test
@@ -145,17 +162,47 @@ export function SettingsPage() {
           {native ? (
             <>
               <p className="text-sm text-muted dark:text-muted-dark">
-                {t("settings.nativePushInfo")}
+                {pushDiag.state === "registered"
+                  ? t("settings.nativePushInfo")
+                  : t("settings.nativePushSetup")}
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={test.isPending}
-                onClick={sendTest}
-                className="self-start"
-              >
-                {t("settings.sendTest")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-              </Button>
+              {pushDiag.state !== "registered" && pushDiag.state !== "idle" && (
+                <p
+                  className={cn(
+                    "text-xs",
+                    pushDiag.state === "registering"
+                      ? "text-muted dark:text-muted-dark"
+                      : "text-danger",
+                  )}
+                >
+                  {pushDiag.state === "registering"
+                    ? t("settings.nativePushRegistering")
+                    : pushDiag.state === "permission-denied"
+                    ? t("settings.permissionDenied")
+                    : `${t("settings.nativePushError")}${pushDiag.message ? `: ${pushDiag.message}` : ""}`}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={pushDiag.state === "registered" ? "ghost" : "accent"}
+                  size="sm"
+                  onClick={() => void registerNativePush()}
+                  className="self-start"
+                >
+                  <Bell className="h-4 w-4" /> {t("settings.nativePushRegister")}
+                </Button>
+                {pushDiag.state === "registered" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={test.isPending}
+                    onClick={sendTest}
+                    className="self-start"
+                  >
+                    {t("settings.sendTest")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                  </Button>
+                )}
+              </div>
             </>
           ) : push.isLoading ? (
             <p className="text-sm text-muted dark:text-muted-dark">{t("common.loading")}</p>
