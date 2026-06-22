@@ -1,0 +1,56 @@
+# Standalone Cloudflare Tunnel connector for ALL apps on this host.
+#
+# Runs ONE cloudflared joined to every app's Docker network, so the tunnel
+# reaches each app by its CONTAINER NAME over the Docker network — no
+# localhost, no published host ports, no IPv6 ambiguity, and no possibility
+# of two apps conflicting on a shared port.
+#
+# This is a SEPARATE compose project (run it with `-p edge`) so it is fully
+# decoupled from the moto-tracker deploy: `docker compose up -d --build api`
+# never touches the tunnel, and this file never touches the api.
+#
+#   Start:  docker compose -p edge -f docker-compose.tunnel.yml up -d
+#   Logs:   docker compose -p edge -f docker-compose.tunnel.yml logs -f
+#   Stop:   docker compose -p edge -f docker-compose.tunnel.yml down
+#
+# Reads CLOUDFLARED_TOKEN from ./.env (same token the host service used).
+#
+# Cloudflare Zero Trust → Networks → Tunnels → (this tunnel) → Public Hostname:
+# set each ingress Service to the container name + INTERNAL port:
+#
+#   mototracker.mehditerzi.com  ->  http://mototracker-api:8787
+#   ostamai.com                 ->  http://ostamai_frontend:80
+#   atakansilah.com             ->  http://atakansilah-web:80
+#   dropaflare.com              ->  http://flare-app:3000
+#   supabase.dropaflare.com     ->  http://flare-supabase-kong:8000
+#
+# Use the FULL container names above, not short aliases — the alias "kong"
+# exists on two networks and would resolve ambiguously.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: edge-cloudflared
+    restart: unless-stopped
+    # http2 (not quic): containers can't raise the UDP receive buffer enough
+    # for QUIC, which makes the control stream drop on connect.
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "run", "--token", "${CLOUDFLARED_TOKEN}"]
+    networks:
+      - moto
+      - ostamai
+      - atakansilah
+      - flare
+
+networks:
+  moto:
+    name: moto-tracker_default
+    external: true
+  ostamai:
+    name: ostamai_ostamai_net
+    external: true
+  atakansilah:
+    name: supabase_network_atakansilah
+    external: true
+  flare:
+    name: flare_default
+    external: true

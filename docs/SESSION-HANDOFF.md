@@ -17,11 +17,23 @@ _Last updated: 2026-06-22. This is a working-context dump so a fresh session (es
 - Server repo lives at `~/moto-tracker` (user `ostamai`). Deploy = `git pull && docker compose up -d --build api`.
 - `bootstrap.sh` auto-detects `CLOUDFLARED_TOKEN` in `.env` → Cloudflare mode (skips ngrok).
 
-### 🔴 CURRENT BLOCKER (2026-06-22): HTTP 530 on everything
-After a deploy, the whole origin returns Cloudflare **530** (fonts, favicon, `/api/me`, sign-in). 530 = tunnel can't reach origin. Likely causes:
-- **A:** duplicate/orphaned `mototracker-api` container (fixed `container_name`) or port-8787 conflict → new container didn't start. Fix: `docker compose down --remove-orphans && docker compose up -d --build api`.
-- **B (most common):** `cloudflared` runs as its own container but isn't on the api's Docker network, so ingress `http://api:8787` is unreachable. Fix: run cloudflared via this compose (`docker compose --profile cloudflare up -d cloudflared`, ingress `http://api:8787`), or if it's a host systemd process use `http://localhost:8787` and restart it.
-- Diagnose: `docker ps -a`, `docker compose ps`, `curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/api/health` (200 = app fine → it's the tunnel), `docker compose logs --tail=60 api`.
+### ✅ RESOLVED (2026-06-22): the 530 saga
+The 530 had **two stacked root causes**, both now fixed:
+1. **Stale DNS pointing at a deleted tunnel.** `mototracker.mehditerzi.com` (and `ostamai.com`) DNS CNAMEs still pointed at an OLD, deleted tunnel `edf49968-…` instead of the live tunnel `f38aaa15-…`. Cloudflare returned 530/1033 ("tunnel not found") no matter how healthy the origin was. Fix: re-pointed the CNAMEs to `f38aaa15-40db-410e-82cd-5b8fdf7f79c8.cfargotunnel.com`.
+2. **Stale token in `.env`.** `CLOUDFLARED_TOKEN` was for the dead `edf49968` tunnel; the live host connector was running a *different* token (`f38aaa15`). Fixed `.env` to the live token (extracted from the running process).
+
+**New tunnel architecture (the durable fix).** cloudflared no longer runs as a host launchd daemon reaching apps via `localhost:PORT` (which was fragile: IPv4-only binds + `localhost→::1` IPv6 resolution = origin unreachable, plus port-conflict risk). Instead:
+- **One `cloudflared` container** (`edge-cloudflared`) defined in `docker-compose.tunnel.yml`, run as its OWN compose project so it's decoupled from the api deploy:
+  - Start: `docker compose -p edge -f docker-compose.tunnel.yml up -d`
+  - Logs/stop: same with `logs -f` / `down`.
+- It joins **all four app Docker networks** (`moto-tracker_default`, `ostamai_ostamai_net`, `supabase_network_atakansilah`, `flare_default`) and addresses every app by **container name + internal port** — no localhost, no published ports, no IPv6 ambiguity, no port conflicts.
+- Forces `--protocol http2` (QUIC fails in containers: can't raise the UDP receive buffer).
+- The old host launchd daemon (`/Library/LaunchDaemons/com.cloudflare.cloudflared.plist`) was `launchctl bootout`'d and the plist deleted, so it won't respawn.
+
+**Dashboard ingress (Zero Trust, tunnel `f38aaa15`) — must use full container names** (the `kong` alias is ambiguous across two networks):
+`mototracker.mehditerzi.com → http://mototracker-api:8787`, `ostamai.com → http://ostamai_frontend:80`, `atakansilah.com → http://atakansilah-web:80`, `dropaflare.com → http://flare-app:3000`, `supabase.dropaflare.com → http://flare-supabase-kong:8000`.
+
+Diagnose if it recurs: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/api/health` (200 = app fine → it's the tunnel/DNS), `docker logs edge-cloudflared --tail=40`, and check each hostname's DNS CNAME really targets `f38aaa15-…cfargotunnel.com`.
 
 ## Auth — IMPORTANT architecture
 
