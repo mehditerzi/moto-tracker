@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -25,6 +25,18 @@ export function DocumentReviewPage() {
   const { id } = useParams();
   const doc = useDocument(id, { pollWhilePending: true });
 
+  // Slow-network hint: after 20 s of pending, show a "taking longer" message.
+  // Hooks must be unconditional — declared before any early return.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (doc.data?.ocrStatus !== "pending") {
+      setSlow(false);
+      return;
+    }
+    const timerId = setTimeout(() => setSlow(true), 20_000);
+    return () => clearTimeout(timerId);
+  }, [doc.data?.ocrStatus]);
+
   if (!id) return null;
   if (doc.isLoading || !doc.data)
     return <p className="text-center text-muted dark:text-muted-dark">{t("common.loading")}</p>;
@@ -42,6 +54,19 @@ export function DocumentReviewPage() {
           </CardHeader>
           <CardContent><ScanFrame src={fileUrl} active /></CardContent>
         </Card>
+        <div className="mt-4 flex flex-col items-center gap-3 text-center">
+          <Link to="/dashboard" className="text-sm text-muted underline dark:text-muted-dark">
+            {t("common.back")}
+          </Link>
+          {slow && (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm text-muted dark:text-muted-dark">{t("review.stillWorking")}</p>
+              <Link to="/capture" className="text-sm underline text-accent">
+                {t("review.retry")}
+              </Link>
+            </div>
+          )}
+        </div>
       </motion.div>
     );
   }
