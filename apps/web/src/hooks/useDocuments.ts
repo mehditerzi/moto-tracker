@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { env } from "@/env";
@@ -20,6 +21,8 @@ export function useDocument(id: string | undefined, opts?: { pollWhilePending?: 
 export interface UploadDocumentInput {
   file: File;
   bikeId?: string;
+  /** Passed through to fetch — lets callers abort an in-flight upload. */
+  signal?: AbortSignal;
 }
 
 async function uploadDocument(input: UploadDocumentInput): Promise<Document> {
@@ -36,6 +39,7 @@ async function uploadDocument(input: UploadDocumentInput): Promise<Document> {
     body: fd,
     credentials: "include",
     headers: bearer ? { Authorization: `Bearer ${bearer}` } : undefined,
+    signal: input.signal,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -46,10 +50,24 @@ async function uploadDocument(input: UploadDocumentInput): Promise<Document> {
 
 export function useUploadDocument() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: uploadDocument,
+  // One AbortController per in-flight upload; replaced on each new mutation call.
+  const abortRef = useRef<AbortController | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (input: UploadDocumentInput) => {
+      abortRef.current = new AbortController();
+      return uploadDocument({ ...input, signal: abortRef.current.signal });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
+
+  /** Cancel the currently in-flight upload. The mutation will reject with an
+   *  AbortError — callers should swallow it (it is not a real failure). */
+  function abort() {
+    abortRef.current?.abort();
+  }
+
+  return { ...mutation, abort };
 }

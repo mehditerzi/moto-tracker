@@ -1,9 +1,12 @@
 /**
- * Pure geometry + image-quality helpers for the in-app document camera.
+ * Camera helpers for the in-app document scanner.
  *
- * Kept free of DOM/canvas types so they can be unit-tested in plain Node and
- * reused unchanged inside a Capacitor WebView. The component layer feeds these
- * functions plain numbers and pixel buffers.
+ * The pure geometry/quality functions (fitGuideRect, mapRectToSource,
+ * laplacianVariance, meanLuma, assessQuality) are kept free of DOM/canvas types
+ * so they can be unit-tested in plain Node and reused in any context.
+ *
+ * `downscaleImageFile` at the bottom is DOM-dependent (canvas + Image) and must
+ * only be called in a browser/WebView environment.
  */
 
 export interface Rect {
@@ -143,4 +146,64 @@ export function assessQuality(
   if (metrics.luma < thresholds.minLuma) issues.push("dark");
   if (metrics.luma > thresholds.maxLuma) issues.push("glare");
   return { ok: issues.length === 0, issues };
+}
+
+// ---------------------------------------------------------------------------
+// DOM-dependent helpers (browser/WebView only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Downscale an image File so its longest edge does not exceed `maxEdge` pixels.
+ * Returns the original File unchanged when it already fits within bounds.
+ *
+ * Uses HTMLImageElement + canvas — only call this in a browser/WebView context.
+ * Non-JPEG source types are re-encoded as JPEG (quality 0.92); PNG is kept as PNG.
+ * Falls back to the original File if the canvas context is unavailable or if the
+ * image cannot be decoded (e.g. unsupported format in a given browser).
+ */
+export function downscaleImageFile(file: File, maxEdge: number): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+      if (longEdge <= maxEdge) {
+        resolve(file);
+        return;
+      }
+      const k = maxEdge / longEdge;
+      const outW = Math.max(1, Math.round(img.naturalWidth * k));
+      const outH = Math.max(1, Math.round(img.naturalHeight * k));
+      const canvas = document.createElement("canvas");
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, outW, outH);
+      const outType = file.type === "image/png" ? "image/png" : "image/jpeg";
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const ext = outType === "image/png" ? "png" : "jpg";
+          const baseName = file.name.replace(/\.[^.]+$/, "");
+          resolve(new File([blob], `${baseName}-scaled.${ext}`, { type: outType }));
+        },
+        outType,
+        0.92,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      // Can't decode (e.g. HEIC on a non-Safari browser) — upload as-is.
+      resolve(file);
+    };
+    img.src = url;
+  });
 }
