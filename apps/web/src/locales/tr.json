@@ -88,7 +88,8 @@
     "type": "Tür",
     "expiresOn": "Bitiş tarihi",
     "newRecord": "Yeni {{type}} kaydı",
-    "editRecord": "Kaydı düzenle"
+    "editRecord": "Kaydı düzenle",
+    "currency": "TL"
   },
   "bike": {
     "newTitle": "Yeni araç",

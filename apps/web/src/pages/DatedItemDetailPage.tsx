@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { useDatedItem, useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { statusFor, statusColorClass } from "@/lib/datedItems";
 import { cn } from "@/lib/cn";
+import { formatDate } from "@/lib/format";
 
 export function DatedItemDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const item = useDatedItem(id);
   const history = useDatedItemsForBike(item.data?.bikeId);
@@ -66,14 +67,14 @@ export function DatedItemDetailPage() {
             <div className="label-micro mt-1 opacity-80">
               {info.daysRemaining !== null && info.daysRemaining >= 0 ? t("items.daysLeft") : ""}
             </div>
-            <div className="num mt-2 text-sm opacity-80">{item.data.expiresOn}</div>
+            <div className="num mt-2 text-sm opacity-80">{formatDate(item.data.expiresOn, i18n.language)}</div>
           </div>
 
           <Field label={t("items.provider")} value={item.data.provider} />
           <Field label={t("items.policyNo")} value={item.data.policyNo} />
           <Field
             label={t("items.amount")}
-            value={item.data.cost !== null ? `${item.data.cost} TL` : null}
+            value={item.data.cost !== null ? `${item.data.cost} ${t("items.currency")}` : null}
           />
           <Field label={t("items.note")} value={item.data.notes} multiline />
         </CardContent>
@@ -116,7 +117,7 @@ export function DatedItemDetailPage() {
                         r.id === item.data!.id && "ring-2 ring-accent/40",
                       )}
                     >
-                      <span className="font-mono">{r.expiresOn}</span>
+                      <span className="font-mono">{formatDate(r.expiresOn, i18n.language)}</span>
                       <span className="opacity-80">{r.provider ?? "—"}</span>
                     </Link>
                   </li>
