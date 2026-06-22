@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useUploadDocument } from "@/hooks/useDocuments";
 import { pushToast } from "@/hooks/useToast";
 import { CameraCapture } from "@/components/CameraCapture";
+import { downscaleImageFile } from "@/lib/camera";
 
 export function DocumentCapturePage() {
   const { t } = useTranslation();
@@ -41,6 +42,9 @@ export function DocumentCapturePage() {
     [preview],
   );
 
+  /** Long-edge cap applied to gallery picks (matches the in-camera MAX_OUTPUT_EDGE). */
+  const MAX_GALLERY_EDGE = 2400;
+
   async function handleFile(file: File) {
     setPreview(URL.createObjectURL(file));
     setBusy(true);
@@ -48,6 +52,14 @@ export function DocumentCapturePage() {
       const doc = await upload.mutateAsync({ file, bikeId });
       navigate(`/documents/${doc.id}/review`, { replace: true });
     } catch (e) {
+      // An aborted upload is not an error — reset silently to the picker.
+      if ((e as Error).name === "AbortError") {
+        setPreview(null);
+        setBusy(false);
+        if (galleryInput.current) galleryInput.current.value = "";
+        if (cameraInput.current) cameraInput.current.value = "";
+        return;
+      }
       pushToast({
         variant: "danger",
         title: t("capture.uploadFailed"),
@@ -134,7 +146,12 @@ export function DocumentCapturePage() {
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) void handleFile(f);
+                    if (!f) return;
+                    // Downscale gallery picks to the same 2400px edge cap used by
+                    // the in-app camera, so large HEIC/JPEG files don't upload raw.
+                    downscaleImageFile(f, MAX_GALLERY_EDGE)
+                      .then((scaled) => void handleFile(scaled))
+                      .catch(() => void handleFile(f));
                   }}
                 />
               </motion.div>
@@ -149,6 +166,15 @@ export function DocumentCapturePage() {
                 <p className="text-center text-sm text-muted dark:text-muted-dark">
                   {t("capture.uploading")}
                 </p>
+                {busy && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => upload.abort()}
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
