@@ -7,7 +7,7 @@ _Last updated: 2026-06-22. This is a working-context dump so a fresh session (es
 **Garajım** (renamed from "MotoTracker"; user-facing name = "Garajım" = "my garage") — a self-hosted PWA, wrapped as a **native iOS app via Capacitor 8**, for tracking **all vehicles'** Sigorta / Kasko / Muayene / Bakım expiry dates + maintenance. Users photograph documents; a local **Ollama** vision model extracts dates; reminders fire before expiry. Turkish-market (TR default via i18n fallback; device language honored).
 
 - Monorepo (pnpm): `apps/api` (Node/Express/SQLite/better-auth), `apps/web` (React+TS+Vite+Tailwind), `packages/shared`.
-- iOS wrapper: `apps/web/ios` (SwiftPM, no CocoaPods). appId `com.mehditerzi.mototracker`, appName "Garajım".
+- iOS wrapper: `apps/web/ios` (SwiftPM, no CocoaPods). appId `com.mehditerzi.garajim`, appName "Garajım".
 - Build the iOS bundle: `pnpm --filter @mototracker/web cap:build` (bakes `VITE_API_URL=https://mototracker.mehditerzi.com`); open Xcode: `pnpm --filter @mototracker/web exec cap open ios`.
 
 ## Deployment
@@ -45,7 +45,7 @@ Diagnose if it recurs: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:
 ## Push notifications (APNs) — IN v1
 
 - Capability wired: `apps/web/ios/App/Garajım.entitlements` (`aps-environment`), AppDelegate registration handlers, `@capacitor/push-notifications` plugin. Client `registerNativePush()` requests permission on sign-in and POSTs the token to `/api/push/device-token`.
-- **.p8 APNs key:** Key ID `BT78GDURP8`, Team ID `289RQZ99Z9`, bundle `com.mehditerzi.mototracker`. The key file is `~/Downloads/AuthKey_BT78GDURP8.p8` on the user's Mac (NOT committed — user decided to keep it in server `.env` instead). `APNS_*` env passed through `docker-compose.yml`.
+- **.p8 APNs key:** Key ID `BT78GDURP8`, Team ID `289RQZ99Z9`, bundle `com.mehditerzi.garajim`. The key file is `~/Downloads/AuthKey_BT78GDURP8.p8` on the user's Mac (NOT committed — user decided to keep it in server `.env` instead). `APNS_*` env passed through `docker-compose.yml`.
 - **Server `.env` must have** `APNS_KEY` (base64 of the .p8), `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRODUCTION` (user said these are now added on the server).
 - **`APNS_PRODUCTION` MUST match the build:** `false` for Xcode "Run"/debug (sandbox tokens), `true` for TestFlight/App Store (production tokens). Mismatch → Apple rejects the token.
 - **Test flow:** `/api/push/test` now sends APNs (not just Web Push); SettingsPage shows a native "Send test" button on iOS. On device: sign in → Allow notifications → Settings → Send test. "0 sent" usually = no device_token (permission not granted) or APNS_PRODUCTION mismatch.
