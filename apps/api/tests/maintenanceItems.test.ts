@@ -51,6 +51,36 @@ describe("/api/maintenance-items", () => {
     expect(del.status).toBe(204);
   });
 
+  it("accepts every maintenance kind allowed by the shared schema", async () => {
+    // Regression: the DB CHECK constraint once lagged the zod schema, so
+    // 'battery' and 'air_filter' passed validation but 500'd at insert.
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const bike = await request(app)
+      .post("/api/bikes")
+      .set("Cookie", cookie)
+      .send({ nickname: "all-kinds" });
+    const bikeId = bike.body.id;
+    const kinds = [
+      "engine_oil",
+      "brakes",
+      "tires",
+      "battery",
+      "coolant",
+      "air_filter",
+      "chain",
+      "custom",
+    ];
+    for (const kind of kinds) {
+      const res = await request(app)
+        .post(`/api/bikes/${bikeId}/maintenance-items`)
+        .set("Cookie", cookie)
+        .send({ kind, ...(kind === "custom" ? { customLabel: "Fren hidroliği" } : {}) });
+      expect(res.status, `kind=${kind}`).toBe(201);
+      expect(res.body.kind).toBe(kind);
+    }
+  });
+
   it("rejects bad date format", async () => {
     const app = buildTestApp();
     const { cookie } = await signUpAndSignIn(app);
