@@ -20,7 +20,7 @@ the four `APNS_*` env vars are set** — until then nothing changes.
    create a key with **Apple Push Notifications service (APNs)** enabled.
    Download the **`.p8`** file (you can only download it once). Note the
    **Key ID** and your **Team ID**.
-2. Ensure the App ID `com.mehditerzi.garajim` has the **Push Notifications**
+2. Ensure the App ID `com.mehditerzi.mototracker` has the **Push Notifications**
    capability enabled.
 
 ## 2. Xcode (one-time, on the Mac)
@@ -40,7 +40,7 @@ Set on the API (e.g. in `.env` / compose `environment:`):
 APNS_KEY=<base64 of the .p8 file contents>     # base64 -i AuthKey_XXXX.p8
 APNS_KEY_ID=<10-char Key ID>
 APNS_TEAM_ID=<10-char Team ID>
-APNS_BUNDLE_ID=com.mehditerzi.garajim
+APNS_BUNDLE_ID=com.mehditerzi.mototracker
 APNS_PRODUCTION=true                            # false while testing on a dev build
 ```
 

@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Bell, BellOff, LogOut, Globe, ChevronRight } from "lucide-react";
+import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { setLanguage } from "@/lib/i18n";
 import { signOut } from "@/lib/authClient";
+import { api, ApiError } from "@/lib/api";
+import { clearBearerToken } from "@/lib/nativeAuth";
+import { queryClient } from "@/lib/queryClient";
 import { useNotifPrefs, useUpdateNotifPref } from "@/hooks/useNotifPreferences";
 import { useDisablePush, useEnablePush, usePushStatus, useSendTestPush } from "@/hooks/usePush";
 import { pushToast } from "@/hooks/useToast";
@@ -269,7 +273,114 @@ export function SettingsPage() {
           {prefs.data?.map((p) => <PrefRow key={p.itemType} pref={p} />)}
         </CardContent>
       </Card>
+
+      <DeleteAccountCard />
     </motion.div>
+  );
+}
+
+function DeleteAccountCard() {
+  const { t } = useTranslation();
+  const confirm = useConfirm();
+  const navigate = useNavigate();
+  const [askPassword, setAskPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const start = async () => {
+    const ok = await confirm({
+      title: t("settings.deleteAccountConfirmTitle"),
+      message: t("settings.deleteAccountConfirmMessage"),
+      confirmLabel: t("settings.deleteAccountContinue"),
+      destructive: true,
+    });
+    if (!ok) return;
+    setPassword("");
+    setError(null);
+    setAskPassword(true);
+  };
+
+  const submit = async () => {
+    if (!password || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/me", { method: "DELETE", json: { password } });
+      // Server already destroyed the session via cascade; just clear the client.
+      clearBearerToken();
+      queryClient.clear();
+      pushToast({ variant: "success", title: t("settings.deleteAccountSuccess") });
+      navigate("/welcome", { replace: true });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        setError(t("settings.deleteAccountWrongPassword"));
+      } else {
+        pushToast({ variant: "danger", title: t("common.error"), description: String(e) });
+      }
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="border-danger/30">
+      <SectionHeader icon={<Trash2 className="h-3.5 w-3.5" />} label={t("settings.deleteAccount")} />
+      <CardContent className="gap-3">
+        <p className="text-sm text-muted dark:text-muted-dark">
+          {t("settings.deleteAccountSectionDesc")}
+        </p>
+        <Button
+          variant="ghost"
+          onClick={start}
+          className="self-start text-danger hover:bg-danger/10"
+        >
+          <Trash2 className="h-4 w-4" /> {t("settings.deleteAccount")}
+        </Button>
+
+        {askPassword && (
+          <div className="mt-1 flex flex-col gap-2 rounded-xl border border-danger/30 p-3">
+            <label htmlFor="delete-password" className="text-[13px] font-medium">
+              {t("settings.deleteAccountPasswordMessage")}
+            </label>
+            <Input
+              id="delete-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              placeholder={t("settings.deleteAccountPasswordPlaceholder")}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void submit();
+              }}
+            />
+            {error && <p className="text-xs text-danger">{error}</p>}
+            <div className="flex gap-2">
+              <Button
+                onClick={submit}
+                disabled={!password || busy}
+                className="flex-1 bg-danger text-white hover:bg-danger/90"
+              >
+                {t("settings.deleteAccountSubmit")}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setAskPassword(false);
+                  setPassword("");
+                  setError(null);
+                }}
+                disabled={busy}
+              >
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
