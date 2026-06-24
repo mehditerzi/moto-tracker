@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
+import fs from "node:fs";
+import path from "node:path";
 import { requireUser } from "../middleware/requireUser.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
+import { getAuth } from "../auth/index.js";
+import { config } from "../config.js";
 
 export const meRouter: Router = Router();
 
@@ -82,5 +86,39 @@ meRouter.patch(
       timezone: profile.timezone,
       createdAt: profile.created_at,
     });
+  }),
+);
+
+const deleteSchema = z.object({ password: z.string().min(1) });
+
+// Permanent account deletion (App Store Guideline 5.1.1(v)). The user is
+// already authenticated; re-entering the password is the confirmation gate.
+meRouter.delete(
+  "/",
+  asyncHandler(async (req, res) => {
+    const { password } = deleteSchema.parse(req.body);
+
+    // Verify the password via better-auth — it throws on bad credentials.
+    try {
+      await getAuth().api.signInEmail({ body: { email: req.user!.email, password } });
+    } catch {
+      res.status(401).json({ error: "invalid_password" });
+      return;
+    }
+
+    // foreign_keys = ON + ON DELETE CASCADE on user(id) wipes session, account,
+    // bike, dated_item, maintenance_item, document, profile,
+    // notification_preference, notification_sent, push_subscription and
+    // device_token in a single statement.
+    getDb().prepare("DELETE FROM user WHERE id = ?").run(req.user!.id);
+
+    // Uploaded document files live on disk, outside the DB — best-effort remove.
+    try {
+      fs.rmSync(path.join(config.UPLOADS_DIR, req.user!.id), { recursive: true, force: true });
+    } catch {
+      // The account row is already gone; orphaned files are harmless.
+    }
+
+    res.status(204).end();
   }),
 );

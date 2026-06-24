@@ -13,7 +13,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  *      bearer token) so WKWebView sends it cross-site.
  */
 const config: CapacitorConfig = {
-  appId: "com.mehditerzi.garajim",
+  appId: "com.mehditerzi.mototracker",
   appName: "Garajım",
   webDir: "dist",
   ios: {
