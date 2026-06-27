@@ -60,10 +60,18 @@ export function DocumentCapturePage() {
         if (cameraInput.current) cameraInput.current.value = "";
         return;
       }
+      // Map raw API error codes to friendly messages instead of leaking
+      // "service_unavailable" / "bike_not_found" into the toast.
+      const code = (e as Error).message;
+      const KNOWN: Record<string, string> = {
+        service_unavailable: t("capture.errorLimit"),
+        file_required: t("capture.errorFileRequired"),
+        bike_not_found: t("capture.errorBikeNotFound"),
+      };
       pushToast({
         variant: "danger",
         title: t("capture.uploadFailed"),
-        description: (e as Error).message,
+        description: KNOWN[code] ?? t("capture.errorGeneric"),
       });
       setBusy(false);
     }

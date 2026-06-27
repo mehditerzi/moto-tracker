@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { fetchMakes, fetchModels } from "@/lib/catalog";
 import { useDocument } from "@/hooks/useDocuments";
 import { useBike, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
 import { useCreateDatedItem } from "@/hooks/useDatedItems";
@@ -87,7 +89,11 @@ export function DocumentReviewPage() {
             <p className="text-sm text-muted dark:text-muted-dark">{d.ocrError ?? t("common.error")}</p>
             <div className="flex gap-2">
               <Button asChild variant="accent" className="flex-1"><Link to="/capture">{t("review.retry")}</Link></Button>
-              <Button asChild variant="outline" className="flex-1"><Link to="/dashboard">{t("review.manualEntry")}</Link></Button>
+              <Button asChild variant="outline" className="flex-1">
+                <Link to={d.bikeId ? `/bikes/${d.bikeId}/dated-items/new` : "/bikes"}>
+                  {t("review.manualEntry")}
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -113,6 +119,7 @@ export function DocumentReviewPage() {
       {isRuhsat ? (
         <RuhsatReviewForm
           bikeId={d.bikeId ?? undefined}
+          documentId={d.id}
           extracted={{
             plate: ex.plate ?? "",
             make: ex.make ?? "",
@@ -128,6 +135,7 @@ export function DocumentReviewPage() {
       ) : (
         <DateDocReviewForm
           bikeId={d.bikeId ?? undefined}
+          documentId={d.id}
           docType={ex.docType as "sigorta" | "kasko" | "muayene" | "unknown"}
           plate={ex.plate}
           dates={ex.dates}
@@ -172,9 +180,10 @@ function bikeToFields(bike: Bike): ExtractedBikeFields {
 // ─── ruhsat form ──────────────────────────────────────────────────────────────
 
 function RuhsatReviewForm({
-  bikeId, extracted, muayeneDate, confidence,
+  bikeId, documentId, extracted, muayeneDate, confidence,
 }: {
   bikeId?: string;
+  documentId: string;
   extracted: ExtractedBikeFields;
   muayeneDate: string | null;
   confidence: number;
@@ -281,6 +290,8 @@ function RuhsatReviewForm({
             return (
               <CompareFieldRow
                 key={key}
+                fieldKey={key}
+                makeValue={values.make}
                 label={t(`review.${key}` as any)}
                 ocrValue={ocrVal}
                 existingValue={existingVal}
@@ -291,6 +302,11 @@ function RuhsatReviewForm({
                 onValueChange={(v) => {
                   setValues((s) => ({ ...s, [key]: v }));
                   if (v.trim() !== "") setAccepted((a) => ({ ...a, [key]: true }));
+                  // Changing make invalidates the model field below it.
+                  if (key === "make") {
+                    setValues((s) => ({ ...s, model: "" }));
+                    setAccepted((a) => ({ ...a, model: false }));
+                  }
                 }}
               />
             );
@@ -333,7 +349,7 @@ function RuhsatReviewForm({
     </Card>
 
       {effectiveBikeId && (
-        <ReminderDatesPanel bikeId={effectiveBikeId} initialMuayene={muayeneDate} />
+        <ReminderDatesPanel bikeId={effectiveBikeId} documentId={documentId} initialMuayene={muayeneDate} />
       )}
     </>
   );
@@ -351,9 +367,11 @@ type ReminderType = (typeof REMINDER_TYPES)[number];
  */
 function ReminderDatesPanel({
   bikeId,
+  documentId,
   initialMuayene,
 }: {
   bikeId: string;
+  documentId: string;
   initialMuayene: string | null;
 }) {
   const { t } = useTranslation();
@@ -371,7 +389,9 @@ function ReminderDatesPanel({
     if (!expiresOn) return;
     setPending(type);
     try {
-      await create.mutateAsync({ type, expiresOn });
+      // Link to the scan; muayene comes from the ruhsat itself, the others
+      // are user-entered but still belong to this review.
+      await create.mutateAsync({ type, expiresOn, sourceDocumentId: documentId });
       setSavedTypes((s) => ({ ...s, [type]: true }));
       pushToast({ variant: "success", title: t("review.dateAdded") });
     } catch (e) {
@@ -380,6 +400,10 @@ function ReminderDatesPanel({
       setPending(null);
     }
   };
+
+  // A muayene date the OCR found is the ruhsat's most valuable field — call it
+  // out so the user can't scroll past and silently lose it.
+  const detectedMuayene = !!initialMuayene && !savedTypes.muayene;
 
   return (
     <Card>
@@ -390,12 +414,23 @@ function ReminderDatesPanel({
         <CardDescription>{t("review.addDatesSub")}</CardDescription>
       </CardHeader>
       <CardContent className="gap-2">
+        {detectedMuayene && (
+          <div className="flex items-start gap-2 rounded-xl bg-accent/10 p-3 text-[13px] dark:bg-accent/15">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+            <p>{t("review.muayeneDetected", { date: initialMuayene })}</p>
+          </div>
+        )}
         {REMINDER_TYPES.map((type) => {
           const done = savedTypes[type];
+          const highlight = type === "muayene" && detectedMuayene;
           return (
             <div
               key={type}
-              className="flex items-center gap-2 rounded-xl border border-border p-2.5 dark:border-border-dark"
+              className={`flex items-center gap-2 rounded-xl border p-2.5 ${
+                highlight
+                  ? "border-accent/60 ring-1 ring-accent/30"
+                  : "border-border dark:border-border-dark"
+              }`}
             >
               <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
                 {t(`items.${type}`)}
@@ -432,9 +467,11 @@ function ReminderDatesPanel({
 // ─── compare field row ────────────────────────────────────────────────────────
 
 function CompareFieldRow({
-  label, ocrValue, existingValue, currentValue, accepted, hasComparison,
+  fieldKey, makeValue, label, ocrValue, existingValue, currentValue, accepted, hasComparison,
   onAcceptChange, onValueChange,
 }: {
+  fieldKey: FieldKey;
+  makeValue: string;
   label: string;
   ocrValue: string;
   existingValue: string | null;
@@ -453,6 +490,7 @@ function CompareFieldRow({
   // input — including fields OCR left blank, so they can be filled in here.
   const isSimple = !isMatch && !isDiff;
   const displayVal = currentValue !== "" ? currentValue : existingValue ?? "";
+  const isCatalog = fieldKey === "make" || fieldKey === "model";
 
   return (
     <li className="flex flex-col gap-1.5 rounded-xl border border-border p-3 text-sm dark:border-border-dark">
@@ -478,12 +516,28 @@ function CompareFieldRow({
           >
             {accepted && <Check className="h-3 w-3" />}
           </button>
-          <Input
-            value={displayVal}
-            onChange={(e) => onValueChange(e.target.value)}
-            placeholder={label}
-            className="h-8 flex-1 text-sm"
-          />
+          {isCatalog ? (
+            <div className="flex-1">
+              <Combobox
+                value={displayVal}
+                onChange={onValueChange}
+                fetchOptions={
+                  fieldKey === "make"
+                    ? (q) => fetchMakes(q)
+                    : (q) => fetchModels(makeValue || "", q)
+                }
+                placeholder={label}
+                inputClassName="h-8 text-sm"
+              />
+            </div>
+          ) : (
+            <Input
+              value={displayVal}
+              onChange={(e) => onValueChange(e.target.value)}
+              placeholder={label}
+              className="h-8 flex-1 text-sm"
+            />
+          )}
         </div>
       )}
 
@@ -545,10 +599,13 @@ function CompareFieldRow({
 
 // ─── date-doc form ────────────────────────────────────────────────────────────
 
+const ITEM_TYPES = ["sigorta", "kasko", "muayene"] as const;
+
 function DateDocReviewForm({
-  bikeId, docType, plate, dates, appliedDatedItemId, confidence,
+  bikeId, documentId, docType, plate, dates, appliedDatedItemId, confidence,
 }: {
   bikeId?: string;
+  documentId: string;
   docType: "sigorta" | "kasko" | "muayene" | "unknown";
   plate: string | null;
   dates: { sigortaExpiresOn?: string | null; kaskoExpiresOn?: string | null; muayeneExpiresOn?: string | null } | null;
@@ -565,7 +622,15 @@ function DateDocReviewForm({
     docType === "muayene" ? (dates?.muayeneExpiresOn  ?? null) :
     (dates?.sigortaExpiresOn ?? dates?.kaskoExpiresOn ?? dates?.muayeneExpiresOn ?? null);
 
-  const itemType = docType !== "unknown" ? docType : "sigorta";
+  // For a recognized doc the type is fixed; for `unknown` we must NOT silently
+  // label it "sigorta" — let the user pick (defaulting to whichever date matched).
+  const isUnknown = docType === "unknown";
+  const defaultType =
+    docType !== "unknown" ? docType
+    : dates?.muayeneExpiresOn ? "muayene"
+    : dates?.kaskoExpiresOn ? "kasko"
+    : "sigorta";
+  const [itemType, setItemType] = useState<(typeof ITEM_TYPES)[number]>(defaultType);
   const [editedDate, setEditedDate] = useState(detectedDate ?? "");
 
   if (applied && appliedDatedItemId) {
@@ -592,7 +657,10 @@ function DateDocReviewForm({
 
   const onApply = () => {
     if (!bikeId || !editedDate) return;
-    navigate(`/bikes/${bikeId}/dated-items/new?type=${itemType}&expiresOn=${editedDate}`);
+    // Carry documentId so the confirmed record links back to its scan (provenance).
+    navigate(
+      `/bikes/${bikeId}/dated-items/new?type=${itemType}&expiresOn=${editedDate}&documentId=${documentId}`,
+    );
   };
 
   return (
@@ -603,15 +671,39 @@ function DateDocReviewForm({
         </CardTitle>
       </CardHeader>
       <CardContent className="gap-3">
-        {/* Type pill */}
-        <div className="flex items-center gap-2">
-          <span className="rounded-full border border-border px-3 py-1 text-[12px] font-semibold uppercase tracking-wider dark:border-border-dark">
-            {t(`items.${itemType}`)}
-          </span>
-          {plate && (
-            <span className="num text-xs text-muted dark:text-muted-dark">{plate}</span>
-          )}
-        </div>
+        {/* Type: a fixed pill when recognized, a chooser when the doc is unknown
+            so we never mislabel it. */}
+        {isUnknown ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="label-micro text-muted dark:text-muted-dark">{t("items.type")}</span>
+            <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
+              {ITEM_TYPES.map((tt) => (
+                <button
+                  key={tt}
+                  type="button"
+                  onClick={() => setItemType(tt)}
+                  className={`rounded-xl py-2 text-[13px] font-medium transition ${
+                    itemType === tt
+                      ? "bg-surface shadow-card text-text dark:bg-surface-dark dark:text-text-dark"
+                      : "text-muted dark:text-muted-dark"
+                  }`}
+                >
+                  {t(`items.${tt}`)}
+                </button>
+              ))}
+            </div>
+            {plate && <span className="num text-xs text-muted dark:text-muted-dark">{plate}</span>}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-border px-3 py-1 text-[12px] font-semibold uppercase tracking-wider dark:border-border-dark">
+              {t(`items.${itemType}`)}
+            </span>
+            {plate && (
+              <span className="num text-xs text-muted dark:text-muted-dark">{plate}</span>
+            )}
+          </div>
+        )}
 
         {/* Editable date — the main interaction */}
         <div className="flex flex-col items-center gap-2 py-2">

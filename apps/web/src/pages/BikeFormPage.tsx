@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
@@ -9,8 +9,11 @@ import { useTranslation } from "react-i18next";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchMakes, fetchModels } from "@/lib/catalog";
+import { COLOR_OPTIONS, yearOptions } from "@/lib/vehicleOptions";
 import { useBike, useCreateBike, useUpdateBike, useArchiveBike } from "@/hooks/useBikes";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
@@ -28,6 +31,7 @@ export function BikeFormPage() {
   const archiveMut = useArchiveBike();
 
   const schema = z.object({
+    vehicleType: z.enum(["motorcycle", "car"]).default("motorcycle"),
     nickname: z.string().min(1, t("auth.nameRequired")).max(80),
     plate: z.string().max(20).optional().or(z.literal("")),
     make: z.string().max(60).optional().or(z.literal("")),
@@ -45,12 +49,14 @@ export function BikeFormPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { nickname: "" },
+    defaultValues: { nickname: "", vehicleType: "motorcycle" },
   });
+  const vehicleType = (form.watch("vehicleType") ?? "motorcycle") as "motorcycle" | "car";
 
   useEffect(() => {
     if (isEdit && bike.data) {
       form.reset({
+        vehicleType: bike.data.vehicleType ?? "motorcycle",
         nickname: bike.data.nickname,
         plate: bike.data.plate ?? "",
         make: bike.data.make ?? "",
@@ -67,6 +73,7 @@ export function BikeFormPage() {
 
   const onSubmit = form.handleSubmit(async (v) => {
     const payload = {
+      vehicleType: v.vehicleType,
       nickname: v.nickname,
       plate: v.plate ? v.plate.toUpperCase().replace(/\s+/g, " ").trim() : null,
       make: v.make || null,
@@ -191,6 +198,31 @@ export function BikeFormPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            {/* Vehicle type — scopes the make/model dropdowns below */}
+            <Field label={t("bike.vehicleType")}>
+              <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
+                {(["motorcycle", "car"] as const).map((vt) => (
+                  <button
+                    key={vt}
+                    type="button"
+                    onClick={() => {
+                      if (form.getValues("vehicleType") === vt) return;
+                      form.setValue("vehicleType", vt);
+                      // Make/model are type-specific — clear them on a type switch.
+                      form.setValue("make", "");
+                      form.setValue("model", "");
+                    }}
+                    className={`rounded-xl py-2 text-[13px] font-medium transition ${
+                      vehicleType === vt
+                        ? "bg-surface shadow-card text-text dark:bg-surface-dark dark:text-text-dark"
+                        : "text-muted dark:text-muted-dark"
+                    }`}
+                  >
+                    {t(`bike.${vt}`)}
+                  </button>
+                ))}
+              </div>
+            </Field>
             <Field label={t("bike.nickname")} error={form.formState.errors.nickname?.message}>
               <Input
                 {...form.register("nickname")}
@@ -210,19 +242,56 @@ export function BikeFormPage() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("bike.make")} hint={t("bike.optional")}>
-                <Input {...form.register("make")} placeholder="Ducati" />
+                <Controller
+                  control={form.control}
+                  name="make"
+                  render={({ field }) => (
+                    <Combobox
+                      id="bike-make"
+                      value={(field.value as string) ?? ""}
+                      onChange={(v) => {
+                        field.onChange(v);
+                        // Changing make invalidates a previously chosen model.
+                        if (form.getValues("model")) form.setValue("model", "");
+                      }}
+                      fetchOptions={(q) => fetchMakes(q, vehicleType)}
+                      placeholder={vehicleType === "car" ? "Fiat" : "Ducati"}
+                    />
+                  )}
+                />
               </Field>
               <Field label={t("bike.model")} hint={t("bike.optional")}>
-                <Input {...form.register("model")} placeholder="Monster 937" />
+                <Controller
+                  control={form.control}
+                  name="model"
+                  render={({ field }) => (
+                    <Combobox
+                      id="bike-model"
+                      value={(field.value as string) ?? ""}
+                      onChange={field.onChange}
+                      fetchOptions={(q) => fetchModels(form.getValues("make") || "", q, vehicleType)}
+                      placeholder={vehicleType === "car" ? "Egea" : "Monster 937"}
+                      emptyText={form.getValues("make") ? undefined : t("bike.make")}
+                    />
+                  )}
+                />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("bike.year")} hint={t("bike.optional")}>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  {...form.register("year")}
-                  placeholder="2023"
+                <Controller
+                  control={form.control}
+                  name="year"
+                  render={({ field }) => (
+                    <Combobox
+                      id="bike-year"
+                      value={field.value != null ? String(field.value) : ""}
+                      onChange={(v) => field.onChange(v === "" ? "" : Number(v))}
+                      options={yearOptions()}
+                      allowCustom={false}
+                      placeholder="2023"
+                    />
+                  )}
                 />
               </Field>
               <Field label={t("bike.currentKm")} hint={t("bike.optional")}>
@@ -235,7 +304,19 @@ export function BikeFormPage() {
               </Field>
             </div>
             <Field label={t("bike.color")} hint={t("bike.optional")}>
-              <Input {...form.register("color")} placeholder="Kırmızı" />
+              <Controller
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <Combobox
+                    id="bike-color"
+                    value={(field.value as string) ?? ""}
+                    onChange={field.onChange}
+                    options={COLOR_OPTIONS}
+                    placeholder="Kırmızı"
+                  />
+                )}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("bike.chassisNo")} hint={t("bike.optional")}>

@@ -51,6 +51,12 @@ const Env = z.object({
    * stalling the serialized worker queue behind it.
    */
   OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
+  /**
+   * Max documents processed concurrently across all users. The worker also
+   * serializes per-user, so one user can never have two scans running at once;
+   * this caps total parallelism so Tesseract/Ollama don't thrash the box.
+   */
+  OCR_CONCURRENCY: z.coerce.number().int().positive().default(2),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default("mailto:noreply@mototracker.app"),

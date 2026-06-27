@@ -28,10 +28,14 @@ export const datedItemCreateSchema = z.object({
   policyNo: z.string().max(80).nullable().optional(),
   cost: z.number().nonnegative().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  // Provenance: set when the record is confirmed from a scanned document, so the
+  // dated_item links back to its source the same way auto-applied ones do.
+  sourceDocumentId: z.string().max(40).nullable().optional(),
 });
 export type DatedItemCreateInput = z.infer<typeof datedItemCreateSchema>;
 
-export const datedItemUpdateSchema = datedItemCreateSchema.partial();
+// sourceDocumentId is provenance set only at creation — not patchable.
+export const datedItemUpdateSchema = datedItemCreateSchema.omit({ sourceDocumentId: true }).partial();
 export type DatedItemUpdateInput = z.infer<typeof datedItemUpdateSchema>;
 
 export const dashboardEntrySchema = z.object({

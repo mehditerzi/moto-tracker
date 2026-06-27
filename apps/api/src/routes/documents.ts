@@ -116,7 +116,7 @@ documentsRouter.post(
        VALUES (?, ?, ?, ?, 'image/jpeg', ?, 'pending')`,
     ).run(id, req.user!.id, bikeId, outPath, buf.length);
 
-    void enqueueDocument(id);
+    void enqueueDocument(id, req.user!.id);
 
     const row = db.prepare("SELECT * FROM document WHERE id = ?").get(id) as DocRow;
     res.status(201).json(rowToDocument(row));
@@ -152,7 +152,31 @@ documentsRouter.get(
       return;
     }
     res.setHeader("Content-Type", row.mime_type);
-    res.setHeader("Cache-Control", "private, max-age=300");
+    // The image at a given id never changes, so it's safe to cache hard.
+    res.setHeader("Cache-Control", "private, max-age=300, immutable");
     res.sendFile(path.resolve(row.file_path));
+  }),
+);
+
+// Delete a scanned document and its stored image. Scanned ruhsat/sigorta photos
+// carry personal data (TC kimlik, address), so users need a way to remove them.
+// Any dated_item already created from the scan is kept; we just null its link.
+documentsRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const row = db
+      .prepare("SELECT id, user_id, file_path FROM document WHERE id = ? AND user_id = ?")
+      .get(req.params.id, req.user!.id) as { id: string; file_path: string } | undefined;
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    // Drop the provenance link first so the FK ON DELETE SET NULL isn't relied on
+    // across SQLite configs, then remove the row and the file.
+    db.prepare("UPDATE dated_item SET source_document_id = NULL WHERE source_document_id = ? AND user_id = ?").run(row.id, req.user!.id);
+    db.prepare("DELETE FROM document WHERE id = ? AND user_id = ?").run(row.id, req.user!.id);
+    await fs.rm(path.resolve(row.file_path), { force: true }).catch(() => {});
+    res.status(204).end();
   }),
 );

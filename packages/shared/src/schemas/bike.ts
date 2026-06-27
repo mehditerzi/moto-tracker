@@ -1,8 +1,12 @@
 import { z } from "zod";
 
+export const vehicleTypeSchema = z.enum(["motorcycle", "car"]);
+export type VehicleType = z.infer<typeof vehicleTypeSchema>;
+
 export const bikeSchema = z.object({
   id: z.string(),
   userId: z.string(),
+  vehicleType: vehicleTypeSchema,
   nickname: z.string().min(1).max(80),
   plate: z.string().max(20).nullable(),
   make: z.string().max(60).nullable(),
@@ -22,6 +26,7 @@ export type Bike = z.infer<typeof bikeSchema>;
 
 export const bikeCreateSchema = bikeSchema
   .pick({
+    vehicleType: true,
     nickname: true,
     plate: true,
     make: true,
@@ -33,7 +38,7 @@ export const bikeCreateSchema = bikeSchema
     engineNo: true,
     cylinderCc: true,
   })
-  .partial({ plate: true, make: true, model: true, year: true, currentKm: true, color: true, chassisNo: true, engineNo: true, cylinderCc: true });
+  .partial({ vehicleType: true, plate: true, make: true, model: true, year: true, currentKm: true, color: true, chassisNo: true, engineNo: true, cylinderCc: true });
 export type BikeCreateInput = z.infer<typeof bikeCreateSchema>;
 
 export const bikeUpdateSchema = bikeCreateSchema.partial();

@@ -7,6 +7,9 @@ import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
+import { Label } from "@/components/ui/label";
+import { PROVIDER_OPTIONS } from "@/lib/vehicleOptions";
 import { pushToast } from "@/hooks/useToast";
 import {
   useCreateDatedItem,
@@ -41,17 +44,21 @@ export function DatedItemFormPage({ mode }: Props) {
 
   const prefillType = (search.get("type") as DatedItemType | null);
   const prefillDate = search.get("expiresOn") ?? "";
+  // Provenance: when confirmed from a scan, link the record back to the document.
+  const sourceDocumentId = search.get("documentId") ?? undefined;
 
   const [type, setType] = useState<DatedItemType>(
     TYPES.includes(prefillType as DatedItemType) ? (prefillType as DatedItemType) : "sigorta",
   );
   const [expiresOn, setExpiresOn] = useState(prefillDate);
+  const [provider, setProvider] = useState("");
   const [dateError, setDateError] = useState("");
 
   useEffect(() => {
     if (isEdit && item.data) {
       setType(item.data.type);
       setExpiresOn(item.data.expiresOn);
+      setProvider(item.data.provider ?? "");
     }
   }, [isEdit, item.data]);
 
@@ -63,12 +70,18 @@ export function DatedItemFormPage({ mode }: Props) {
     }
     setDateError("");
     try {
+      const providerVal = provider.trim() || null;
       if (isEdit && itemId) {
-        await updateMut.mutateAsync({ type, expiresOn });
+        await updateMut.mutateAsync({ type, expiresOn, provider: providerVal });
         pushToast({ variant: "success", title: t("items.saved") });
         navigate(`/dated-items/${itemId}`);
       } else {
-        const created = await createMut.mutateAsync({ type, expiresOn });
+        const created = await createMut.mutateAsync({
+          type,
+          expiresOn,
+          provider: providerVal,
+          sourceDocumentId,
+        });
         pushToast({ variant: "success", title: t("items.saved") });
         navigate(`/dated-items/${created.id}`);
       }
@@ -146,6 +159,20 @@ export function DatedItemFormPage({ mode }: Props) {
               />
               {dateError && <p className="text-xs text-danger">{dateError}</p>}
             </div>
+
+            {/* Provider — searchable, but free text allowed for anything missing */}
+            {type !== "muayene" && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="provider">{t("items.provider")}</Label>
+                <Combobox
+                  id="provider"
+                  value={provider}
+                  onChange={setProvider}
+                  options={PROVIDER_OPTIONS}
+                  placeholder={t("items.provider")}
+                />
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button asChild variant="ghost" className="flex-1">

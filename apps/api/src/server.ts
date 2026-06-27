@@ -14,6 +14,7 @@ import { bikesNestedMaintRouter, maintenanceItemsRouter } from "./routes/mainten
 import { notificationPreferencesRouter } from "./routes/notificationPreferences.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
+import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
 import { privacyRouter } from "./routes/privacy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -79,6 +80,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/notification-preferences", notificationPreferencesRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/documents", documentsRouter);
+  app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
 
   // Public, login-free Privacy Policy page (App Store Connect requires a URL
