@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { newId } from "../lib/ulid.js";
 import type { ParsedOcr } from "./parser.js";
+import { inferVehicleType } from "./catalog.js";
 
 export interface AutoApplyInput {
   db: Database.Database;
@@ -96,12 +97,16 @@ function pickOrCreateBike(
       [parsed.make, parsed.model].filter(Boolean).join(" ").trim() ||
       parsed.plate ||
       "Araç";
+    // Infer car vs motorcycle from the catalog match; fall back to motorcycle
+    // when the make/model is ambiguous (e.g. a brand that builds both).
+    const vehicleType = inferVehicleType(parsed.make, parsed.model) ?? "motorcycle";
     db.prepare(
-      `INSERT INTO bike (id, user_id, nickname, plate, make, model, year, chassis_no, engine_no, cylinder_cc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, chassis_no, engine_no, cylinder_cc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       userId,
+      vehicleType,
       nickname,
       parsed.plate,
       parsed.make,

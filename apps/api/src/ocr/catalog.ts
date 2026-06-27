@@ -15,7 +15,9 @@
  * untouched. Pure and synchronous — loads the module once, no DB dependency, so
  * it works identically in tests and prod.
  */
-import { VEHICLE_CATALOG, type CatalogMake } from "../db/seed/vehicleCatalog.generated.js";
+import { VEHICLE_CATALOG, type CatalogMake, type VehicleType } from "../db/seed/vehicleCatalog.generated.js";
+
+export type { VehicleType };
 
 /** Turkish-aware normalization. MUST stay byte-identical to norm() in scripts/fetch-moto-catalog.mjs. */
 export function norm(s: string | null | undefined): string {
@@ -104,6 +106,7 @@ export interface ModelMatch {
   name: string;
   via: "exact" | "fuzzy";
   score: number;
+  type: VehicleType;
 }
 
 /** Minimum similarity to accept a fuzzy make match. Short brands need to be stricter. */
@@ -139,7 +142,7 @@ export function matchModel(make: CatalogMake, raw: string | null | undefined): M
   if (!n || n.length < 2 || make.models.length === 0) return null;
 
   for (const md of make.models) {
-    if (md.norm === n) return { name: md.name, via: "exact", score: 1 };
+    if (md.norm === n) return { name: md.name, via: "exact", score: 1, type: md.type };
   }
   // Models carry digits that must not drift (CB500F vs CB650F), so require a
   // high bar and identical digit sequences.
@@ -150,7 +153,7 @@ export function matchModel(make: CatalogMake, raw: string | null | undefined): M
     if (digits(md.norm) !== nDigits) continue;
     const s = similarity(n, md.norm);
     if (s >= 0.84 && (!best || s > best.score)) {
-      best = { name: md.name, via: "fuzzy", score: s };
+      best = { name: md.name, via: "fuzzy", score: s, type: md.type };
     }
   }
   return best;
@@ -196,6 +199,25 @@ export function canonicalize(
     makeVia: mk ? mk.via : null,
     modelVia,
   };
+}
+
+/**
+ * Best-effort vehicle type for an extracted (make, model). Most specific signal
+ * wins: a matched model carries its own type; otherwise a make that exists under
+ * exactly one type implies it. Returns null when genuinely ambiguous (e.g. a
+ * make like Honda that builds both, with no model match) — the caller decides
+ * the default then.
+ */
+export function inferVehicleType(
+  rawMake: string | null | undefined,
+  rawModel: string | null | undefined,
+): VehicleType | null {
+  const mk = matchMake(rawMake);
+  if (!mk) return null;
+  const md = matchModel(mk.make, rawModel);
+  if (md) return md.type;
+  if (mk.make.types.length === 1) return mk.make.types[0]!;
+  return null;
 }
 
 /** Catalog stats, for the read route / diagnostics. */
