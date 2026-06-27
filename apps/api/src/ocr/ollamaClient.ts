@@ -46,6 +46,7 @@ export async function runVisionOcr(
   imagePath: string,
   model = config.OLLAMA_VISION_MODEL,
   baseUrl = config.OLLAMA_URL,
+  signal?: AbortSignal,
 ): Promise<{ rawText: string; model: string }> {
   const buf = await fs.readFile(imagePath);
   const base64 = buf.toString("base64");
@@ -64,7 +65,9 @@ export async function runVisionOcr(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(config.OCR_TIMEOUT_MS),
+    // Caller-supplied signal carries the shared pipeline deadline; fall back to
+    // a standalone timeout when called directly (e.g. tooling).
+    signal: signal ?? AbortSignal.timeout(config.OCR_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -83,6 +86,7 @@ export async function runTextOcr(
   extractedText: string,
   model?: string,
   baseUrl = config.OLLAMA_URL,
+  signal?: AbortSignal,
 ): Promise<{ rawText: string; model: string }> {
   const resolvedModel = model ?? config.OLLAMA_PARSE_MODEL ?? config.OLLAMA_VISION_MODEL;
   const body = {
@@ -98,7 +102,7 @@ export async function runTextOcr(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(config.OCR_TIMEOUT_MS),
+    signal: signal ?? AbortSignal.timeout(config.OCR_TIMEOUT_MS),
   });
 
   if (!res.ok) {

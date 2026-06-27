@@ -98,6 +98,9 @@
   "bike": {
     "newTitle": "New vehicle",
     "editTitle": "Edit vehicle",
+    "vehicleType": "Vehicle type",
+    "motorcycle": "Motorcycle",
+    "car": "Car",
     "nickname": "Nickname",
     "plate": "Plate",
     "make": "Make",
@@ -198,7 +201,11 @@
     "qualityTitle": "Readability may be low",
     "qualityBlurry": "The image looks blurry",
     "qualityDark": "The image is too dark",
-    "qualityGlare": "Too much glare/reflection"
+    "qualityGlare": "Too much glare/reflection",
+    "errorLimit": "You've reached today's document upload limit. Try again tomorrow.",
+    "errorFileRequired": "Please choose an image.",
+    "errorBikeNotFound": "Vehicle not found.",
+    "errorGeneric": "Something went wrong. Please try again."
   },
   "review": {
     "reading": "Reading document",
@@ -243,7 +250,8 @@
     "dateAdded": "Added",
     "lowConfidence": "Low confidence — please double-check the values.",
     "missingHint": "You can fill in anything that wasn't read.",
-    "stillWorking": "This is taking longer than usual…"
+    "stillWorking": "This is taking longer than usual…",
+    "muayeneDetected": "Inspection date found on the document: {{date}} — tap “Add” to save it."
   },
   "common": {
     "save": "Save",

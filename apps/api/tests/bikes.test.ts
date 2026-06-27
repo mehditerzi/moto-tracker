@@ -51,6 +51,32 @@ describe("/api/bikes", () => {
     expect(list3.body[0].archived).toBe(true);
   });
 
+  it("defaults vehicleType to motorcycle and accepts car", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+
+    const moto = await request(app)
+      .post("/api/bikes")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ nickname: "Default" });
+    expect(moto.body.vehicleType).toBe("motorcycle");
+
+    const car = await request(app)
+      .post("/api/bikes")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ nickname: "Egea", vehicleType: "car", make: "Fiat" });
+    expect(car.body.vehicleType).toBe("car");
+
+    const switched = await request(app)
+      .patch(`/api/bikes/${moto.body.id}`)
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ vehicleType: "car" });
+    expect(switched.body.vehicleType).toBe("car");
+  });
+
   it("does not leak bikes across users", async () => {
     const app = buildTestApp();
     const u1 = await signUpAndSignIn(app, "alice@test.com");

@@ -195,6 +195,59 @@ describe("/api/documents", () => {
     }
   });
 
+  it("flags auto-applied items as needs_review and lets the doc be deleted", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    await createBike(app, cookie, "34 ABC 123");
+
+    __setRunVisionOcrForTests(async () => ({
+      rawText: JSON.stringify({
+        doc_type: "sigorta",
+        plate: "34 ABC 123",
+        dates: { sigorta_expires_on: "2027-06-01" },
+        confidence: 0.9,
+      }),
+      model: "test-model",
+    }));
+
+    const post = await request(app)
+      .post("/api/documents")
+      .set("Cookie", cookie)
+      .attach("file", await makeJpeg(), { filename: "s.jpg", contentType: "image/jpeg" });
+    const finished = await waitForDoc(app, cookie, post.body.id);
+    const itemId = finished.appliedDatedItemId as string;
+    expect(itemId).toBeTruthy();
+
+    const item = await request(app).get(`/api/dated-items/${itemId}`).set("Cookie", cookie);
+    expect(item.body.needsReview).toBe(true);
+    expect(item.body.sourceDocumentId).toBe(finished.id);
+
+    // Delete the document; the dated_item survives but loses its provenance link.
+    const del = await request(app).delete(`/api/documents/${finished.id}`).set("Cookie", cookie);
+    expect(del.status).toBe(204);
+    const gone = await request(app).get(`/api/documents/${finished.id}`).set("Cookie", cookie);
+    expect(gone.status).toBe(404);
+    const stillThere = await request(app).get(`/api/dated-items/${itemId}`).set("Cookie", cookie);
+    expect(stillThere.status).toBe(200);
+    expect(stillThere.body.sourceDocumentId).toBeNull();
+  });
+
+  it("does not delete another user's document", async () => {
+    const app = buildTestApp();
+    const u1 = await signUpAndSignIn(app, "a@test.com");
+    const u2 = await signUpAndSignIn(app, "b@test.com");
+    __setRunVisionOcrForTests(async () => ({
+      rawText: '{"doc_type":"unknown","plate":null,"dates":{},"confidence":0}',
+      model: "x",
+    }));
+    const post = await request(app)
+      .post("/api/documents")
+      .set("Cookie", u1.cookie)
+      .attach("file", await makeJpeg(), { filename: "x.jpg", contentType: "image/jpeg" });
+    const del = await request(app).delete(`/api/documents/${post.body.id}`).set("Cookie", u2.cookie);
+    expect(del.status).toBe(404);
+  });
+
   it("rejects non-image uploads", async () => {
     const app = buildTestApp();
     const { cookie } = await signUpAndSignIn(app);

@@ -76,10 +76,18 @@ bikesNestedDatedRouter.post(
       res.status(404).json({ error: "not_found" });
       return;
     }
+    // Only honour sourceDocumentId if the document belongs to this user.
+    let sourceDocumentId: string | null = null;
+    if (body.sourceDocumentId) {
+      const owns = db
+        .prepare("SELECT id FROM document WHERE id = ? AND user_id = ?")
+        .get(body.sourceDocumentId, req.user!.id);
+      if (owns) sourceDocumentId = body.sourceDocumentId;
+    }
     const id = newId();
     db.prepare(
-      `INSERT INTO dated_item (id, bike_id, user_id, type, expires_on, provider, policy_no, cost, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO dated_item (id, bike_id, user_id, type, expires_on, provider, policy_no, cost, notes, source_document_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.params.id,
@@ -90,6 +98,7 @@ bikesNestedDatedRouter.post(
       body.policyNo ?? null,
       body.cost ?? null,
       body.notes ?? null,
+      sourceDocumentId,
     );
     const row = db.prepare("SELECT * FROM dated_item WHERE id = ?").get(id) as DatedItemRow;
     res.status(201).json(rowToDatedItem(row));

@@ -1,8 +1,10 @@
 import type { ParsedOcr } from "./parser.js";
+import { canonicalize } from "./catalog.js";
 
 /**
- * Deterministic, format-agnostic checks over a parsed ruhsat. Two jobs:
- *  - CORRECT what we can prove (chassis/engine swap, plate normalization).
+ * Deterministic, format-agnostic checks over a parsed ruhsat. Three jobs:
+ *  - CORRECT what we can prove (chassis/engine swap, plate normalization,
+ *    make/model snapped to the catalog's canonical spelling).
  *  - FLAG what's merely suspicious (bad plate/VIN shape, ID-shaped engine no,
  *    implausible displacement) and cap confidence so it can't silently
  *    auto-apply and the review screen nudges the user to check it.
@@ -97,6 +99,25 @@ export function validateAndCorrect(input: ParsedOcr): {
       kind: "suspect",
       message: "Silindir hacmi beklenen aralık dışında",
     });
+  }
+
+  // ── make / model: snap to the catalog's canonical spelling when matched.
+  //    Pure string cleanup — does NOT touch confidence (a make match says
+  //    nothing about whether the expiry date was read correctly).
+  if (parsed.make || parsed.model) {
+    const canon = canonicalize(parsed.make, parsed.model);
+    if (canon.make && canon.make !== parsed.make) {
+      parsed.make = canon.make;
+      if (canon.makeVia === "fuzzy") {
+        issues.push({ field: "make", kind: "corrected", message: "Marka kataloğa göre düzeltildi" });
+      }
+    }
+    if (canon.model && canon.model !== parsed.model) {
+      parsed.model = canon.model;
+      if (canon.modelVia === "fuzzy") {
+        issues.push({ field: "model", kind: "corrected", message: "Model kataloğa göre düzeltildi" });
+      }
+    }
   }
 
   // Any genuine doubt caps confidence so it won't auto-apply silently.

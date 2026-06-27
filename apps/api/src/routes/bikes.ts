@@ -11,6 +11,7 @@ export const bikesRouter: Router = Router();
 interface BikeRow {
   id: string;
   user_id: string;
+  vehicle_type: "motorcycle" | "car";
   nickname: string;
   plate: string | null;
   make: string | null;
@@ -31,6 +32,7 @@ function rowToBike(r: BikeRow) {
   return {
     id: r.id,
     userId: r.user_id,
+    vehicleType: r.vehicle_type,
     nickname: r.nickname,
     plate: r.plate,
     make: r.make,
@@ -73,11 +75,12 @@ bikesRouter.post(
     const id = newId();
     const db = getDb();
     db.prepare(
-      `INSERT INTO bike (id, user_id, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.user!.id,
+      body.vehicleType ?? "motorcycle",
       body.nickname,
       body.plate ?? null,
       body.make ?? null,
@@ -122,6 +125,7 @@ bikesRouter.patch(
       return;
     }
     const fieldMap: Record<string, string> = {
+      vehicleType: "vehicle_type",
       nickname: "nickname",
       plate: "plate",
       make: "make",

@@ -20,6 +20,17 @@ const MAX_OUTPUT_EDGE = 2400;
 const SAMPLE_EDGE = 480;
 const QUALITY = { minSharpness: 60, minLuma: 40, maxLuma: 250 };
 
+/** Rear-camera constraints. Shared by the initial acquire and the retake so a
+ *  retake (taken because the first was blurry) doesn't come back lower-res. */
+const VIDEO_CONSTRAINTS: MediaStreamConstraints = {
+  audio: false,
+  video: {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 3840 },
+    height: { ideal: 2160 },
+  },
+};
+
 type Phase = "starting" | "live" | "error" | "review";
 
 interface Props {
@@ -63,14 +74,7 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 3840 },
-            height: { ideal: 2160 },
-          },
-        });
+        const stream = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
         if (cancelled) {
           stream.getTracks().forEach((tr) => tr.stop());
           return;
@@ -339,10 +343,7 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
                       typeof navigator.mediaDevices?.getUserMedia === "function"
                     ) {
                       try {
-                        streamRef.current = await navigator.mediaDevices.getUserMedia({
-                          audio: false,
-                          video: { facingMode: { ideal: "environment" } },
-                        });
+                        streamRef.current = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
                       } catch {
                         setPhase("error");
                         return;

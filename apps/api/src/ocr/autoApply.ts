@@ -228,7 +228,7 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   db.prepare(
     `INSERT INTO dated_item
        (id, bike_id, user_id, type, expires_on, source_document_id, ocr_confidence, needs_review)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
   ).run(id, bike.bikeId, userId, parsed.docType, expiresOn, documentId, parsed.confidence);
   return {
     appliedDatedItemId: id,

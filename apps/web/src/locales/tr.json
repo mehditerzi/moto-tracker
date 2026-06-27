@@ -98,6 +98,9 @@
   "bike": {
     "newTitle": "Yeni araç",
     "editTitle": "Aracı düzenle",
+    "vehicleType": "Araç tipi",
+    "motorcycle": "Motosiklet",
+    "car": "Otomobil",
     "nickname": "Takma ad",
     "plate": "Plaka",
     "make": "Marka",
@@ -198,7 +201,11 @@
     "qualityTitle": "Okunabilirlik düşük olabilir",
     "qualityBlurry": "Görüntü bulanık görünüyor",
     "qualityDark": "Görüntü çok karanlık",
-    "qualityGlare": "Çok fazla parlama/yansıma var"
+    "qualityGlare": "Çok fazla parlama/yansıma var",
+    "errorLimit": "Bugünlük belge yükleme sınırına ulaşıldı. Yarın tekrar dene.",
+    "errorFileRequired": "Lütfen bir görsel seç.",
+    "errorBikeNotFound": "Araç bulunamadı.",
+    "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene."
   },
   "review": {
     "reading": "Belge okunuyor",
@@ -243,7 +250,8 @@
     "dateAdded": "Eklendi",
     "lowConfidence": "Düşük güven — lütfen okunan değerleri kontrol et.",
     "missingHint": "Okunamayan alanları elle doldurabilirsin.",
-    "stillWorking": "Bu beklenenden uzun sürüyor…"
+    "stillWorking": "Bu beklenenden uzun sürüyor…",
+    "muayeneDetected": "Belgede muayene tarihi bulundu: {{date}} — kaydetmek için “Ekle”ye dokun."
   },
   "common": {
     "save": "Kaydet",

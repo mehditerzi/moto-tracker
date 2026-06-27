@@ -79,7 +79,7 @@ const TR_DATE = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/;
  * "Invalid Date"/NaN day-counts downstream. Returns null when unparseable,
  * which routes the document to manual review instead of auto-applying.
  */
-function normalizeDate(s: string | null | undefined): string | null {
+export function normalizeDate(s: string | null | undefined): string | null {
   if (!s) return null;
   const t = s.trim();
 
