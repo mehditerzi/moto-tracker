@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchMake, matchModel, canonicalize, norm, similarity } from "../src/ocr/catalog.js";
+import { matchMake, matchModel, canonicalize, norm, similarity, inferVehicleType } from "../src/ocr/catalog.js";
 
 describe("ocr/catalog norm", () => {
   it("is Turkish-aware and strips punctuation/spaces", () => {
@@ -63,6 +63,24 @@ describe("ocr/catalog canonicalize", () => {
     expect(r.make).toBe("NoSuchBrandXYZ");
     expect(r.model).toBe("WeirdModel");
     expect(r.makeMatched).toBe(false);
+  });
+});
+
+describe("ocr/catalog inferVehicleType", () => {
+  it("uses the matched model's type", () => {
+    expect(inferVehicleType("Honda", "Civic")).toBe("car");
+    expect(inferVehicleType("Honda", "CBR650R")).toBe("motorcycle");
+  });
+
+  it("uses a single-type make when no model matches", () => {
+    expect(inferVehicleType("Fiat", "")).toBe("car");
+    expect(inferVehicleType("Yamaha", "")).toBe("motorcycle");
+  });
+
+  it("returns null when genuinely ambiguous", () => {
+    // Honda builds both and no model match → caller picks the default.
+    expect(inferVehicleType("Honda", "")).toBeNull();
+    expect(inferVehicleType("NoSuchBrand", "Whatever")).toBeNull();
   });
 });
 

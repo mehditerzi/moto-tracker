@@ -314,6 +314,35 @@ describe("/api/documents", () => {
     expect(bikes.body[0].year).toBe(2023);
   });
 
+  it("infers vehicleType=car when a ruhsat scan auto-creates a car", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+
+    __setRunVisionOcrForTests(async () => ({
+      rawText: JSON.stringify({
+        doc_type: "ruhsat",
+        plate: "34 CAR 100",
+        make: "Fiat",
+        model: "Egea",
+        year: 2022,
+        dates: {},
+        confidence: 0.92,
+      }),
+      model: "test-model",
+    }));
+
+    const post = await request(app)
+      .post("/api/documents")
+      .set("Cookie", cookie)
+      .attach("file", await makeJpeg(), { filename: "car.jpg", contentType: "image/jpeg" });
+    await waitForDoc(app, cookie, post.body.id);
+
+    const bikes = await request(app).get("/api/bikes").set("Cookie", cookie);
+    expect(bikes.body).toHaveLength(1);
+    expect(bikes.body[0].vehicleType).toBe("car");
+    expect(bikes.body[0].make).toBe("Fiat");
+  });
+
   it("ruhsat scan fills blanks on a matched bike without overwriting set fields", async () => {
     const app = buildTestApp();
     const { cookie } = await signUpAndSignIn(app);

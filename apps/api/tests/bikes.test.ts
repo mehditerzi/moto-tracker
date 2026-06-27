@@ -77,6 +77,23 @@ describe("/api/bikes", () => {
     expect(switched.body.vehicleType).toBe("car");
   });
 
+  it("infers vehicleType from make/model when not given", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const car = await request(app)
+      .post("/api/bikes")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ nickname: "Civic", make: "Honda", model: "Civic" });
+    expect(car.body.vehicleType).toBe("car");
+    const moto = await request(app)
+      .post("/api/bikes")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ nickname: "R", make: "Yamaha", model: "MT-09" });
+    expect(moto.body.vehicleType).toBe("motorcycle");
+  });
+
   it("does not leak bikes across users", async () => {
     const app = buildTestApp();
     const u1 = await signUpAndSignIn(app, "alice@test.com");

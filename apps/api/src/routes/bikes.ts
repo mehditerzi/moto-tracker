@@ -5,6 +5,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { bikeCreateSchema, bikeUpdateSchema } from "@mototracker/shared";
+import { inferVehicleType } from "../ocr/catalog.js";
 
 export const bikesRouter: Router = Router();
 
@@ -80,7 +81,9 @@ bikesRouter.post(
     ).run(
       id,
       req.user!.id,
-      body.vehicleType ?? "motorcycle",
+      // Respect an explicit choice; otherwise infer car/motorcycle from the
+      // make/model (covers the review screen's "create bike", which omits it).
+      body.vehicleType ?? inferVehicleType(body.make ?? null, body.model ?? null) ?? "motorcycle",
       body.nickname,
       body.plate ?? null,
       body.make ?? null,
