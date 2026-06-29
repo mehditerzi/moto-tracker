@@ -13,7 +13,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
-import { COLOR_OPTIONS, yearOptions } from "@/lib/vehicleOptions";
+import { COLOR_OPTIONS, FUEL_OPTIONS, yearOptions } from "@/lib/vehicleOptions";
 import { useBike, useCreateBike, useUpdateBike, useArchiveBike } from "@/hooks/useBikes";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
@@ -45,6 +45,12 @@ export function BikeFormPage() {
     chassisNo: z.string().max(30).optional().or(z.literal("")),
     engineNo: z.string().max(30).optional().or(z.literal("")),
     cylinderCc: z.union([z.coerce.number().int().min(0).max(10000), z.literal("")]).optional(),
+    fuelType: z.string().max(40).optional().or(z.literal("")),
+    firstRegistrationDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-AA-GG")
+      .optional()
+      .or(z.literal("")),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -68,6 +74,8 @@ export function BikeFormPage() {
         chassisNo: (bike.data as any).chassisNo ?? "",
         engineNo: (bike.data as any).engineNo ?? "",
         cylinderCc: (bike.data as any).cylinderCc ?? "",
+        fuelType: (bike.data as any).fuelType ?? "",
+        firstRegistrationDate: (bike.data as any).firstRegistrationDate ?? "",
       });
     }
   }, [isEdit, bike.data, form]);
@@ -85,6 +93,8 @@ export function BikeFormPage() {
       chassisNo: v.chassisNo || null,
       engineNo: v.engineNo || null,
       cylinderCc: typeof v.cylinderCc === "number" ? v.cylinderCc : null,
+      fuelType: v.fuelType || null,
+      firstRegistrationDate: v.firstRegistrationDate || null,
     };
     try {
       if (isEdit && id) {
@@ -323,6 +333,30 @@ export function BikeFormPage() {
                 )}
               />
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("bike.fuelType")} hint={t("bike.optional")}>
+                <Controller
+                  control={form.control}
+                  name="fuelType"
+                  render={({ field }) => (
+                    <Combobox
+                      id="bike-fuel"
+                      value={(field.value as string) ?? ""}
+                      onChange={field.onChange}
+                      options={FUEL_OPTIONS}
+                      placeholder="Benzin"
+                    />
+                  )}
+                />
+              </Field>
+              <Field
+                label={t("bike.firstRegistrationDate")}
+                hint={t("bike.optional")}
+                error={form.formState.errors.firstRegistrationDate?.message}
+              >
+                <Input type="date" {...form.register("firstRegistrationDate")} />
+              </Field>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("bike.chassisNo")} hint={t("bike.optional")}>
                 <Input

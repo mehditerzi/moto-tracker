@@ -25,9 +25,11 @@ const RawSchema = z.object({
   make: optionalString,
   model: optionalString,
   year: optionalInt,
+  first_registration_date: optionalString,
   color: optionalString,
   chassis_no: optionalString,
   engine_no: optionalString,
+  fuel_type: optionalString,
   cylinder_cc: z
     .union([z.coerce.number(), z.string(), z.null()])
     .optional()
@@ -58,10 +60,12 @@ export interface ParsedOcr {
   make: string | null;
   model: string | null;
   year: number | null;
+  firstRegistrationDate: string | null;
   color: string | null;
   chassisNo: string | null;
   engineNo: string | null;
   cylinderCc: number | null;
+  fuelType: string | null;
   dates: {
     sigortaExpiresOn: string | null;
     kaskoExpiresOn: string | null;
@@ -136,10 +140,12 @@ export function parseOcr(rawText: string): ParsedOcr {
     make: parsed.make,
     model: parsed.model,
     year: parsed.year,
+    firstRegistrationDate: normalizeDate(parsed.first_registration_date),
     color: parsed.color,
     chassisNo: parsed.chassis_no,
     engineNo: parsed.engine_no,
     cylinderCc: parsed.cylinder_cc,
+    fuelType: parsed.fuel_type,
     dates: {
       sigortaExpiresOn: normalizeDate(parsed.dates.sigorta_expires_on),
       kaskoExpiresOn: normalizeDate(parsed.dates.kasko_expires_on),

@@ -17,10 +17,12 @@ export const ocrExtractedSchema = z.object({
   make: z.string().nullable().optional(),
   model: z.string().nullable().optional(),
   year: z.number().int().nullable().optional(),
+  firstRegistrationDate: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   chassisNo: z.string().nullable().optional(),
   engineNo: z.string().nullable().optional(),
   cylinderCc: z.number().int().nullable().optional(),
+  fuelType: z.string().nullable().optional(),
   dates: z.object({
     sigortaExpiresOn: z.string().nullable(),
     kaskoExpiresOn: z.string().nullable(),

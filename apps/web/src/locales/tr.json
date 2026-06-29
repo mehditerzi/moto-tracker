@@ -137,6 +137,8 @@
     "chassisNo": "Şase numarası",
     "engineNo": "Motor blok numarası",
     "cylinderCc": "Silindir hacmi (cc)",
+    "fuelType": "Yakıt",
+    "firstRegistrationDate": "İlk tescil tarihi",
     "documents": "Belgeler"
   },
   "maintenance": {
@@ -251,9 +253,12 @@
     "make": "Marka",
     "model": "Model",
     "year": "Yıl",
+    "firstRegistrationDate": "İlk tescil tarihi",
+    "color": "Renk",
     "chassisNo": "Şase no",
     "engineNo": "Motor no",
     "cylinderCc": "Silindir hacmi",
+    "fuelType": "Yakıt",
     "sigortaExpires": "Sigorta bitiş",
     "kaskoExpires": "Kasko bitiş",
     "muayeneExpires": "Muayene bitiş",

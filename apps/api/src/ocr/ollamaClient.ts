@@ -22,10 +22,12 @@ const OCR_FORMAT_SCHEMA = {
     make: N("string"),
     model: N("string"),
     year: N("integer"),
+    first_registration_date: N("string"),
     color: N("string"),
     chassis_no: N("string"),
     engine_no: N("string"),
     cylinder_cc: N("integer"),
+    fuel_type: N("string"),
     dates: {
       type: "object",
       properties: {
@@ -38,8 +40,8 @@ const OCR_FORMAT_SCHEMA = {
     confidence: { type: "number" },
   },
   required: [
-    "doc_type", "plate", "make", "model", "year", "color",
-    "chassis_no", "engine_no", "cylinder_cc", "dates", "confidence",
+    "doc_type", "plate", "make", "model", "year", "first_registration_date", "color",
+    "chassis_no", "engine_no", "cylinder_cc", "fuel_type", "dates", "confidence",
   ],
 };
 

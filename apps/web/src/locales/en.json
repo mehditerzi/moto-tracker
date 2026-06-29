@@ -137,6 +137,8 @@
     "chassisNo": "Chassis number",
     "engineNo": "Engine block number",
     "cylinderCc": "Cylinder capacity (cc)",
+    "fuelType": "Fuel",
+    "firstRegistrationDate": "First registration date",
     "documents": "Documents"
   },
   "maintenance": {
@@ -262,6 +264,9 @@
     "chassisNo": "Chassis no",
     "engineNo": "Engine no",
     "cylinderCc": "Displacement",
+    "color": "Color",
+    "fuelType": "Fuel",
+    "firstRegistrationDate": "First registration date",
     "compareTitle": "Update vehicle details",
     "compareSub": "Review detected values and choose which to apply.",
     "existing": "Current",

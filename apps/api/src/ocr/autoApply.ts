@@ -101,8 +101,8 @@ function pickOrCreateBike(
     // when the make/model is ambiguous (e.g. a brand that builds both).
     const vehicleType = inferVehicleType(parsed.make, parsed.model) ?? "motorcycle";
     db.prepare(
-      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, color, chassis_no, engine_no, cylinder_cc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, first_registration_date, color, chassis_no, engine_no, cylinder_cc, fuel_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       userId,
@@ -112,10 +112,12 @@ function pickOrCreateBike(
       parsed.make,
       parsed.model,
       parsed.year,
+      parsed.firstRegistrationDate,
       parsed.color,
       parsed.chassisNo,
       parsed.engineNo,
       parsed.cylinderCc,
+      parsed.fuelType,
     );
     return { bikeId: id, action: "created" };
   }
@@ -136,9 +138,9 @@ function patchBikeBlanks(
   parsed: ParsedOcr,
 ): boolean {
   const row = db
-    .prepare("SELECT plate, make, model, year, color, chassis_no, engine_no, cylinder_cc FROM bike WHERE id = ? AND user_id = ?")
+    .prepare("SELECT plate, make, model, year, first_registration_date, color, chassis_no, engine_no, cylinder_cc, fuel_type FROM bike WHERE id = ? AND user_id = ?")
     .get(bikeId, userId) as
-    | { plate: string | null; make: string | null; model: string | null; year: number | null; color: string | null; chassis_no: string | null; engine_no: string | null; cylinder_cc: number | null }
+    | { plate: string | null; make: string | null; model: string | null; year: number | null; first_registration_date: string | null; color: string | null; chassis_no: string | null; engine_no: string | null; cylinder_cc: number | null; fuel_type: string | null }
     | undefined;
   if (!row) return false;
 
@@ -150,10 +152,12 @@ function patchBikeBlanks(
     ["make", parsed.make],
     ["model", parsed.model],
     ["year", parsed.year],
+    ["first_registration_date", parsed.firstRegistrationDate],
     ["color", parsed.color],
     ["chassis_no", parsed.chassisNo],
     ["engine_no", parsed.engineNo],
     ["cylinder_cc", parsed.cylinderCc],
+    ["fuel_type", parsed.fuelType],
   ];
   for (const [col, val] of wants) {
     if (val == null) continue;
