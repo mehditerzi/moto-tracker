@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBikes } from "@/hooks/useBikes";
 import { useFuelLogs, useCreateFuelLog, useDeleteFuelLog } from "@/hooks/useFuelLogs";
+import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { fuelSummary } from "@/lib/fuelEconomy";
 import { getActiveBikeId, storeActiveBikeId } from "@/hooks/useActiveBike";
 import { formatDate } from "@/lib/format";
@@ -28,7 +29,10 @@ export function FuelPage() {
   }, [bikes.data, bikeId]);
 
   const logs = useFuelLogs(bikeId);
+  const items = useDatedItemsForBike(bikeId);
   const summary = fuelSummary(logs.data ?? []);
+  const fuelTotal = (logs.data ?? []).reduce((s, l) => s + (l.totalCost ?? 0), 0);
+  const premiumTotal = (items.data ?? []).reduce((s, i) => s + (i.cost ?? 0), 0);
 
   if (!bikes.isLoading && (!bikes.data || bikes.data.length === 0)) {
     return (
@@ -64,6 +68,8 @@ export function FuelPage() {
       </header>
 
       <SummaryCard summary={summary} />
+
+      <CostsCard fuelTotal={fuelTotal} premiumTotal={premiumTotal} />
 
       {bikeId && <AddFuelForm bikeId={bikeId} />}
 
@@ -116,6 +122,31 @@ function SummaryCard({ summary }: { summary: ReturnType<typeof fuelSummary> }) {
           value={summary.costPerKm != null ? `₺${summary.costPerKm.toFixed(2)}` : dash}
         />
         <Stat label={t("fuel.last30")} value={`₺${Math.round(summary.last30Spend).toLocaleString()}`} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function CostsCard({ fuelTotal, premiumTotal }: { fuelTotal: number; premiumTotal: number }) {
+  const { t } = useTranslation();
+  const total = fuelTotal + premiumTotal;
+  if (total <= 0) return null;
+  const tl = (n: number) => `₺${Math.round(n).toLocaleString()}`;
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-2 p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[13px] text-muted dark:text-muted-dark">{t("fuel.totalSpend")}</span>
+          <span className="num text-[20px] font-semibold leading-none">{tl(total)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[13px] text-muted dark:text-muted-dark">
+          <span>{t("nav.fuel")}</span>
+          <span className="num">{tl(fuelTotal)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[13px] text-muted dark:text-muted-dark">
+          <span>{t("fuel.premiums")}</span>
+          <span className="num">{tl(premiumTotal)}</span>
+        </div>
       </CardContent>
     </Card>
   );

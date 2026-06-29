@@ -19,7 +19,9 @@
     "cost": "Tutar (₺)",
     "odometer": "Kilometre",
     "add": "Yakıt ekle",
-    "added": "Yakıt kaydedildi"
+    "added": "Yakıt kaydedildi",
+    "totalSpend": "Toplam masraf",
+    "premiums": "Sigorta & vergi"
   },
   "services": {
     "title": "Resmi işlemler",
@@ -119,6 +121,7 @@
     "noMaintenance": "Henüz bakım kaydı yok.",
     "history": "Geçmiş",
     "provider": "Şirket",
+    "cost": "Tutar (₺)",
     "policyNo": "Poliçe no",
     "amount": "Tutar",
     "note": "Not",

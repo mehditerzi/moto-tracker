@@ -19,7 +19,9 @@
     "cost": "Cost (₺)",
     "odometer": "Odometer",
     "add": "Add fuel-up",
-    "added": "Fuel-up saved"
+    "added": "Fuel-up saved",
+    "totalSpend": "Total spend",
+    "premiums": "Insurance & tax"
   },
   "services": {
     "title": "Official services",
@@ -119,6 +121,7 @@
     "noMaintenance": "No maintenance records yet.",
     "history": "History",
     "provider": "Provider",
+    "cost": "Amount (₺)",
     "policyNo": "Policy no",
     "amount": "Amount",
     "note": "Note",
