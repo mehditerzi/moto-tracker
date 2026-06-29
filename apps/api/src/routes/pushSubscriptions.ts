@@ -134,7 +134,10 @@ pushSubscriptionsRouter.post(
       for (const d of tokens) {
         const r = await sendApns(d.token, { title, body, url: "/dashboard" });
         if (r.gone) db.prepare("DELETE FROM device_token WHERE id = ?").run(d.id);
-        results.push({ ok: r.ok, message: r.ok ? undefined : `apns_${r.status ?? "error"}` });
+        results.push({
+          ok: r.ok,
+          message: r.ok ? undefined : `apns_${r.status ?? "error"}${r.reason ? `_${r.reason}` : ""}`,
+        });
       }
     }
 
