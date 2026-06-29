@@ -28,6 +28,14 @@
 	<string>Garajım uses the camera to photograph your vehicle documents (ruhsat, insurance, inspection) so their dates can be read automatically.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Garajım lets you pick an existing photo of your vehicle document to read its dates.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Garajım uses your location to automatically measure how far you drive and log trips for your vehicle.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Garajım uses your location in the background to detect drives and log trip distance for your vehicle, even when the app is not open.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

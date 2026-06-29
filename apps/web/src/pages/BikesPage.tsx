@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useBikes } from "@/hooks/useBikes";
+import { vehicleIcon } from "@/lib/vehicleType";
 
 export function BikesPage() {
   const { t } = useTranslation();
@@ -66,7 +67,9 @@ export function BikesPage() {
       </header>
 
       <div className="grid gap-2.5">
-        {data.map((b, i) => (
+        {data.map((b, i) => {
+          const Icon = vehicleIcon(b.vehicleType);
+          return (
           <motion.div
             key={b.id}
             initial={{ opacity: 0, y: 6 }}
@@ -77,7 +80,7 @@ export function BikesPage() {
               <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-text/20 hover:shadow-card dark:hover:border-text-dark/20">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
-                    <BikeIcon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
+                    <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
                   </div>
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-semibold">{b.nickname}</div>
@@ -95,7 +98,8 @@ export function BikesPage() {
               </Card>
             </Link>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

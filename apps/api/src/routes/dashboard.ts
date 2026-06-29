@@ -6,6 +6,7 @@ import { rowToDatedItem } from "./datedItems.js";
 
 interface BikeRow {
   id: string;
+  vehicle_type: "motorcycle" | "car";
   nickname: string;
   plate: string | null;
   make: string | null;
@@ -27,7 +28,7 @@ dashboardRouter.get(
     const db = getDb();
     const bikes = db
       .prepare(
-        `SELECT id, nickname, plate, make, model, year, color, photo_url, current_km
+        `SELECT id, vehicle_type, nickname, plate, make, model, year, color, photo_url, current_km
          FROM bike
          WHERE user_id = ? AND archived = 0
          ORDER BY created_at ASC`,
@@ -56,6 +57,7 @@ dashboardRouter.get(
       return {
         bike: {
           id: b.id,
+          vehicleType: b.vehicle_type,
           nickname: b.nickname,
           plate: b.plate,
           make: b.make,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { vehicleTypeSchema } from "./bike.js";
 
 export const docTypeSchema = z.enum(["ruhsat", "sigorta", "kasko", "muayene", "unknown"]);
 export type DocType = z.infer<typeof docTypeSchema>;
@@ -10,6 +11,9 @@ export const ocrExtractedSchema = z.object({
   docType: docTypeSchema,
   plate: z.string().nullable(),
   // Vehicle details — populated mostly from ruhsat (registration) documents.
+  // vehicleType is inferred from the make/model catalog (not read off the page),
+  // so the review screen can show the right icon and persist the correct type.
+  vehicleType: vehicleTypeSchema.nullable().optional(),
   make: z.string().nullable().optional(),
   model: z.string().nullable().optional(),
   year: z.number().int().nullable().optional(),

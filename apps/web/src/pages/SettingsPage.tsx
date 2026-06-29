@@ -14,6 +14,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useNotifPrefs, useUpdateNotifPref } from "@/hooks/useNotifPreferences";
 import { useDisablePush, useEnablePush, usePushStatus, useSendTestPush } from "@/hooks/usePush";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
 import { cn } from "@/lib/cn";
 import type { NotifPreference } from "@mototracker/shared";
 import { useConfirm } from "@/components/ConfirmSheet";
@@ -71,7 +72,7 @@ export function SettingsPage() {
         }
       })
       .catch((e) =>
-        pushToast({ variant: "danger", title: t("common.error"), description: String(e) }),
+        pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) }),
       );
 
   const onLang = (lng: "tr" | "en") => setLanguage(lng);
@@ -93,7 +94,7 @@ export function SettingsPage() {
               ? t("settings.permissionDenied")
               : (e as Error).message === "VAPID public key not configured on server"
               ? t("settings.vapidNotConfigured")
-              : (e as Error).message,
+              : friendlyError(e, t),
         });
       }
     }
@@ -316,7 +317,7 @@ function DeleteAccountCard() {
       if (e instanceof ApiError && e.status === 401) {
         setError(t("settings.deleteAccountWrongPassword"));
       } else {
-        pushToast({ variant: "danger", title: t("common.error"), description: String(e) });
+        pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
       }
       setBusy(false);
     }

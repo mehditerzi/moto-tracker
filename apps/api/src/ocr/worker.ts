@@ -6,6 +6,7 @@ import { parseOcr } from "./parser.js";
 import { backstopFromText } from "./backstop.js";
 import { validateAndCorrect } from "./validators.js";
 import { autoApply } from "./autoApply.js";
+import { inferVehicleType } from "./catalog.js";
 
 interface DocRow {
   id: string;
@@ -172,6 +173,11 @@ export async function processDocument(documentId: string): Promise<void> {
     // knows which bike to talk about.
     const newBikeId = doc.bike_id ?? apply.appliedBikeId ?? null;
 
+    // Infer car vs motorcycle from the catalog so the review screen shows the
+    // right icon and the "create vehicle" path persists the correct type. Null
+    // when the make/model is ambiguous — the UI falls back to a neutral default.
+    const extracted = { ...parsed, vehicleType: inferVehicleType(parsed.make, parsed.model) };
+
     db.prepare(
       `UPDATE document
          SET ocr_status = 'done',
@@ -185,7 +191,7 @@ export async function processDocument(documentId: string): Promise<void> {
          WHERE id = ?`,
     ).run(
       rawText,
-      JSON.stringify(parsed),
+      JSON.stringify(extracted),
       parsed.docType,
       model,
       newBikeId,

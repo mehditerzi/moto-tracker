@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useUpdateBike } from "@/hooks/useBikes";
+import { useActiveBikeId } from "@/hooks/useActiveBike";
+import { vehicleIcon } from "@/lib/vehicleType";
 import { StatusChip } from "@/components/StatusChip";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
@@ -20,13 +22,18 @@ import type { DashboardEntry } from "@mototracker/shared";
 export function DashboardPage() {
   const { t } = useTranslation();
   const dash = useDashboard();
-  const [activeBikeId, setActiveBikeId] = useState<string | undefined>(undefined);
+  // Persisted (localStorage) so the selection survives the capture → review →
+  // back round-trip and app restarts — the OCR button always targets the bike
+  // the user actually picked.
+  const [activeBikeId, setActiveBikeId] = useActiveBikeId();
 
   useEffect(() => {
-    if (dash.data && dash.data.length > 0 && !activeBikeId) {
-      setActiveBikeId(dash.data[0]!.bike.id);
-    }
-  }, [dash.data, activeBikeId]);
+    if (!dash.data || dash.data.length === 0) return;
+    // Default to the first bike, and self-heal if the stored id points at a bike
+    // that no longer exists (archived/deleted) so we never get stuck on a ghost.
+    const exists = activeBikeId && dash.data.some((e) => e.bike.id === activeBikeId);
+    if (!exists) setActiveBikeId(dash.data[0]!.bike.id);
+  }, [dash.data, activeBikeId, setActiveBikeId]);
 
   if (dash.isLoading)
     return (
@@ -90,6 +97,7 @@ export function DashboardPage() {
   }
 
   const active = (dash.data.find((e) => e.bike.id === activeBikeId) ?? dash.data[0])!;
+  const ActiveIcon = vehicleIcon(active.bike.vehicleType);
 
   return (
     <div className="flex flex-col gap-5">
@@ -108,7 +116,10 @@ export function DashboardPage() {
         >
           <header className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="label-micro text-muted dark:text-muted-dark">{t("dashboard.active")}</div>
+              <div className="label-micro flex items-center gap-1.5 text-muted dark:text-muted-dark">
+                <ActiveIcon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                {t("dashboard.active")}
+              </div>
               <h1 className="mt-1.5 truncate text-[32px] font-semibold leading-none tracking-tight">
                 {active.bike.nickname}
               </h1>

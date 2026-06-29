@@ -2,8 +2,21 @@
   "brand": "Garajım",
   "nav": {
     "bikes": "Araçlar",
+    "trips": "Yolculuklar",
     "settings": "Ayarlar",
     "signOut": "Çıkış"
+  },
+  "trips": {
+    "title": "Yolculuklar",
+    "empty": "Henüz yolculuk yok",
+    "emptySub": "Takip açıkken {{km}} km ve üzeri sürüşler otomatik kaydedilir.",
+    "unknownVehicle": "Araç",
+    "tracking": "Otomatik yolculuk takibi",
+    "trackingOnHint": "Açık — sürüşler algılanıp aktif araca kaydediliyor.",
+    "trackingOffHint": "Kapalı — konum takibiyle sürüşleri otomatik kaydet.",
+    "logged": "Yolculuk kaydedildi · {{km}} km",
+    "bgTitle": "Yolculuk takip ediliyor",
+    "bgMessage": "Garajım sürüş mesafeni ölçüyor."
   },
   "auth": {
     "signIn": "Giriş yap",
@@ -186,6 +199,7 @@
   "capture": {
     "title": "Belge yükle",
     "subtitle": "Sigorta poliçesi, kasko poliçesi veya muayene belgenin fotoğrafını çek. Tarihler otomatik okunur, eksikleri sen onaylarsın.",
+    "forVehicle": "{{name}} için belge tara — okunan bilgiler bu araca işlenir.",
     "camera": "Kamera ile çek",
     "gallery": "Galeriden seç",
     "uploading": "Yükleniyor ve okunuyor...",
@@ -210,6 +224,7 @@
   "review": {
     "reading": "Belge okunuyor",
     "readingSub": "Bu birkaç saniye sürebilir.",
+    "fieldsUpdated": "{{count}} alan güncellendi",
     "failedTitle": "Okunamadı",
     "failedSub": "Belgeyi okumayı denedik ama bir şeyler ters gitti.",
     "retry": "Yeniden dene",
@@ -295,5 +310,19 @@
     "title": "Sayfa bulunamadı",
     "sub": "Aradığın sayfa burada değil.",
     "home": "Anasayfaya dön"
+  },
+  "errors": {
+    "generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+    "server": "Sunucuda bir sorun oluştu. Birazdan tekrar deneyin.",
+    "network": "Bağlantı kurulamadı. İnternet bağlantını kontrol edip tekrar dene.",
+    "unauthenticated": "Oturumun sona ermiş. Lütfen tekrar giriş yap.",
+    "validation_error": "Girdiğin bilgilerde bir hata var. Lütfen alanları kontrol et.",
+    "bike_not_found": "Araç bulunamadı. Sayfayı yenileyip tekrar dene.",
+    "not_found": "Kayıt bulunamadı. Silinmiş olabilir.",
+    "service_unavailable": "Belge tarama şu an yoğun. Lütfen birazdan tekrar dene.",
+    "file_required": "Bir görsel seçilmedi. Lütfen bir fotoğraf seç.",
+    "invalid_password": "Şifre hatalı. Lütfen tekrar dene.",
+    "bad_item_type": "Geçersiz kayıt türü.",
+    "internal_error": "Sunucuda bir sorun oluştu. Birazdan tekrar deneyin."
   }
 }

@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUploadDocument } from "@/hooks/useDocuments";
+import { useBike } from "@/hooks/useBikes";
 import { pushToast } from "@/hooks/useToast";
+import { track } from "@/lib/telemetry";
 import { CameraCapture } from "@/components/CameraCapture";
 import { downscaleImageFile } from "@/lib/camera";
 
@@ -21,6 +23,9 @@ export function DocumentCapturePage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const bikeId = params.get("bikeId") ?? undefined;
+  // Naming the target vehicle up front removes the "will this create a new car?"
+  // ambiguity — the scan merges into this bike.
+  const bike = useBike(bikeId);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -48,8 +53,10 @@ export function DocumentCapturePage() {
   async function handleFile(file: File) {
     setPreview(URL.createObjectURL(file));
     setBusy(true);
+    const startedAt = Date.now();
     try {
       const doc = await upload.mutateAsync({ file, bikeId });
+      track("scan_uploaded", { ms: Date.now() - startedAt, hasBike: !!bikeId });
       navigate(`/documents/${doc.id}/review`, { replace: true });
     } catch (e) {
       // An aborted upload is not an error — reset silently to the picker.
@@ -63,6 +70,7 @@ export function DocumentCapturePage() {
       // Map raw API error codes to friendly messages instead of leaking
       // "service_unavailable" / "bike_not_found" into the toast.
       const code = (e as Error).message;
+      track("scan_upload_failed", { code });
       const KNOWN: Record<string, string> = {
         service_unavailable: t("capture.errorLimit"),
         file_required: t("capture.errorFileRequired"),
@@ -99,7 +107,9 @@ export function DocumentCapturePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-[22px] tracking-tight">{t("capture.title")}</CardTitle>
-          <CardDescription>{t("capture.subtitle")}</CardDescription>
+          <CardDescription>
+            {bike.data ? t("capture.forVehicle", { name: bike.data.nickname }) : t("capture.subtitle")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <AnimatePresence mode="wait">
