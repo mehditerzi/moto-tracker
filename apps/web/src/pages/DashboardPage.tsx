@@ -10,6 +10,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useUpdateBike } from "@/hooks/useBikes";
 import { useActiveBikeId } from "@/hooks/useActiveBike";
 import { vehicleIcon } from "@/lib/vehicleType";
+import { pushNextDeadline } from "@/lib/widget";
 import { env } from "@/env";
 import { StatusChip } from "@/components/StatusChip";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
@@ -35,6 +36,23 @@ export function DashboardPage() {
     const exists = activeBikeId && dash.data.some((e) => e.bike.id === activeBikeId);
     if (!exists) setActiveBikeId(dash.data[0]!.bike.id);
   }, [dash.data, activeBikeId, setActiveBikeId]);
+
+  // Feed the iOS home-screen widget the soonest upcoming deadline (native no-op
+  // on web). Recomputed whenever the dashboard data changes.
+  useEffect(() => {
+    if (!dash.data) return;
+    const next = collectUpcoming(dash.data)[0];
+    pushNextDeadline(
+      next
+        ? {
+            label: t(`items.${next.type}`),
+            date: next.expiresOn,
+            vehicle: next.bikeName,
+            daysRemaining: next.daysRemaining,
+          }
+        : null,
+    );
+  }, [dash.data, t]);
 
   if (dash.isLoading)
     return (
