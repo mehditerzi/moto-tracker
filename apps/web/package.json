@@ -17,6 +17,7 @@
   "dependencies": {
     "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.4.1",
     "@capacitor/push-notifications": "^8.1.1",
     "@fontsource-variable/geist": "^5.2.8",

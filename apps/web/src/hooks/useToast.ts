@@ -1,4 +1,5 @@
 import * as React from "react";
+import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 type ToastVariant = "default" | "danger" | "success";
 export interface Toast {
@@ -20,6 +21,9 @@ function emit() {
 export function pushToast(t: Omit<Toast, "id">) {
   const id = Math.random().toString(36).slice(2, 9);
   const toast: Toast = { id, durationMs: 4000, ...t };
+  // A subtle tactile confirmation on meaningful outcomes (native only).
+  if (toast.variant === "success") hapticSuccess();
+  else if (toast.variant === "danger") hapticWarning();
   toasts = [...toasts, toast];
   emit();
   setTimeout(() => {
