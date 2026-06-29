@@ -106,9 +106,15 @@ export function DocumentCapturePage() {
       )}
       <Card>
         <CardHeader>
-          <CardTitle className="text-[22px] tracking-tight">{t("capture.title")}</CardTitle>
+          <CardTitle className="text-[22px] tracking-tight">
+            {bikeId ? t("capture.title") : t("capture.newVehicleTitle")}
+          </CardTitle>
           <CardDescription>
-            {bike.data ? t("capture.forVehicle", { name: bike.data.nickname }) : t("capture.subtitle")}
+            {bikeId
+              ? bike.data
+                ? t("capture.forVehicle", { name: bike.data.nickname })
+                : t("capture.subtitle")
+              : t("capture.newVehicleSub")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -136,7 +142,7 @@ export function DocumentCapturePage() {
                 >
                   <ImageIcon className="h-4 w-4" /> {t("capture.gallery")}
                 </Button>
-                {bikeId && (
+                {bikeId ? (
                   <Button
                     type="button"
                     variant="ghost"
@@ -144,6 +150,15 @@ export function DocumentCapturePage() {
                     onClick={() => navigate("/dashboard")}
                   >
                     {t("capture.skip")}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-muted dark:text-muted-dark"
+                    onClick={() => navigate("/bikes/new")}
+                  >
+                    {t("capture.enterManually")}
                   </Button>
                 )}
                 <input
