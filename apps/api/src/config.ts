@@ -38,6 +38,29 @@ const Env = z.object({
   SESSION_SECRET: z.string().min(16),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Garajım <noreply@example.com>"),
+  /**
+   * Local/self-hosted SMTP fallback used when RESEND_API_KEY is unset. Point it
+   * at a local catcher (Mailpit: host=localhost, port=1025, no auth) to actually
+   * receive magic-link / password-reset mail in dev without an external service.
+   * If SMTP_HOST is also unset, email falls back to a console.log of the link.
+   */
+  SMTP_HOST: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_SECURE: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("false"),
+  SMTP_USER: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
+  SMTP_PASS: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   UPLOADS_DIR: z.string().default("./data/uploads"),
