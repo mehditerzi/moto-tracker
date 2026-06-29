@@ -1,11 +1,28 @@
 import { Router } from "express";
 import { z } from "zod";
+import multer from "multer";
+import sharp from "sharp";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { requireUser } from "../middleware/requireUser.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
+import { config } from "../config.js";
 import { bikeCreateSchema, bikeUpdateSchema } from "@mototracker/shared";
 import { inferVehicleType } from "../ocr/catalog.js";
+
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.mimetype)) {
+      cb(new Error("Yalnızca jpeg / png / webp / heic kabul ediliyor"));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 export const bikesRouter: Router = Router();
 
@@ -48,7 +65,9 @@ function rowToBike(r: BikeRow) {
     cylinderCc: r.cylinder_cc,
     fuelType: r.fuel_type,
     firstRegistrationDate: r.first_registration_date,
-    photoUrl: r.photo_url,
+    // photo_url stores the on-disk path; expose a served endpoint instead, with
+    // updatedAt as a cache-buster so a replaced photo refreshes.
+    photoUrl: r.photo_url ? `/api/bikes/${r.id}/photo?v=${encodeURIComponent(r.updated_at)}` : null,
     archived: r.archived === 1,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -163,6 +182,75 @@ bikesRouter.patch(
     }
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
     res.json(rowToBike(row));
+  }),
+);
+
+// ─── vehicle photo ────────────────────────────────────────────────────────────
+
+function ownedBike(userId: string, id: string) {
+  return getDb()
+    .prepare("SELECT id, photo_url FROM bike WHERE id = ? AND user_id = ?")
+    .get(id, userId) as { id: string; photo_url: string | null } | undefined;
+}
+
+bikesRouter.post(
+  "/:id/photo",
+  photoUpload.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) {
+      res.status(400).json({ error: "file_required" });
+      return;
+    }
+    const db = getDb();
+    if (!ownedBike(req.user!.id, req.params.id!)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const userDir = path.join(config.UPLOADS_DIR, req.user!.id);
+    await fs.mkdir(userDir, { recursive: true });
+    const outPath = path.join(userDir, `bike-${req.params.id}.jpg`);
+    // A real photo — keep colour, a generous size, and a center-cropped 4:3 so it
+    // sits nicely as a hero/thumbnail.
+    const buf = await sharp(req.file.buffer)
+      .rotate()
+      .resize({ width: 1280, height: 960, fit: "cover" })
+      .jpeg({ quality: 82 })
+      .toBuffer();
+    await fs.writeFile(outPath, buf);
+    db.prepare("UPDATE bike SET photo_url = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?")
+      .run(outPath, req.params.id, req.user!.id);
+    const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
+    res.status(201).json(rowToBike(row));
+  }),
+);
+
+bikesRouter.get(
+  "/:id/photo",
+  asyncHandler(async (req, res) => {
+    const bike = ownedBike(req.user!.id, req.params.id!);
+    if (!bike?.photo_url) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.sendFile(path.resolve(bike.photo_url));
+  }),
+);
+
+bikesRouter.delete(
+  "/:id/photo",
+  asyncHandler(async (req, res) => {
+    const bike = ownedBike(req.user!.id, req.params.id!);
+    if (!bike) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    getDb()
+      .prepare("UPDATE bike SET photo_url = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?")
+      .run(req.params.id, req.user!.id);
+    if (bike.photo_url) await fs.rm(path.resolve(bike.photo_url), { force: true }).catch(() => {});
+    res.status(204).end();
   }),
 );
 

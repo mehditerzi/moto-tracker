@@ -139,7 +139,12 @@
     "cylinderCc": "Cylinder capacity (cc)",
     "fuelType": "Fuel",
     "firstRegistrationDate": "First registration date",
-    "documents": "Documents"
+    "photo": "Photo",
+    "addPhoto": "Add photo",
+    "changePhoto": "Change",
+    "removePhoto": "Remove photo",
+    "documents": "Documents",
+    "scannedDocs": "Scanned documents"
   },
   "maintenance": {
     "title": "Maintenance",

@@ -139,7 +139,12 @@
     "cylinderCc": "Silindir hacmi (cc)",
     "fuelType": "Yakıt",
     "firstRegistrationDate": "İlk tescil tarihi",
-    "documents": "Belgeler"
+    "photo": "Fotoğraf",
+    "addPhoto": "Fotoğraf ekle",
+    "changePhoto": "Değiştir",
+    "removePhoto": "Fotoğrafı kaldır",
+    "documents": "Belgeler",
+    "scannedDocs": "Taranan belgeler"
   },
   "maintenance": {
     "title": "Bakım",

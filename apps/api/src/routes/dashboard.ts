@@ -15,6 +15,7 @@ interface BikeRow {
   color: string | null;
   photo_url: string | null;
   current_km: number | null;
+  updated_at: string;
 }
 
 export const dashboardRouter: Router = Router();
@@ -28,7 +29,7 @@ dashboardRouter.get(
     const db = getDb();
     const bikes = db
       .prepare(
-        `SELECT id, vehicle_type, nickname, plate, make, model, year, color, photo_url, current_km
+        `SELECT id, vehicle_type, nickname, plate, make, model, year, color, photo_url, current_km, updated_at
          FROM bike
          WHERE user_id = ? AND archived = 0
          ORDER BY created_at ASC`,
@@ -64,7 +65,7 @@ dashboardRouter.get(
           model: b.model,
           year: b.year,
           color: b.color,
-          photoUrl: b.photo_url,
+          photoUrl: b.photo_url ? `/api/bikes/${b.id}/photo?v=${encodeURIComponent(b.updated_at ?? "")}` : null,
           currentKm: b.current_km,
         },
         items,

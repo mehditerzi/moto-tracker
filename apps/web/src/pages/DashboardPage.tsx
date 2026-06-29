@@ -10,6 +10,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useUpdateBike } from "@/hooks/useBikes";
 import { useActiveBikeId } from "@/hooks/useActiveBike";
 import { vehicleIcon } from "@/lib/vehicleType";
+import { env } from "@/env";
 import { StatusChip } from "@/components/StatusChip";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
@@ -113,6 +114,16 @@ export function DashboardPage() {
           transition={{ duration: 0.22 }}
           className="flex flex-col gap-5"
         >
+          {active.bike.photoUrl && (
+            <div className="overflow-hidden rounded-2xl border border-border dark:border-border-dark">
+              <img
+                src={`${env.VITE_API_URL}${active.bike.photoUrl}`}
+                alt={active.bike.nickname}
+                className="block h-40 w-full object-cover"
+              />
+            </div>
+          )}
+
           <header className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="label-micro flex items-center gap-1.5 text-muted dark:text-muted-dark">
