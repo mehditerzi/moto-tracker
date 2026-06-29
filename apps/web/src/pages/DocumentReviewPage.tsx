@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -16,9 +16,11 @@ import { useDocument } from "@/hooks/useDocuments";
 import { useBike, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
 import { useCreateDatedItem } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
+import { track } from "@/lib/telemetry";
 import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
-import type { Bike } from "@mototracker/shared";
+import type { Bike, VehicleType } from "@mototracker/shared";
 
 // ─── page shell ──────────────────────────────────────────────────────────────
 
@@ -38,6 +40,25 @@ export function DocumentReviewPage() {
     const timerId = setTimeout(() => setSlow(true), 20_000);
     return () => clearTimeout(timerId);
   }, [doc.data?.ocrStatus]);
+
+  // Fire one telemetry event when OCR resolves — the core "did the scan work,
+  // how confident, how long" signal. Guarded so polling re-renders don't re-fire.
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    const status = doc.data?.ocrStatus;
+    if (!status || status === "pending" || reportedRef.current) return;
+    reportedRef.current = true;
+    if (status === "done") {
+      const ex = doc.data?.ocrExtracted;
+      track("ocr_completed", {
+        docType: ex?.docType,
+        confidence: ex?.confidence,
+        vehicleType: ex?.vehicleType ?? null,
+      });
+    } else if (status === "failed") {
+      track("ocr_failed", {});
+    }
+  }, [doc.data?.ocrStatus, doc.data?.ocrExtracted]);
 
   if (!id) return null;
   if (doc.isLoading || !doc.data)
@@ -120,6 +141,7 @@ export function DocumentReviewPage() {
         <RuhsatReviewForm
           bikeId={d.bikeId ?? undefined}
           documentId={d.id}
+          vehicleType={ex.vehicleType ?? null}
           extracted={{
             plate: ex.plate ?? "",
             make: ex.make ?? "",
@@ -160,7 +182,11 @@ interface ExtractedBikeFields {
 }
 
 type FieldKey = keyof ExtractedBikeFields;
-const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "chassisNo", "engineNo", "cylinderCc"];
+// Ordered to match the printed Turkish ruhsat (araç tescil belgesi) field codes
+// top-to-bottom: (A) plate, (D.1) make, (D.3) model, (D.4) year, (E) chassis,
+// (P.1) cylinder_cc, (P.5) engine_no — so the review screen reads in the same
+// sequence as the document the user is holding.
+const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "chassisNo", "cylinderCc", "engineNo"];
 
 /** Below this OCR confidence, nudge the user to double-check every value. */
 const LOW_CONFIDENCE = 0.7;
@@ -180,10 +206,11 @@ function bikeToFields(bike: Bike): ExtractedBikeFields {
 // ─── ruhsat form ──────────────────────────────────────────────────────────────
 
 function RuhsatReviewForm({
-  bikeId, documentId, extracted, muayeneDate, confidence,
+  bikeId, documentId, vehicleType, extracted, muayeneDate, confidence,
 }: {
   bikeId?: string;
   documentId: string;
+  vehicleType: VehicleType | null;
   extracted: ExtractedBikeFields;
   muayeneDate: string | null;
   confidence: number;
@@ -229,9 +256,19 @@ function RuhsatReviewForm({
     try {
       await update.mutateAsync(patch as any);
       setSaved(true);
-      pushToast({ variant: "success", title: t("bike.updated") });
+      // `edited` = accepted fields the user changed from what OCR proposed — a
+      // direct proxy for perceived OCR accuracy on this scan.
+      const edited = FIELD_KEYS.filter(
+        (k) => accepted[k] && values[k] !== "" && values[k] !== extracted[k],
+      ).length;
+      track("review_applied", { fields: Object.keys(patch).length, edited });
+      // Name the outcome so the user knows exactly what changed, not just "saved".
+      pushToast({
+        variant: "success",
+        title: t("review.fieldsUpdated", { count: Object.keys(patch).length }),
+      });
     } catch (e) {
-      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(e) });
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
     }
   };
 
@@ -241,6 +278,9 @@ function RuhsatReviewForm({
     try {
       const newBike = await create.mutateAsync({
         nickname: nickname.trim(),
+        // Persist the catalog-inferred type so a scanned car isn't saved as a
+        // motorcycle (the server default). Omitted when ambiguous.
+        vehicleType: vehicleType ?? undefined,
         plate:      (patch.plate      as string | undefined) || undefined,
         make:       (patch.make       as string | undefined) || undefined,
         model:      (patch.model      as string | undefined) || undefined,
@@ -251,9 +291,10 @@ function RuhsatReviewForm({
       });
       setCreatedBikeId(newBike.id);
       setSaved(true);
+      track("bike_created_from_scan", { vehicleType: vehicleType ?? null });
       pushToast({ variant: "success", title: t("bike.added") });
     } catch (e) {
-      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(e) });
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
     }
   };
 
@@ -342,7 +383,12 @@ function RuhsatReviewForm({
             </Button>
           )}
           <Button asChild variant="ghost">
-            <Link to="/dashboard"><X className="h-4 w-4" /></Link>
+            <Link
+              to="/dashboard"
+              onClick={() => { if (!saved) track("review_dismissed"); }}
+            >
+              <X className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
       </CardContent>
@@ -395,7 +441,7 @@ function ReminderDatesPanel({
       setSavedTypes((s) => ({ ...s, [type]: true }));
       pushToast({ variant: "success", title: t("review.dateAdded") });
     } catch (e) {
-      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(e) });
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
     } finally {
       setPending(null);
     }

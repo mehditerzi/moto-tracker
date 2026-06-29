@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Camera } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { track } from "@/lib/telemetry";
 
 interface Props {
   bikeId?: string;
@@ -28,6 +29,7 @@ export function CaptureFab({ bikeId }: Props) {
       <Link
         to={to}
         aria-label={t("capture.title")}
+        onClick={() => track("scan_started", { hasBike: !!bikeId })}
         className="relative flex h-14 w-14 items-center justify-center rounded-full bg-accent text-black shadow-ignite ring-1 ring-black/10 transition hover:bg-accent/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg dark:focus-visible:ring-offset-bg-dark"
       >
         {/* Faint outer ring — sells the "instrument" feeling */}

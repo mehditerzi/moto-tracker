@@ -13,6 +13,7 @@ import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { BikesPage } from "@/pages/BikesPage";
 import { BikeFormPage } from "@/pages/BikeFormPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { TripsPage } from "@/pages/TripsPage";
 import { DatedItemFormPage } from "@/pages/DatedItemFormPage";
 import { DatedItemDetailPage } from "@/pages/DatedItemDetailPage";
 import { DocumentCapturePage } from "@/pages/DocumentCapturePage";
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "bikes", element: <BikesPage /> },
+      { path: "trips", element: <TripsPage /> },
       { path: "bikes/new", element: <BikeFormPage /> },
       { path: "bikes/:id/edit", element: <BikeFormPage /> },
       {

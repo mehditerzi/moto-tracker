@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { PROVIDER_OPTIONS } from "@/lib/vehicleOptions";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
 import {
   useCreateDatedItem,
   useDatedItem,
@@ -86,7 +87,7 @@ export function DatedItemFormPage({ mode }: Props) {
         navigate(`/dated-items/${created.id}`);
       }
     } catch (err) {
-      pushToast({ variant: "danger", title: t("items.saveFailed"), description: String(err) });
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(err, t) });
     }
   };
 
@@ -97,7 +98,7 @@ export function DatedItemFormPage({ mode }: Props) {
       await deleteMut.mutateAsync(itemId);
       navigate("/dashboard");
     } catch (e) {
-      pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
+      pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
     }
   };
 

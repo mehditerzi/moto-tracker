@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import type { DashboardEntry } from "@mototracker/shared";
 import { cn } from "@/lib/cn";
+import { vehicleIcon } from "@/lib/vehicleType";
 
 interface Props {
   entries: DashboardEntry[];
@@ -19,6 +20,7 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect }: Props) {
     <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden">
       {entries.map((e) => {
         const active = e.bike.id === activeBikeId;
+        const Icon = vehicleIcon(e.bike.vehicleType);
         return (
           <button
             key={e.bike.id}
@@ -39,6 +41,7 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect }: Props) {
                 transition={{ type: "spring", stiffness: 420, damping: 32 }}
               />
             )}
+            <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" strokeWidth={1.8} />
             <span className="font-medium">{e.bike.nickname}</span>
             {e.bike.plate && (
               <span className="num text-[11px] uppercase tracking-wider opacity-70">

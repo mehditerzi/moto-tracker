@@ -2,8 +2,21 @@
   "brand": "Garajım",
   "nav": {
     "bikes": "Vehicles",
+    "trips": "Trips",
     "settings": "Settings",
     "signOut": "Sign out"
+  },
+  "trips": {
+    "title": "Trips",
+    "empty": "No trips yet",
+    "emptySub": "With tracking on, drives of {{km}} km or more are logged automatically.",
+    "unknownVehicle": "Vehicle",
+    "tracking": "Automatic trip tracking",
+    "trackingOnHint": "On — drives are detected and saved to the active vehicle.",
+    "trackingOffHint": "Off — use location to log your drives automatically.",
+    "logged": "Trip logged · {{km}} km",
+    "bgTitle": "Tracking your trip",
+    "bgMessage": "Garajım is measuring your drive distance."
   },
   "auth": {
     "signIn": "Sign in",
@@ -186,6 +199,7 @@
   "capture": {
     "title": "Upload document",
     "subtitle": "Take a photo of your insurance policy, kasko or inspection certificate. Dates are read automatically; confirm anything missing.",
+    "forVehicle": "Scan a document for {{name}} — the details are saved to this vehicle.",
     "camera": "Take photo",
     "gallery": "Pick from gallery",
     "uploading": "Uploading and reading...",
@@ -210,6 +224,7 @@
   "review": {
     "reading": "Reading document",
     "readingSub": "This takes a few seconds.",
+    "fieldsUpdated": "Updated {{count}} field(s)",
     "failedTitle": "Couldn't read",
     "failedSub": "We tried to read the document but something went wrong.",
     "retry": "Try again",
@@ -295,5 +310,19 @@
     "title": "Page not found",
     "sub": "The page you're looking for isn't here.",
     "home": "Go home"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "server": "The server hit a problem. Please try again in a moment.",
+    "network": "Couldn't connect. Check your internet and try again.",
+    "unauthenticated": "Your session has expired. Please sign in again.",
+    "validation_error": "Some of the details are invalid. Please check the fields.",
+    "bike_not_found": "Vehicle not found. Refresh the page and try again.",
+    "not_found": "Record not found. It may have been deleted.",
+    "service_unavailable": "Document scanning is busy right now. Please try again shortly.",
+    "file_required": "No image was selected. Please choose a photo.",
+    "invalid_password": "Incorrect password. Please try again.",
+    "bad_item_type": "Invalid record type.",
+    "internal_error": "The server hit a problem. Please try again in a moment."
   }
 }

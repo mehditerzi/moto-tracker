@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
 import {
   useCreateMaintenance,
   useDeleteMaintenance,
@@ -90,7 +91,7 @@ export function MaintenanceFormPage({ mode }: Props) {
       pushToast({
         variant: "danger",
         title: t("items.saveFailed"),
-        description: String(e),
+        description: friendlyError(e, t),
       });
     }
   });
@@ -102,7 +103,7 @@ export function MaintenanceFormPage({ mode }: Props) {
       await deleteMut.mutateAsync(itemId);
       navigate("/dashboard");
     } catch (e) {
-      pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
+      pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
     }
   };
 

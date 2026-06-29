@@ -14,6 +14,8 @@ import { bikesNestedMaintRouter, maintenanceItemsRouter } from "./routes/mainten
 import { notificationPreferencesRouter } from "./routes/notificationPreferences.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
+import { eventsRouter } from "./routes/events.js";
+import { tripsRouter } from "./routes/trips.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
 import { privacyRouter } from "./routes/privacy.js";
@@ -80,6 +82,8 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/notification-preferences", notificationPreferencesRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/documents", documentsRouter);
+  app.use("/api/events", eventsRouter);
+  app.use("/api/trips", tripsRouter);
   app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
 

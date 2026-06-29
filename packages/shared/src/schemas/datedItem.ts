@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { vehicleTypeSchema } from "./bike.js";
 
 export const datedItemTypeSchema = z.enum(["sigorta", "kasko", "muayene"]);
 export type DatedItemType = z.infer<typeof datedItemTypeSchema>;
@@ -41,6 +42,7 @@ export type DatedItemUpdateInput = z.infer<typeof datedItemUpdateSchema>;
 export const dashboardEntrySchema = z.object({
   bike: z.object({
     id: z.string(),
+    vehicleType: vehicleTypeSchema,
     nickname: z.string(),
     plate: z.string().nullable(),
     make: z.string().nullable(),

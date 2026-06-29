@@ -17,6 +17,7 @@ import { COLOR_OPTIONS, yearOptions } from "@/lib/vehicleOptions";
 import { useBike, useCreateBike, useUpdateBike, useArchiveBike } from "@/hooks/useBikes";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
 import { useConfirm } from "@/components/ConfirmSheet";
 
 export function BikeFormPage() {
@@ -91,15 +92,19 @@ export function BikeFormPage() {
         pushToast({ variant: "success", title: t("bike.updated") });
         navigate("/bikes");
       } else {
-        const created = await createMut.mutateAsync(payload);
+        await createMut.mutateAsync(payload);
         pushToast({ variant: "success", title: t("bike.added") });
-        navigate(`/capture?bikeId=${created.id}`);
+        // Adding a vehicle is manual entry only — don't force the user into the
+        // scanner. OCR is initiated from the dashboard capture button and merges
+        // into the active vehicle. (Previously navigated to /capture, which
+        // auto-opened the camera right after saving.)
+        navigate("/bikes");
       }
     } catch (e) {
       pushToast({
         variant: "danger",
         title: t("items.saveFailed"),
-        description: String(e),
+        description: friendlyError(e, t),
       });
     }
   });
@@ -112,7 +117,7 @@ export function BikeFormPage() {
       await archiveMut.mutateAsync(id);
       navigate("/bikes");
     } catch (e) {
-      pushToast({ variant: "danger", title: t("common.error"), description: (e as Error).message });
+      pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
     }
   };
 
