@@ -63,6 +63,11 @@ const Env = z.object({
   ),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Sign in with Apple. APPLE_CLIENT_ID is the Service ID (web flow);
+  // APPLE_CLIENT_SECRET is the ES256 JWT generated from the .p8 key (rotate
+  // every ≤6 months). Both unset → Apple sign-in stays off.
+  APPLE_CLIENT_ID: z.string().optional(),
+  APPLE_CLIENT_SECRET: z.string().optional(),
   UPLOADS_DIR: z.string().default("./data/uploads"),
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_VISION_MODEL: z.string().default("gemma4:26b"),
