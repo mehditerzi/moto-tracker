@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Apple } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,36 @@ import { Label } from "@/components/ui/label";
 import { BrandMark } from "@/components/BrandMark";
 import { signIn, signUp } from "@/lib/authClient";
 import { pushToast } from "@/hooks/useToast";
+import { usePublicConfig } from "@/hooks/usePublicConfig";
+
+function SocialButtons() {
+  const { t } = useTranslation();
+  const cfg = usePublicConfig();
+  if (!cfg.data?.appleSignIn && !cfg.data?.googleSignIn) return null;
+  const go = (provider: "apple" | "google") =>
+    signIn.social({ provider, callbackURL: `${window.location.origin}/dashboard` });
+  return (
+    <div className="mt-5 flex flex-col gap-2">
+      <div className="my-1 flex items-center gap-3">
+        <span className="h-px flex-1 bg-border dark:bg-border-dark" />
+        <span className="text-[11px] uppercase tracking-wider text-muted dark:text-muted-dark">
+          {t("auth.or")}
+        </span>
+        <span className="h-px flex-1 bg-border dark:bg-border-dark" />
+      </div>
+      {cfg.data.appleSignIn && (
+        <Button type="button" variant="outline" size="lg" onClick={() => go("apple")}>
+          <Apple className="h-4 w-4" /> {t("auth.continueApple")}
+        </Button>
+      )}
+      {cfg.data.googleSignIn && (
+        <Button type="button" variant="outline" size="lg" onClick={() => go("google")}>
+          {t("auth.continueGoogle")}
+        </Button>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   mode: "signin" | "signup";
@@ -69,6 +99,7 @@ export function LandingPage({ mode }: Props) {
             </div>
             <CardContent className="p-6">
               {mode === "signin" ? <SignInForm /> : <SignUpForm />}
+              <SocialButtons />
             </CardContent>
           </Card>
         </motion.div>

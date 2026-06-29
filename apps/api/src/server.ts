@@ -7,6 +7,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { config } from "./config.js";
 import { healthRouter } from "./routes/health.js";
+import { publicConfigRouter } from "./routes/publicConfig.js";
 import { meRouter } from "./routes/me.js";
 import { bikesRouter } from "./routes/bikes.js";
 import { bikesNestedDatedRouter, datedItemsRouter } from "./routes/datedItems.js";
@@ -74,6 +75,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use(express.json({ limit: "1mb" }));
 
   app.use("/api/health", healthRouter);
+  app.use("/api/public-config", publicConfigRouter);
   app.use("/api/me", meRouter);
   app.use("/api/bikes", bikesRouter);
   app.use("/api/bikes", bikesNestedDatedRouter);

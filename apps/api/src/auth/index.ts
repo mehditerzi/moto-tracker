@@ -39,15 +39,24 @@ function makeAuth() {
         await sendPasswordResetEmail(user.email, url);
       },
     },
-    socialProviders:
-      config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET
+    socialProviders: {
+      ...(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET
         ? {
             google: {
               clientId: config.GOOGLE_CLIENT_ID,
               clientSecret: config.GOOGLE_CLIENT_SECRET,
             },
           }
-        : undefined,
+        : {}),
+      ...(config.APPLE_CLIENT_ID && config.APPLE_CLIENT_SECRET
+        ? {
+            apple: {
+              clientId: config.APPLE_CLIENT_ID,
+              clientSecret: config.APPLE_CLIENT_SECRET,
+            },
+          }
+        : {}),
+    },
     plugins: [
       magicLink({
         sendMagicLink: async ({ email, url }) => {
