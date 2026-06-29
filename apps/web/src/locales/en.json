@@ -6,6 +6,14 @@
     "settings": "Settings",
     "signOut": "Sign out"
   },
+  "services": {
+    "title": "Official services",
+    "subtitle": "Quick access via TÜVTÜRK and e-Devlet.",
+    "inspectionBooking": "Book inspection (TÜVTÜRK)",
+    "inspectionStatus": "Check inspection status (e-Devlet)",
+    "insurancePolicy": "Traffic insurance policy (e-Devlet)",
+    "trafficFines": "Check traffic fines (e-Devlet)"
+  },
   "trips": {
     "title": "Trips",
     "empty": "No trips yet",

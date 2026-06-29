@@ -15,6 +15,7 @@ import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
 import { statusFor } from "@/lib/datedItems";
 import { MaintenancePanel } from "@/components/MaintenancePanel";
+import { OfficialServicesCard } from "@/components/OfficialServicesCard";
 import { pushToast } from "@/hooks/useToast";
 import type { DashboardEntry } from "@mototracker/shared";
 
@@ -143,6 +144,8 @@ export function DashboardPage() {
           </section>
 
           <MaintenancePanel bikeId={active.bike.id} />
+
+          <OfficialServicesCard />
         </motion.div>
       </AnimatePresence>
 

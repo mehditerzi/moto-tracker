@@ -6,6 +6,14 @@
     "settings": "Ayarlar",
     "signOut": "Çıkış"
   },
+  "services": {
+    "title": "Resmi işlemler",
+    "subtitle": "TÜVTÜRK ve e-Devlet üzerinden hızlı erişim.",
+    "inspectionBooking": "Muayene randevusu al (TÜVTÜRK)",
+    "inspectionStatus": "Muayene durumu sorgula (e-Devlet)",
+    "insurancePolicy": "Trafik sigortası poliçesi (e-Devlet)",
+    "trafficFines": "Trafik cezası sorgula (e-Devlet)"
+  },
   "trips": {
     "title": "Yolculuklar",
     "empty": "Henüz yolculuk yok",
