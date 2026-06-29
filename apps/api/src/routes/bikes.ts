@@ -23,6 +23,8 @@ interface BikeRow {
   chassis_no: string | null;
   engine_no: string | null;
   cylinder_cc: number | null;
+  fuel_type: string | null;
+  first_registration_date: string | null;
   photo_url: string | null;
   archived: number;
   created_at: string;
@@ -44,6 +46,8 @@ function rowToBike(r: BikeRow) {
     chassisNo: r.chassis_no,
     engineNo: r.engine_no,
     cylinderCc: r.cylinder_cc,
+    fuelType: r.fuel_type,
+    firstRegistrationDate: r.first_registration_date,
     photoUrl: r.photo_url,
     archived: r.archived === 1,
     createdAt: r.created_at,
@@ -76,8 +80,8 @@ bikesRouter.post(
     const id = newId();
     const db = getDb();
     db.prepare(
-      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc, fuel_type, first_registration_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.user!.id,
@@ -94,6 +98,8 @@ bikesRouter.post(
       body.chassisNo ?? null,
       body.engineNo ?? null,
       body.cylinderCc ?? null,
+      body.fuelType ?? null,
+      body.firstRegistrationDate ?? null,
     );
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(id) as BikeRow;
     res.status(201).json(rowToBike(row));
@@ -139,6 +145,8 @@ bikesRouter.patch(
       chassisNo: "chassis_no",
       engineNo: "engine_no",
       cylinderCc: "cylinder_cc",
+      fuelType: "fuel_type",
+      firstRegistrationDate: "first_registration_date",
     };
     const sets: string[] = [];
     const values: (string | number | null | undefined)[] = [];

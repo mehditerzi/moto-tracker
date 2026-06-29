@@ -147,10 +147,12 @@ export function DocumentReviewPage() {
             make: ex.make ?? "",
             model: ex.model ?? "",
             year: ex.year != null ? String(ex.year) : "",
+            firstRegistrationDate: ex.firstRegistrationDate ?? "",
             color: ex.color ?? "",
             chassisNo: ex.chassisNo ?? "",
             engineNo: ex.engineNo ?? "",
             cylinderCc: ex.cylinderCc != null ? String(ex.cylinderCc) : "",
+            fuelType: ex.fuelType ?? "",
           }}
           muayeneDate={ex.dates?.muayeneExpiresOn ?? null}
           confidence={ex.confidence}
@@ -177,10 +179,12 @@ interface ExtractedBikeFields {
   make: string;
   model: string;
   year: string;
+  firstRegistrationDate: string;
   color: string;
   chassisNo: string;
   engineNo: string;
   cylinderCc: string;
+  fuelType: string;
 }
 
 type FieldKey = keyof ExtractedBikeFields;
@@ -188,7 +192,7 @@ type FieldKey = keyof ExtractedBikeFields;
 // top-to-bottom: (A) plate, (D.1) make, (D.3) model, (D.4) year, (E) chassis,
 // (P.1) cylinder_cc, (P.5) engine_no — so the review screen reads in the same
 // sequence as the document the user is holding.
-const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "color", "chassisNo", "cylinderCc", "engineNo"];
+const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "firstRegistrationDate", "color", "chassisNo", "cylinderCc", "fuelType", "engineNo"];
 
 /** Below this OCR confidence, nudge the user to double-check every value. */
 const LOW_CONFIDENCE = 0.7;
@@ -199,10 +203,12 @@ function bikeToFields(bike: Bike): ExtractedBikeFields {
     make: bike.make ?? "",
     model: bike.model ?? "",
     year: bike.year != null ? String(bike.year) : "",
+    firstRegistrationDate: bike.firstRegistrationDate ?? "",
     color: bike.color ?? "",
     chassisNo: bike.chassisNo ?? "",
     engineNo: bike.engineNo ?? "",
     cylinderCc: bike.cylinderCc != null ? String(bike.cylinderCc) : "",
+    fuelType: bike.fuelType ?? "",
   };
 }
 
@@ -288,10 +294,12 @@ function RuhsatReviewForm({
         make:       (patch.make       as string | undefined) || undefined,
         model:      (patch.model      as string | undefined) || undefined,
         year:       (patch.year       as number | undefined) || undefined,
+        firstRegistrationDate: (patch.firstRegistrationDate as string | undefined) || undefined,
         color:      (patch.color      as string | undefined) || undefined,
         chassisNo:  (patch.chassisNo  as string | undefined) || undefined,
         engineNo:   (patch.engineNo   as string | undefined) || undefined,
         cylinderCc: (patch.cylinderCc as number | undefined) || undefined,
+        fuelType:   (patch.fuelType   as string | undefined) || undefined,
       });
       setCreatedBikeId(newBike.id);
       setSaved(true);

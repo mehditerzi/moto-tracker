@@ -4,6 +4,11 @@ export const COLOR_OPTIONS = [
   "Sarı", "Turuncu", "Kahverengi", "Bordo", "Mor", "Pembe", "Altın", "Bej",
 ];
 
+/** Common Turkish fuel types, for the fuel picker. Free text still allowed. */
+export const FUEL_OPTIONS = [
+  "Benzin", "Dizel", "LPG", "Benzin + LPG", "Elektrik", "Hibrit", "Hidrojen",
+];
+
 /** Turkish insurance providers, for the dated-item provider picker. */
 export const PROVIDER_OPTIONS = [
   "Allianz", "Anadolu Sigorta", "Aksigorta", "Axa Sigorta", "HDI Sigorta",
