@@ -9,6 +9,7 @@ Türk ruhsatlarında standart alan kodları vardır. Bu kodlara göre eşle:
   (D.3)  → model        — TİCARİ ADI (MT-09, CB500F, R1200GS vb.)
            (D.2) TİPİ kodu (RN29, SC79 vb.) model alanına GİRMESİN
   (D.4)  → year         — model yılı (4 haneli tam sayı)
+  (R)    → color        — RENGİ (BEYAZ, SİYAH, GRİ, KIRMIZI, LACİVERT vb.)
   (E)    → chassis_no   — uzun alfanümerik VIN benzeri şasi kodu
   (P.5)  → engine_no    — araç motor numarası
            (V) T.C. KİMLİK NO / VERGİ NO engine_no alanına KESİNLİKLE GİRMESİN
@@ -45,6 +46,7 @@ SADECE aşağıdaki JSON'u döndür — açıklama veya kod bloğu ekleme:
   "make": "marka (D.1) veya null",
   "model": "Ticari Adı (D.3) veya null — tip kodu (D.2) değil",
   "year": tam sayı veya null,
+  "color": "(R) Rengi veya null",
   "chassis_no": "(E) Şasi No veya null",
   "engine_no": "(P.5) Motor No veya null — TC kimlik/vergi no değil",
   "cylinder_cc": "(P.1) Silindir Hacmi cm³ tam sayı veya null — ağırlık değil",

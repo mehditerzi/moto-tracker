@@ -25,6 +25,7 @@ const RawSchema = z.object({
   make: optionalString,
   model: optionalString,
   year: optionalInt,
+  color: optionalString,
   chassis_no: optionalString,
   engine_no: optionalString,
   cylinder_cc: z
@@ -57,6 +58,7 @@ export interface ParsedOcr {
   make: string | null;
   model: string | null;
   year: number | null;
+  color: string | null;
   chassisNo: string | null;
   engineNo: string | null;
   cylinderCc: number | null;
@@ -134,6 +136,7 @@ export function parseOcr(rawText: string): ParsedOcr {
     make: parsed.make,
     model: parsed.model,
     year: parsed.year,
+    color: parsed.color,
     chassisNo: parsed.chassis_no,
     engineNo: parsed.engine_no,
     cylinderCc: parsed.cylinder_cc,

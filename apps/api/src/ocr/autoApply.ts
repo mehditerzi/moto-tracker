@@ -101,8 +101,8 @@ function pickOrCreateBike(
     // when the make/model is ambiguous (e.g. a brand that builds both).
     const vehicleType = inferVehicleType(parsed.make, parsed.model) ?? "motorcycle";
     db.prepare(
-      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, chassis_no, engine_no, cylinder_cc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, color, chassis_no, engine_no, cylinder_cc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       userId,
@@ -112,6 +112,7 @@ function pickOrCreateBike(
       parsed.make,
       parsed.model,
       parsed.year,
+      parsed.color,
       parsed.chassisNo,
       parsed.engineNo,
       parsed.cylinderCc,
@@ -135,9 +136,9 @@ function patchBikeBlanks(
   parsed: ParsedOcr,
 ): boolean {
   const row = db
-    .prepare("SELECT plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE id = ? AND user_id = ?")
+    .prepare("SELECT plate, make, model, year, color, chassis_no, engine_no, cylinder_cc FROM bike WHERE id = ? AND user_id = ?")
     .get(bikeId, userId) as
-    | { plate: string | null; make: string | null; model: string | null; year: number | null; chassis_no: string | null; engine_no: string | null; cylinder_cc: number | null }
+    | { plate: string | null; make: string | null; model: string | null; year: number | null; color: string | null; chassis_no: string | null; engine_no: string | null; cylinder_cc: number | null }
     | undefined;
   if (!row) return false;
 
@@ -149,6 +150,7 @@ function patchBikeBlanks(
     ["make", parsed.make],
     ["model", parsed.model],
     ["year", parsed.year],
+    ["color", parsed.color],
     ["chassis_no", parsed.chassisNo],
     ["engine_no", parsed.engineNo],
     ["cylinder_cc", parsed.cylinderCc],
