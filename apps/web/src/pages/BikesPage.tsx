@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useBikes } from "@/hooks/useBikes";
 import { vehicleIcon } from "@/lib/vehicleType";
+import { env } from "@/env";
 
 export function BikesPage() {
   const { t } = useTranslation();
@@ -79,9 +80,17 @@ export function BikesPage() {
             <Link to={`/bikes/${b.id}/edit`} className="block">
               <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-text/20 hover:shadow-card dark:hover:border-text-dark/20">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
-                    <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
-                  </div>
+                  {b.photoUrl ? (
+                    <img
+                      src={`${env.VITE_API_URL}${b.photoUrl}`}
+                      alt=""
+                      className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-border dark:ring-border-dark"
+                    />
+                  ) : (
+                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
+                      <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-semibold">{b.nickname}</div>
                     <div className="truncate text-[13px] text-muted dark:text-muted-dark">

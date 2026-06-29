@@ -19,7 +19,8 @@ export const bikeSchema = z.object({
   cylinderCc: z.number().int().min(0).nullable(),
   fuelType: z.string().max(40).nullable(),
   firstRegistrationDate: z.string().max(10).nullable(),
-  photoUrl: z.string().url().nullable(),
+  // A served API path (e.g. /api/bikes/:id/photo?v=…), not an absolute URL.
+  photoUrl: z.string().nullable(),
   archived: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),

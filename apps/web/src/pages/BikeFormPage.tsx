@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Trash2, Pencil, Plus } from "lucide-react";
+import { Trash2, Pencil, Plus, Camera, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,19 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
 import { COLOR_OPTIONS, FUEL_OPTIONS, yearOptions } from "@/lib/vehicleOptions";
-import { useBike, useCreateBike, useUpdateBike, useArchiveBike } from "@/hooks/useBikes";
+import {
+  useBike,
+  useCreateBike,
+  useUpdateBike,
+  useArchiveBike,
+  useUploadBikePhoto,
+  useDeleteBikePhoto,
+} from "@/hooks/useBikes";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
+import { useDocumentsForBike } from "@/hooks/useDocuments";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
+import { env } from "@/env";
 import { useConfirm } from "@/components/ConfirmSheet";
 
 export function BikeFormPage() {
@@ -212,6 +221,9 @@ export function BikeFormPage() {
           <CardTitle>{isEdit ? t("bike.editTitle") : t("bike.newTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
+          {isEdit && id && (
+            <VehiclePhotoSection bikeId={id} photoUrl={bike.data?.photoUrl ?? null} />
+          )}
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
             {/* Vehicle type — scopes the make/model dropdowns below */}
             <Field label={t("bike.vehicleType")}>
@@ -408,9 +420,125 @@ export function BikeFormPage() {
             )}
           </form>
           {isEdit && id && <BikeDocumentsSection bikeId={id} />}
+          {isEdit && id && <DocumentWalletSection bikeId={id} />}
         </CardContent>
       </Card>
     </motion.div>
+  );
+}
+
+function VehiclePhotoSection({ bikeId, photoUrl }: { bikeId: string; photoUrl: string | null }) {
+  const { t } = useTranslation();
+  const upload = useUploadBikePhoto(bikeId);
+  const remove = useDeleteBikePhoto(bikeId);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const src = photoUrl ? `${env.VITE_API_URL}${photoUrl}` : null;
+
+  const pick = () => inputRef.current?.click();
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      await upload.mutateAsync(f);
+    } catch (err) {
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(err, t) });
+    }
+  };
+
+  return (
+    <div className="mb-4">
+      {src ? (
+        <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border-dark">
+          <img src={src} alt={t("bike.photo")} className="block h-44 w-full object-cover" />
+          <div className="absolute bottom-2 right-2 flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={pick} disabled={upload.isPending}>
+              <Camera className="h-3.5 w-3.5" /> {t("bike.changePhoto")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-danger border-danger/40 hover:bg-danger/10"
+              onClick={() => remove.mutate()}
+              disabled={remove.isPending}
+              aria-label={t("bike.removePhoto")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={pick}
+          disabled={upload.isPending}
+          className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-muted transition hover:border-text/30 hover:text-text dark:border-border-dark dark:text-muted-dark"
+        >
+          <Camera className="h-6 w-6" strokeWidth={1.6} />
+          <span className="text-[13px] font-medium">
+            {upload.isPending ? t("common.loading") : t("bike.addPhoto")}
+          </span>
+        </button>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+    </div>
+  );
+}
+
+function DocumentWalletSection({ bikeId }: { bikeId: string }) {
+  const { t } = useTranslation();
+  const docs = useDocumentsForBike(bikeId);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  if (!docs.data || docs.data.length === 0) return null;
+
+  return (
+    <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 dark:border-border-dark">
+      <span className="label-micro text-muted dark:text-muted-dark">{t("bike.scannedDocs")}</span>
+      <div className="grid grid-cols-3 gap-2">
+        {docs.data.map((d) => {
+          const url = `${env.VITE_API_URL}/api/documents/${d.id}/file`;
+          return (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => setLightbox(url)}
+              className="group relative aspect-[3/4] overflow-hidden rounded-xl border border-border dark:border-border-dark"
+            >
+              <img src={url} alt="" className="h-full w-full object-cover" />
+              {d.docType && (
+                <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
+                  {d.docType}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            aria-label={t("review.close")}
+            onClick={() => setLightbox(null)}
+            className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={lightbox}
+            alt={t("bike.scannedDocs")}
+            className="max-h-full max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

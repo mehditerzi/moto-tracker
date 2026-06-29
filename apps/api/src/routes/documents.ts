@@ -68,6 +68,25 @@ const upload = multer({
 export const documentsRouter: Router = Router();
 documentsRouter.use(requireUser);
 
+// GET /api/documents?bikeId=… → a vehicle's scanned documents (the wallet).
+documentsRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const bikeId = typeof req.query.bikeId === "string" ? req.query.bikeId : null;
+    const rows = (
+      bikeId
+        ? db
+            .prepare("SELECT * FROM document WHERE user_id = ? AND bike_id = ? ORDER BY created_at DESC LIMIT 100")
+            .all(req.user!.id, bikeId)
+        : db
+            .prepare("SELECT * FROM document WHERE user_id = ? ORDER BY created_at DESC LIMIT 100")
+            .all(req.user!.id)
+    ) as DocRow[];
+    res.json(rows.map(rowToDocument));
+  }),
+);
+
 documentsRouter.post(
   "/",
   upload.single("file"),

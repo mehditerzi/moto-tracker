@@ -18,6 +18,15 @@ export function useDocument(id: string | undefined, opts?: { pollWhilePending?: 
   });
 }
 
+export function useDocumentsForBike(bikeId: string | undefined) {
+  return useQuery<Document[]>({
+    queryKey: ["documents", bikeId ?? "all"],
+    queryFn: () =>
+      api<Document[]>(`/api/documents${bikeId ? `?bikeId=${encodeURIComponent(bikeId)}` : ""}`),
+    enabled: !!bikeId,
+  });
+}
+
 export interface UploadDocumentInput {
   file: File;
   bikeId?: string;
