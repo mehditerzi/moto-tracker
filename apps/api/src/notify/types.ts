@@ -3,7 +3,7 @@ export interface DueNotification {
   itemKind: "dated" | "maintenance";
   itemId: string;
   bikeId: string;
-  itemType: "sigorta" | "kasko" | "muayene" | "maintenance";
+  itemType: "sigorta" | "kasko" | "muayene" | "maintenance" | "mtv";
   leadDays: number;
   expiresOn: string;
   bikeNickname: string;

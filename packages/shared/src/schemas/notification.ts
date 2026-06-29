@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const notifItemTypeSchema = z.enum(["sigorta", "kasko", "muayene", "maintenance"]);
+export const notifItemTypeSchema = z.enum(["sigorta", "kasko", "muayene", "maintenance", "mtv"]);
 export type NotifItemType = z.infer<typeof notifItemTypeSchema>;
 
 export const notifPreferenceSchema = z.object({

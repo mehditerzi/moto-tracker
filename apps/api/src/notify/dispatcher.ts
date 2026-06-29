@@ -24,6 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
   kasko: "Kasko",
   muayene: "Muayene",
   maintenance: "Bakım",
+  mtv: "MTV",
 };
 
 function buildPayload(n: DueNotification) {

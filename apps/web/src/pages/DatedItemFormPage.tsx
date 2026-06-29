@@ -21,7 +21,7 @@ import {
 import type { DatedItemType } from "@mototracker/shared";
 import { useConfirm } from "@/components/ConfirmSheet";
 
-const TYPES: DatedItemType[] = ["sigorta", "kasko", "muayene"];
+const TYPES: DatedItemType[] = ["sigorta", "kasko", "muayene", "mtv"];
 
 interface Props {
   mode: "new" | "edit";
@@ -121,7 +121,7 @@ export function DatedItemFormPage({ mode }: Props) {
           <form onSubmit={onSubmit} className="flex flex-col gap-5">
             {/* Type selector — hidden in edit mode */}
             {!isEdit && (
-              <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
+              <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
                 {TYPES.map((tt) => (
                   <button
                     key={tt}
@@ -161,8 +161,8 @@ export function DatedItemFormPage({ mode }: Props) {
               {dateError && <p className="text-xs text-danger">{dateError}</p>}
             </div>
 
-            {/* Provider — searchable, but free text allowed for anything missing */}
-            {type !== "muayene" && (
+            {/* Provider — only for insurance; muayene and mtv have no provider */}
+            {type !== "muayene" && type !== "mtv" && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="provider">{t("items.provider")}</Label>
                 <Combobox

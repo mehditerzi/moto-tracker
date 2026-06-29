@@ -21,7 +21,7 @@ interface BikeRow {
 export const dashboardRouter: Router = Router();
 dashboardRouter.use(requireUser);
 
-const ITEM_TYPES = ["sigorta", "kasko", "muayene"] as const;
+const ITEM_TYPES = ["sigorta", "kasko", "muayene", "mtv"] as const;
 
 dashboardRouter.get(
   "/",
@@ -48,6 +48,7 @@ dashboardRouter.get(
         sigorta: null,
         kasko: null,
         muayene: null,
+        mtv: null,
       };
       for (const t of ITEM_TYPES) {
         const row = latestStmt.get(b.id, req.user!.id, t) as

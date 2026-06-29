@@ -18,7 +18,7 @@ import { statusFor } from "@/lib/datedItems";
 import { MaintenancePanel } from "@/components/MaintenancePanel";
 import { OfficialServicesCard } from "@/components/OfficialServicesCard";
 import { pushToast } from "@/hooks/useToast";
-import type { DashboardEntry } from "@mototracker/shared";
+import type { DashboardEntry, DatedItemType } from "@mototracker/shared";
 
 export function DashboardPage() {
   const { t } = useTranslation();
@@ -148,7 +148,7 @@ export function DashboardPage() {
             </Button>
           </header>
 
-          <section className="grid gap-3 sm:grid-cols-3" aria-label={t("dashboard.active")}>
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label={t("dashboard.active")}>
             {TYPE_ORDER.map((type, i) => (
               <StatusChip key={type} type={type} bikeId={active.bike.id} item={active.items[type]} index={i} />
             ))}
@@ -174,7 +174,7 @@ export function DashboardPage() {
 interface UpcomingItem {
   bikeId: string;
   bikeName: string;
-  type: "sigorta" | "kasko" | "muayene";
+  type: DatedItemType;
   itemId: string;
   daysRemaining: number;
   expiresOn: string;

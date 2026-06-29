@@ -19,6 +19,19 @@ describe("/api/bikes/:id/dated-items + /api/dated-items/:id", () => {
     expect(res.status).toBe(401);
   });
 
+  it("accepts the mtv (vehicle tax) type", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const bikeId = await createBike(app, cookie);
+    const create = await request(app)
+      .post(`/api/bikes/${bikeId}/dated-items`)
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ type: "mtv", expiresOn: "2027-01-31" });
+    expect(create.status).toBe(201);
+    expect(create.body.type).toBe("mtv");
+  });
+
   it("create + list + get + patch + delete", async () => {
     const app = buildTestApp();
     const { cookie } = await signUpAndSignIn(app);
