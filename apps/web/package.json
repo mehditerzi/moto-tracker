@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build": "pnpm --filter @mototracker/shared build && tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "echo 'no lint yet' && exit 0",
-    "cap:build": "tsc -p tsconfig.json --noEmit && VITE_API_URL=https://mototracker.mehditerzi.com vite build && cap sync ios",
+    "cap:build": "pnpm --filter @mototracker/shared build && tsc -p tsconfig.json --noEmit && VITE_API_URL=https://mototracker.mehditerzi.com vite build && cap sync ios",
     "cap:sync": "cap sync ios",
     "cap:open": "cap open ios"
   },
