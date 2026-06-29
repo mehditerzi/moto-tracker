@@ -3,8 +3,23 @@
   "nav": {
     "bikes": "Vehicles",
     "trips": "Trips",
+    "fuel": "Fuel",
     "settings": "Settings",
     "signOut": "Sign out"
+  },
+  "fuel": {
+    "title": "Fuel",
+    "empty": "No fuel-ups yet",
+    "noVehicle": "Add a vehicle first.",
+    "economy": "Avg. per 100 km",
+    "costPerKm": "per km",
+    "last30": "Last 30 days",
+    "date": "Date",
+    "liters": "Litres",
+    "cost": "Cost (₺)",
+    "odometer": "Odometer",
+    "add": "Add fuel-up",
+    "added": "Fuel-up saved"
   },
   "services": {
     "title": "Official services",

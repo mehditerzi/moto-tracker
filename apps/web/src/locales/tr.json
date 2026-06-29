@@ -3,8 +3,23 @@
   "nav": {
     "bikes": "Araçlar",
     "trips": "Yolculuklar",
+    "fuel": "Yakıt",
     "settings": "Ayarlar",
     "signOut": "Çıkış"
+  },
+  "fuel": {
+    "title": "Yakıt",
+    "empty": "Henüz yakıt kaydı yok",
+    "noVehicle": "Önce bir araç ekle.",
+    "economy": "Ort. tüketim (100 km)",
+    "costPerKm": "km başına",
+    "last30": "Son 30 gün",
+    "date": "Tarih",
+    "liters": "Litre",
+    "cost": "Tutar (₺)",
+    "odometer": "Kilometre",
+    "add": "Yakıt ekle",
+    "added": "Yakıt kaydedildi"
   },
   "services": {
     "title": "Resmi işlemler",
