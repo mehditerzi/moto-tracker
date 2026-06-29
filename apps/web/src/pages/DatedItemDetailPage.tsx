@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Pencil, RotateCw, ArrowLeft, ScanLine } from "lucide-react";
+import { Pencil, RotateCw, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,11 +84,6 @@ export function DatedItemDetailPage() {
         <Button asChild variant="accent" className="flex-1">
           <Link to={`/bikes/${item.data.bikeId}/dated-items/new?type=${item.data.type}`}>
             <RotateCw className="h-4 w-4" /> {t("items.renew")}
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to={`/capture?bikeId=${item.data.bikeId}`}>
-            <ScanLine className="h-4 w-4" />
           </Link>
         </Button>
         <Button asChild variant="outline" className="flex-1">

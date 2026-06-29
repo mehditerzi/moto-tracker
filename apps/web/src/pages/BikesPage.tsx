@@ -40,7 +40,7 @@ export function BikesPage() {
           </p>
         </div>
         <Button asChild variant="accent" size="lg">
-          <Link to="/bikes/new">
+          <Link to="/capture">
             <Plus className="h-4 w-4" /> {t("dashboard.addBike")}
           </Link>
         </Button>
@@ -60,7 +60,7 @@ export function BikesPage() {
           </h1>
         </div>
         <Button asChild size="sm" variant="accent">
-          <Link to="/bikes/new">
+          <Link to="/capture">
             <Plus className="h-4 w-4" /> {t("dashboard.add")}
           </Link>
         </Button>

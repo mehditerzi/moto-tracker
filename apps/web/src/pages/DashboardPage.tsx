@@ -14,7 +14,6 @@ import { StatusChip } from "@/components/StatusChip";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
 import { statusFor } from "@/lib/datedItems";
-import { CaptureFab } from "@/components/CaptureFab";
 import { MaintenancePanel } from "@/components/MaintenancePanel";
 import { pushToast } from "@/hooks/useToast";
 import type { DashboardEntry } from "@mototracker/shared";
@@ -89,9 +88,8 @@ export function DashboardPage() {
           </p>
         </div>
         <Button asChild variant="accent" size="lg">
-          <Link to="/bikes/new"><Plus className="h-4 w-4" /> {t("dashboard.addBike")}</Link>
+          <Link to="/capture"><Plus className="h-4 w-4" /> {t("dashboard.addBike")}</Link>
         </Button>
-        <CaptureFab />
       </motion.div>
     );
   }
@@ -153,7 +151,6 @@ export function DashboardPage() {
           <Link to="/bikes"><Settings2 className="h-3.5 w-3.5" /> {t("dashboard.manageBikes")}</Link>
         </Button>
       </div>
-      <CaptureFab bikeId={active.bike.id} />
     </div>
   );
 }
