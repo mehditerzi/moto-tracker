@@ -4,7 +4,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { notifPreferenceUpdateSchema, type NotifItemType } from "@mototracker/shared";
 
-const ITEM_TYPES: NotifItemType[] = ["sigorta", "kasko", "muayene", "maintenance"];
+const ITEM_TYPES: NotifItemType[] = ["sigorta", "kasko", "muayene", "maintenance", "mtv"];
 const DEFAULT_LEAD = "30,7,1";
 
 interface Row {

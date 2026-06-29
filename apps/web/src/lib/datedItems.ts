@@ -18,7 +18,7 @@ export function statusFor(expiresOn: string | null | undefined, today = new Date
   return { status: "ok", daysRemaining: days };
 }
 
-export const TYPE_ORDER: DatedItemType[] = ["muayene", "sigorta", "kasko"];
+export const TYPE_ORDER: DatedItemType[] = ["muayene", "sigorta", "kasko", "mtv"];
 
 export function statusColorClass(status: Status): string {
   switch (status) {

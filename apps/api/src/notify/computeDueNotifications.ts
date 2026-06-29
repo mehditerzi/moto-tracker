@@ -4,7 +4,7 @@ import type { DueNotification } from "./types.js";
 
 interface PrefRow {
   user_id: string;
-  item_type: "sigorta" | "kasko" | "muayene" | "maintenance";
+  item_type: "sigorta" | "kasko" | "muayene" | "maintenance" | "mtv";
   lead_days_csv: string;
   enabled: number;
 }
@@ -13,7 +13,7 @@ interface DatedItemRow {
   id: string;
   bike_id: string;
   user_id: string;
-  type: "sigorta" | "kasko" | "muayene";
+  type: "sigorta" | "kasko" | "muayene" | "mtv";
   expires_on: string;
 }
 

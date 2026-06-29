@@ -11,7 +11,7 @@ describe("/api/notification-preferences", () => {
       .get("/api/notification-preferences")
       .set("Cookie", cookie);
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(4);
+    expect(res.body).toHaveLength(5);
     const sig = res.body.find((p: { itemType: string }) => p.itemType === "sigorta");
     expect(sig.leadDays).toEqual([30, 7, 1]);
     expect(sig.enabled).toBe(true);
