@@ -23,6 +23,14 @@ services:
       CROSS_SITE_COOKIES: ${CROSS_SITE_COOKIES:-false}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-Garajım <noreply@example.com>}
+      # Local SMTP fallback (used only when RESEND_API_KEY is empty). To catch
+      # mail in the bundled Mailpit container, set SMTP_HOST=mailpit in .env and
+      # `docker compose --profile mail up -d`. Inbox UI → http://localhost:8025.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # By default the api talks to an Ollama already running on the host
@@ -56,6 +64,21 @@ services:
     # (Docker Desktop has this built-in; Linux needs host-gateway).
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # Mailpit — local SMTP catcher for dev. Catches all outgoing mail (magic links,
+  # password resets) and shows it in a web inbox. No real email account needed.
+  # Opt-in: `docker compose --profile mail up -d`.
+  #   SMTP   → localhost:1025 (set SMTP_HOST=localhost for host `pnpm dev:api`,
+  #            or SMTP_HOST=mailpit when the api runs in the compose network)
+  #   Inbox  → http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mototracker-mailpit
+    restart: unless-stopped
+    profiles: ["mail"]
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
   ollama:
     image: ollama/ollama:latest
