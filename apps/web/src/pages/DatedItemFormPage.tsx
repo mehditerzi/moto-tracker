@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PROVIDER_OPTIONS } from "@/lib/vehicleOptions";
 import { pushToast } from "@/hooks/useToast";
@@ -53,6 +54,7 @@ export function DatedItemFormPage({ mode }: Props) {
   );
   const [expiresOn, setExpiresOn] = useState(prefillDate);
   const [provider, setProvider] = useState("");
+  const [cost, setCost] = useState("");
   const [dateError, setDateError] = useState("");
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export function DatedItemFormPage({ mode }: Props) {
       setType(item.data.type);
       setExpiresOn(item.data.expiresOn);
       setProvider(item.data.provider ?? "");
+      setCost(item.data.cost != null ? String(item.data.cost) : "");
     }
   }, [isEdit, item.data]);
 
@@ -72,8 +75,9 @@ export function DatedItemFormPage({ mode }: Props) {
     setDateError("");
     try {
       const providerVal = provider.trim() || null;
+      const costVal = cost.trim() ? parseFloat(cost) : null;
       if (isEdit && itemId) {
-        await updateMut.mutateAsync({ type, expiresOn, provider: providerVal });
+        await updateMut.mutateAsync({ type, expiresOn, provider: providerVal, cost: costVal });
         pushToast({ variant: "success", title: t("items.saved") });
         navigate(`/dated-items/${itemId}`);
       } else {
@@ -81,6 +85,7 @@ export function DatedItemFormPage({ mode }: Props) {
           type,
           expiresOn,
           provider: providerVal,
+          cost: costVal,
           sourceDocumentId,
         });
         pushToast({ variant: "success", title: t("items.saved") });
@@ -174,6 +179,19 @@ export function DatedItemFormPage({ mode }: Props) {
                 />
               </div>
             )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cost">{t("items.cost")}</Label>
+              <Input
+                id="cost"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                placeholder="0"
+              />
+            </div>
 
             <div className="flex gap-2">
               <Button asChild variant="ghost" className="flex-1">
