@@ -21,6 +21,8 @@ export interface ApnsResult {
   /** APNs not configured — nothing was sent. */
   skipped?: boolean;
   status?: number;
+  /** Apple's machine reason on failure (e.g. "InvalidProviderToken", "BadDeviceToken"). */
+  reason?: string;
 }
 
 export interface ApnsPayload {
@@ -72,31 +74,51 @@ export async function sendApns(deviceToken: string, payload: ApnsPayload): Promi
     ...(payload.url ? { url: payload.url } : {}),
   });
 
+  // Build the auth token up front so a malformed .p8 surfaces as a clear reason
+  // instead of an unhandled throw inside the request.
+  let token: string;
+  try {
+    token = providerToken(Date.now());
+  } catch (e) {
+    return { ok: false, reason: `key_error:${(e as Error).message}` };
+  }
+
   return new Promise<ApnsResult>((resolve) => {
     let settled = false;
     const done = (r: ApnsResult) => {
       if (settled) return;
       settled = true;
+      if (!r.ok && !r.skipped) {
+        console.warn(`[apns] send failed status=${r.status ?? "?"} reason=${r.reason ?? "?"}`);
+      }
       try { client.close(); } catch { /* noop */ }
       resolve(r);
     };
     const client = http2.connect(host);
-    client.on("error", () => done({ ok: false }));
+    client.on("error", (e) => done({ ok: false, reason: `connect:${e.message}` }));
 
     const req = client.request({
       ":method": "POST",
       ":path": `/3/device/${deviceToken}`,
-      authorization: `bearer ${providerToken(Date.now())}`,
+      authorization: `bearer ${token}`,
       "apns-topic": config.APNS_BUNDLE_ID!,
       "apns-push-type": "alert",
       "content-type": "application/json",
     });
     let status = 0;
+    let raw = "";
     req.on("response", (h) => { status = Number(h[":status"]) || 0; });
-    req.on("error", () => done({ ok: false }));
+    req.on("error", (e) => done({ ok: false, reason: `request:${e.message}` }));
     req.setEncoding("utf8");
-    req.on("data", () => { /* drain */ });
-    req.on("end", () => done({ ok: status === 200, gone: status === 410, status }));
+    req.on("data", (chunk) => { raw += chunk; });
+    req.on("end", () => {
+      // APNs returns `{"reason":"..."}` in the body on any non-200.
+      let reason: string | undefined;
+      if (raw) {
+        try { reason = (JSON.parse(raw) as { reason?: string }).reason; } catch { /* non-JSON */ }
+      }
+      done({ ok: status === 200, gone: status === 410, status, reason });
+    });
     req.end(body);
   });
 }
