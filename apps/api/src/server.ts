@@ -16,6 +16,7 @@ import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
 import { eventsRouter } from "./routes/events.js";
 import { tripsRouter } from "./routes/trips.js";
+import { fuelLogsRouter } from "./routes/fuelLogs.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
 import { privacyRouter } from "./routes/privacy.js";
@@ -84,6 +85,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/documents", documentsRouter);
   app.use("/api/events", eventsRouter);
   app.use("/api/trips", tripsRouter);
+  app.use("/api/fuel-logs", fuelLogsRouter);
   app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
 

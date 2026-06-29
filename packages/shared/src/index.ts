@@ -5,4 +5,5 @@ export * from "./schemas/document.js";
 export * from "./schemas/event.js";
 export * from "./schemas/maintenance.js";
 export * from "./schemas/trip.js";
+export * from "./schemas/fuelLog.js";
 export * from "./schemas/notification.js";
