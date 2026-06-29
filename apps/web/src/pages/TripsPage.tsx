@@ -32,6 +32,8 @@ export function TripsPage() {
 
       <TrackingToggle enabled={enabled} onToggle={() => toggleTracking(!enabled)} />
 
+      {(trips.data?.length ?? 0) > 0 && <TripInsights trips={trips.data!} />}
+
       {trips.isLoading ? (
         <div className="flex flex-col gap-2.5">
           <Skeleton className="h-16 rounded-2xl" />
@@ -94,6 +96,33 @@ function toggleTracking(next: boolean) {
       { enableHighAccuracy: true },
     );
   }
+}
+
+function TripInsights({ trips }: { trips: { distanceKm: number; endedAt: string }[] }) {
+  const { t } = useTranslation();
+  const now = new Date();
+  let monthKm = 0;
+  let totalKm = 0;
+  for (const tr of trips) {
+    totalKm += tr.distanceKm;
+    const d = new Date(tr.endedAt);
+    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) monthKm += tr.distanceKm;
+  }
+  const stat = (label: string, value: string) => (
+    <div className="flex flex-col gap-0.5">
+      <span className="num text-[20px] font-semibold leading-none">{value}</span>
+      <span className="text-[11px] text-muted dark:text-muted-dark">{label}</span>
+    </div>
+  );
+  return (
+    <Card>
+      <CardContent className="grid grid-cols-3 gap-3 p-4">
+        {stat(t("trips.thisMonth"), `${Math.round(monthKm).toLocaleString()} km`)}
+        {stat(t("trips.totalKm"), `${Math.round(totalKm).toLocaleString()} km`)}
+        {stat(t("trips.count"), String(trips.length))}
+      </CardContent>
+    </Card>
+  );
 }
 
 function TrackingToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
