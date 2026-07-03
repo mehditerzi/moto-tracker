@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, Bike as BikeIcon, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { useBikes } from "@/hooks/useBikes";
 import { vehicleIcon } from "@/lib/vehicleType";
 import { env } from "@/env";
@@ -40,11 +40,9 @@ export function BikesPage() {
             {t("dashboard.emptySub")}
           </p>
         </div>
-        <Button asChild variant="accent" size="lg">
-          <Link to="/capture">
-            <Plus className="h-4 w-4" /> {t("dashboard.addBike")}
-          </Link>
-        </Button>
+        <AddVehicleButton variant="accent" size="lg">
+          <Plus className="h-4 w-4" /> {t("dashboard.addBike")}
+        </AddVehicleButton>
       </motion.div>
     );
   }
@@ -60,11 +58,9 @@ export function BikesPage() {
             {t("dashboard.myBikes")}
           </h1>
         </div>
-        <Button asChild size="sm" variant="accent">
-          <Link to="/capture">
-            <Plus className="h-4 w-4" /> {t("dashboard.add")}
-          </Link>
-        </Button>
+        <AddVehicleButton size="sm" variant="accent">
+          <Plus className="h-4 w-4" /> {t("dashboard.add")}
+        </AddVehicleButton>
       </header>
 
       <div className="grid gap-2.5">

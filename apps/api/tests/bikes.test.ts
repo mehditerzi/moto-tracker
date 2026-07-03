@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { buildTestApp } from "./helpers/buildApp.js";
 import { signUpAndSignIn } from "./helpers/authedRequest.js";
+import { grantEntitlement } from "./helpers/grantEntitlement.js";
 
 describe("/api/bikes", () => {
   it("requires auth", async () => {
@@ -53,7 +54,8 @@ describe("/api/bikes", () => {
 
   it("defaults vehicleType to motorcycle and accepts car", async () => {
     const app = buildTestApp();
-    const { cookie } = await signUpAndSignIn(app);
+    const { cookie, user } = await signUpAndSignIn(app);
+    grantEntitlement(user.id); // needs >1 vehicle
 
     const moto = await request(app)
       .post("/api/bikes")
@@ -79,7 +81,8 @@ describe("/api/bikes", () => {
 
   it("infers vehicleType from make/model when not given", async () => {
     const app = buildTestApp();
-    const { cookie } = await signUpAndSignIn(app);
+    const { cookie, user } = await signUpAndSignIn(app);
+    grantEntitlement(user.id); // needs >1 vehicle
     const car = await request(app)
       .post("/api/bikes")
       .set("Cookie", cookie)
