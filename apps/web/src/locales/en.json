@@ -325,7 +325,22 @@
     "yes": "Yes",
     "no": "No",
     "dash": "—",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "close": "Close"
+  },
+  "paywall": {
+    "title": "Add more vehicles",
+    "subtitle": "Your first vehicle is free. Add more with a yearly plan.",
+    "webNotice": "Additional vehicles are managed in the Garajım iOS app. Open the app on your iPhone to upgrade, then your extra vehicles will be available here too.",
+    "tierVehicles": "Up to {{count}} vehicles",
+    "perYear": "{{price}} / year",
+    "choose": "Choose",
+    "restore": "Restore purchases",
+    "restoring": "Restoring…",
+    "restoreSuccess": "Purchases restored.",
+    "restoreNone": "No previous purchases found.",
+    "purchaseSuccess": "You're all set — add your vehicle.",
+    "legal": "Auto-renewable subscription. Renews yearly until cancelled in the App Store. Manage or cancel anytime in your Apple ID settings."
   },
   "install": {
     "title": "Add to Home Screen",
@@ -369,6 +384,9 @@
     "file_required": "No image was selected. Please choose a photo.",
     "invalid_password": "Incorrect password. Please try again.",
     "bad_item_type": "Invalid record type.",
+    "vehicle_limit_reached": "You've reached your vehicle limit. Upgrade to add more.",
+    "iap_unavailable": "Purchases are unavailable right now. Please try again later.",
+    "no_valid_transaction": "We couldn't confirm your purchase. Please try again.",
     "internal_error": "The server hit a problem. Please try again in a moment."
   }
 }

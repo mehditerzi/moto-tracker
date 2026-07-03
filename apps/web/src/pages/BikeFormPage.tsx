@@ -25,9 +25,10 @@ import {
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { useDocumentsForBike } from "@/hooks/useDocuments";
 import { pushToast } from "@/hooks/useToast";
-import { friendlyError } from "@/lib/apiError";
+import { friendlyError, isVehicleLimitError } from "@/lib/apiError";
 import { env } from "@/env";
 import { useConfirm } from "@/components/ConfirmSheet";
+import { PaywallSheet } from "@/components/PaywallSheet";
 
 export function BikeFormPage() {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ export function BikeFormPage() {
   const createMut = useCreateBike();
   const updateMut = useUpdateBike(id ?? "");
   const archiveMut = useArchiveBike();
+  const [paywall, setPaywall] = useState(false);
 
   const schema = z.object({
     vehicleType: z.enum(["motorcycle", "car"]).default("motorcycle"),
@@ -120,6 +122,10 @@ export function BikeFormPage() {
         navigate("/bikes");
       }
     } catch (e) {
+      if (isVehicleLimitError(e)) {
+        setPaywall(true);
+        return;
+      }
       pushToast({
         variant: "danger",
         title: t("items.saveFailed"),
@@ -216,6 +222,7 @@ export function BikeFormPage() {
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-md"
     >
+      <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
       <Card>
         <CardHeader>
           <CardTitle>{isEdit ? t("bike.editTitle") : t("bike.newTitle")}</CardTitle>

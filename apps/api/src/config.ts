@@ -98,6 +98,22 @@ const Env = z.object({
     .union([z.literal("true"), z.literal("false")])
     .transform((v) => v === "true")
     .default("false"),
+  // In-App Purchase (auto-renewable subscriptions). Verification is offline by
+  // default (Apple root CA chain check, no network). It stays OFF until the root
+  // CAs are present and a bundle id is resolvable; then /api/iap/* goes live.
+  // IAP_BUNDLE_ID defaults to APNS_BUNDLE_ID (same app), so usually unset.
+  IAP_BUNDLE_ID: z.string().optional(),
+  // Numeric App Store app id (App Store Connect → App Information → Apple ID).
+  // REQUIRED to verify PRODUCTION server notifications; unused in sandbox.
+  IAP_APP_APPLE_ID: z.coerce.number().int().positive().optional(),
+  // Directory of Apple root CA .cer/.der/.pem files (see certs/apple/README.md).
+  IAP_APPLE_ROOT_CA_DIR: z.string().default("./certs/apple"),
+  // Turn on OCSP online revocation checks (needs outbound network to Apple).
+  // Off by default so verification works in locked-down/offline deploys.
+  IAP_ENABLE_ONLINE_CHECKS: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("false"),
   CRON_TIMEZONE: z.string().default("Europe/Istanbul"),
   CRON_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   CRON_ENABLED: z

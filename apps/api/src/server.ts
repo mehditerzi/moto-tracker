@@ -20,6 +20,8 @@ import { tripsRouter } from "./routes/trips.js";
 import { fuelLogsRouter } from "./routes/fuelLogs.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
+import { entitlementRouter } from "./routes/entitlement.js";
+import { iapRouter, iapWebhookRouter } from "./routes/iap.js";
 import { privacyRouter } from "./routes/privacy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { getAuth } from "./auth/index.js";
@@ -90,6 +92,11 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/fuel-logs", fuelLogsRouter);
   app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
+  app.use("/api/entitlement", entitlementRouter);
+  // Webhook first: it's unauthenticated (Apple → us) and must not hit the
+  // requireUser middleware that iapRouter applies to the shared /api/iap path.
+  app.use("/api/iap", iapWebhookRouter);
+  app.use("/api/iap", iapRouter);
 
   // Public, login-free Privacy Policy page (App Store Connect requires a URL
   // reviewers can open without authenticating). Mounted before the SPA static

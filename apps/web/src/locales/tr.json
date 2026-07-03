@@ -325,7 +325,22 @@
     "yes": "Evet",
     "no": "Hayır",
     "dash": "—",
-    "dismiss": "Kapat"
+    "dismiss": "Kapat",
+    "close": "Kapat"
+  },
+  "paywall": {
+    "title": "Daha fazla araç ekle",
+    "subtitle": "İlk aracınız ücretsiz. Daha fazlası için yıllık plan alın.",
+    "webNotice": "Ek araçlar Garajım iOS uygulamasından yönetilir. Yükseltmek için iPhone'unuzda uygulamayı açın; ek araçlarınız burada da görünecektir.",
+    "tierVehicles": "{{count}} araca kadar",
+    "perYear": "yılda {{price}}",
+    "choose": "Seç",
+    "restore": "Satın alımları geri yükle",
+    "restoring": "Geri yükleniyor…",
+    "restoreSuccess": "Satın alımlar geri yüklendi.",
+    "restoreNone": "Önceki satın alım bulunamadı.",
+    "purchaseSuccess": "Hazır — aracınızı ekleyebilirsiniz.",
+    "legal": "Otomatik yenilenen abonelik. App Store'dan iptal edilene kadar her yıl yenilenir. Apple Kimliği ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz."
   },
   "install": {
     "title": "Ana Ekrana Ekle",
@@ -369,6 +384,9 @@
     "file_required": "Bir görsel seçilmedi. Lütfen bir fotoğraf seç.",
     "invalid_password": "Şifre hatalı. Lütfen tekrar dene.",
     "bad_item_type": "Geçersiz kayıt türü.",
+    "vehicle_limit_reached": "Araç sınırınıza ulaştınız. Daha fazlası için yükseltin.",
+    "iap_unavailable": "Satın alma şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "no_valid_transaction": "Satın alımınızı doğrulayamadık. Lütfen tekrar deneyin.",
     "internal_error": "Sunucuda bir sorun oluştu. Birazdan tekrar deneyin."
   }
 }

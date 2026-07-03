@@ -13,6 +13,7 @@ import { vehicleIcon } from "@/lib/vehicleType";
 import { pushNextDeadline } from "@/lib/widget";
 import { env } from "@/env";
 import { StatusChip } from "@/components/StatusChip";
+import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
 import { statusFor } from "@/lib/datedItems";
@@ -107,9 +108,9 @@ export function DashboardPage() {
             {t("dashboard.emptySub")}
           </p>
         </div>
-        <Button asChild variant="accent" size="lg">
-          <Link to="/capture"><Plus className="h-4 w-4" /> {t("dashboard.addBike")}</Link>
-        </Button>
+        <AddVehicleButton variant="accent" size="lg">
+          <Plus className="h-4 w-4" /> {t("dashboard.addBike")}
+        </AddVehicleButton>
       </motion.div>
     );
   }

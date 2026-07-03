@@ -11,6 +11,7 @@ import { newId } from "../lib/ulid.js";
 import { config } from "../config.js";
 import { bikeCreateSchema, bikeUpdateSchema } from "@mototracker/shared";
 import { inferVehicleType } from "../ocr/catalog.js";
+import { canAddVehicle } from "../lib/entitlement.js";
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
@@ -96,8 +97,14 @@ bikesRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const body = bikeCreateSchema.parse(req.body);
-    const id = newId();
     const db = getDb();
+    // First vehicle is free; each additional one needs an active subscription.
+    // Enforced here (not just in the UI) so the API is the source of truth.
+    if (!canAddVehicle(req.user!.id, db)) {
+      res.status(403).json({ error: "vehicle_limit_reached" });
+      return;
+    }
+    const id = newId();
     db.prepare(
       `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc, fuel_type, first_registration_date)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

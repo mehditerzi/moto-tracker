@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { registerNativePush } from "@/lib/nativePush";
+import { syncPurchasesSilently } from "@/lib/nativeIap";
 import { queryClient } from "@/lib/queryClient";
 import { AppShell } from "@/components/AppShell";
 import { LandingPage } from "@/pages/LandingPage";
@@ -35,7 +36,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   // Once signed in, register for native APNs push (no-op on web / off-device).
   const authed = !!me.data;
   useEffect(() => {
-    if (authed) void registerNativePush();
+    if (authed) {
+      void registerNativePush();
+      // Reconcile App Store subscriptions on launch (native only, silent).
+      void syncPurchasesSilently();
+    }
   }, [authed]);
   if (me.isPending) {
     return (

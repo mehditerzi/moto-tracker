@@ -4,6 +4,7 @@
 - [Release notes — June 2026](./RELEASE-NOTES-2026-06.md) — latest round of work
 - [Apple Sign-In setup](./apple-signin.md) — Apple Developer config + env
 - [iOS widget](./ios-widget.md) — "next deadline" widget (App Group + Xcode)
+- [iOS in-app purchases](./ios-iap.md) — extra-vehicle subscriptions (StoreKit 2 + JWS verify)
 - [Native push (APNs)](./app-store/native-push.md)
 - [Session handoff](./SESSION-HANDOFF.md)
 

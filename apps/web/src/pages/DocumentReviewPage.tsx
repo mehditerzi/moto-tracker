@@ -16,7 +16,8 @@ import { useDocument } from "@/hooks/useDocuments";
 import { useBike, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
 import { useCreateDatedItem } from "@/hooks/useDatedItems";
 import { pushToast } from "@/hooks/useToast";
-import { friendlyError } from "@/lib/apiError";
+import { friendlyError, isVehicleLimitError } from "@/lib/apiError";
+import { PaywallSheet } from "@/components/PaywallSheet";
 import { track } from "@/lib/telemetry";
 import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
@@ -229,6 +230,7 @@ function RuhsatReviewForm({
   const update = useUpdateBike(bikeId ?? "");
   const create = useCreateBike();
   const [saved, setSaved] = useState(false);
+  const [paywall, setPaywall] = useState(false);
   const [createdBikeId, setCreatedBikeId] = useState<string | null>(null);
   const [nickname, setNickname] = useState(extracted.plate || extracted.make || "");
   const [showNicknameInput, setShowNicknameInput] = useState(false);
@@ -306,12 +308,17 @@ function RuhsatReviewForm({
       track("bike_created_from_scan", { vehicleType: vehicleType ?? null });
       pushToast({ variant: "success", title: t("bike.added") });
     } catch (e) {
+      if (isVehicleLimitError(e)) {
+        setPaywall(true);
+        return;
+      }
       pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
     }
   };
 
   return (
     <>
+    <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
     <Card>
       <CardHeader>
         <CardTitle className="inline-flex items-center gap-2">

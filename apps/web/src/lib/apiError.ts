@@ -12,6 +12,17 @@ type Translate = (key: string, opts?: Record<string, unknown>) => string;
  * Falls back to a friendly generic message for anything unmapped, a connection
  * hint for network failures, and a "session expired" nudge on 401.
  */
+/**
+ * True when an error is the "you've hit your vehicle limit" 403. Call sites use
+ * this to open the paywall instead of just showing a toast, so a user who
+ * reaches the cap deep in a flow (e.g. after scanning) still gets an upgrade path.
+ */
+export function isVehicleLimitError(e: unknown): boolean {
+  if (!(e instanceof ApiError)) return false;
+  const body = e.body as { error?: unknown } | undefined;
+  return e.status === 403 && body?.error === "vehicle_limit_reached";
+}
+
 export function friendlyError(e: unknown, t: Translate): string {
   if (e instanceof ApiError) {
     const body = e.body as { error?: unknown } | undefined;
