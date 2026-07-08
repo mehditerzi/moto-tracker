@@ -43,9 +43,11 @@ async function waitForDoc(
 }
 
 describe("/api/documents", () => {
-  afterEach(() => {
+  afterEach(async () => {
     __resetRunVisionOcrForTests();
-    void fs.rm("/tmp/mototracker-test-uploads", { recursive: true, force: true });
+    // Swallow races: fuelReceipt.test.ts shares this dir and may be writing
+    // while we clean up in a parallel worker.
+    await fs.rm("/tmp/mototracker-test-uploads", { recursive: true, force: true }).catch(() => {});
   });
 
   it("requires auth", async () => {

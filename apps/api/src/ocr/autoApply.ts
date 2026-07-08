@@ -16,6 +16,7 @@ export type BikeAction = "matched" | "created" | "updated" | "none";
 
 export interface AutoApplyOutput {
   appliedDatedItemId: string | null;
+  appliedFuelLogId: string | null;
   appliedBikeId: string | null;
   bikeAction: BikeAction;
   reason:
@@ -23,6 +24,7 @@ export interface AutoApplyOutput {
     | "low_confidence"
     | "doc_type_not_dated"
     | "no_matching_date"
+    | "no_fuel_data"
     | "no_bike_match"
     | "bike_only";
 }
@@ -200,6 +202,7 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   if (parsed.docType === "ruhsat" || parsed.docType === "unknown") {
     return {
       appliedDatedItemId: null,
+      appliedFuelLogId: null,
       appliedBikeId: bike?.bikeId ?? null,
       bikeAction,
       reason: bike ? "bike_only" : "doc_type_not_dated",
@@ -209,9 +212,48 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   if (parsed.confidence < threshold) {
     return {
       appliedDatedItemId: null,
+      appliedFuelLogId: null,
       appliedBikeId: bike?.bikeId ?? null,
       bikeAction,
       reason: "low_confidence",
+    };
+  }
+
+  // A pump receipt becomes a fuel_log rather than a dated_item.
+  if (parsed.docType === "yakit") {
+    const fuel = parsed.fuel;
+    if (!fuel?.filledOn || !fuel.liters) {
+      return {
+        appliedDatedItemId: null,
+        appliedFuelLogId: null,
+        appliedBikeId: bike?.bikeId ?? null,
+        bikeAction,
+        reason: "no_fuel_data",
+      };
+    }
+    if (!bike) {
+      return {
+        appliedDatedItemId: null,
+        appliedFuelLogId: null,
+        appliedBikeId: null,
+        bikeAction,
+        reason: "no_bike_match",
+      };
+    }
+    const id = newId();
+    // is_full=1: a station fill is a full tank far more often than not, and the
+    // review screen lets the user flip it. Odometer isn't on a receipt.
+    db.prepare(
+      `INSERT INTO fuel_log
+         (id, user_id, bike_id, filled_on, liters, total_cost, odometer_km, is_full, notes, source_document_id)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, 1, NULL, ?)`,
+    ).run(id, userId, bike.bikeId, fuel.filledOn, fuel.liters, fuel.totalCost, documentId);
+    return {
+      appliedDatedItemId: null,
+      appliedFuelLogId: id,
+      appliedBikeId: bike.bikeId,
+      bikeAction,
+      reason: "applied",
     };
   }
 
@@ -220,6 +262,7 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   if (!expiresOn) {
     return {
       appliedDatedItemId: null,
+      appliedFuelLogId: null,
       appliedBikeId: bike?.bikeId ?? null,
       bikeAction,
       reason: "no_matching_date",
@@ -229,6 +272,7 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   if (!bike) {
     return {
       appliedDatedItemId: null,
+      appliedFuelLogId: null,
       appliedBikeId: null,
       bikeAction,
       reason: "no_bike_match",
@@ -243,6 +287,7 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   ).run(id, bike.bikeId, userId, parsed.docType, expiresOn, documentId, parsed.confidence);
   return {
     appliedDatedItemId: id,
+    appliedFuelLogId: null,
     appliedBikeId: bike.bikeId,
     bikeAction,
     reason: "applied",

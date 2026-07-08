@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
 import { useDocument } from "@/hooks/useDocuments";
-import { useBike, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
+import { useBike, useBikes, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
 import { useCreateDatedItem } from "@/hooks/useDatedItems";
+import { useCreateFuelLog } from "@/hooks/useFuelLogs";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError, isVehicleLimitError } from "@/lib/apiError";
 import { PaywallSheet } from "@/components/PaywallSheet";
@@ -138,7 +139,16 @@ export function DocumentReviewPage() {
         <img src={fileUrl} alt="" className="block h-44 w-full object-cover" />
       </div>
 
-      {isRuhsat ? (
+      {ex.docType === "yakit" ? (
+        <FuelReceiptReviewForm
+          bikeId={d.bikeId ?? undefined}
+          documentId={d.id}
+          fuel={ex.fuel ?? null}
+          plate={ex.plate}
+          appliedFuelLogId={d.appliedFuelLogId ?? null}
+          confidence={ex.confidence}
+        />
+      ) : isRuhsat ? (
         <RuhsatReviewForm
           bikeId={d.bikeId ?? undefined}
           documentId={d.id}
@@ -659,6 +669,173 @@ function CompareFieldRow({
         </div>
       )}
     </li>
+  );
+}
+
+// ─── fuel receipt form ────────────────────────────────────────────────────────
+
+/**
+ * Review screen for a scanned pump receipt. When OCR was confident the fill is
+ * already saved (appliedFuelLogId) and this just confirms it; otherwise the
+ * detected values are pre-filled for a one-tap save. Odometer isn't printed on
+ * receipts, so it's offered as an optional extra field here.
+ */
+function FuelReceiptReviewForm({
+  bikeId, documentId, fuel, plate, appliedFuelLogId, confidence,
+}: {
+  bikeId?: string;
+  documentId: string;
+  fuel: { filledOn: string | null; liters: number | null; totalCost: number | null; unitPrice: number | null } | null;
+  plate: string | null;
+  appliedFuelLogId: string | null;
+  confidence: number;
+}) {
+  const { t } = useTranslation();
+  const bikes = useBikes();
+  const create = useCreateFuelLog();
+  const [selBike, setSelBike] = useState(bikeId ?? "");
+  const [filledOn, setFilledOn] = useState(fuel?.filledOn ?? "");
+  const [liters, setLiters] = useState(fuel?.liters != null ? String(fuel.liters) : "");
+  const [cost, setCost] = useState(fuel?.totalCost != null ? String(fuel.totalCost) : "");
+  const [odo, setOdo] = useState("");
+  const [isFull, setIsFull] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  // Default the vehicle picker to the sole/first vehicle once loaded.
+  useEffect(() => {
+    if (!selBike && bikes.data && bikes.data.length > 0) setSelBike(bikes.data[0]!.id);
+  }, [bikes.data, selBike]);
+
+  if (appliedFuelLogId || saved) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="inline-flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-success" /> {t("review.fuelApplied")}
+          </CardTitle>
+          {plate && <CardDescription className="num">{plate}</CardDescription>}
+        </CardHeader>
+        <CardContent className="gap-3">
+          <div className="flex gap-2">
+            <Button asChild variant="accent" className="flex-1">
+              <Link to="/fuel">{t("review.goToFuel")}</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/dashboard"><X className="h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const save = async () => {
+    const litersN = parseFloat(liters);
+    if (!selBike || !filledOn || !(litersN > 0)) return;
+    try {
+      await create.mutateAsync({
+        bikeId: selBike,
+        filledOn,
+        liters: litersN,
+        totalCost: cost ? parseFloat(cost) : null,
+        odometerKm: odo ? parseInt(odo, 10) : null,
+        isFull,
+        sourceDocumentId: documentId,
+      });
+      track("fuel_logged_from_scan", { confidence });
+      setSaved(true);
+      pushToast({ variant: "success", title: t("fuel.added") });
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="inline-flex items-center gap-2">
+          <FileText className="h-5 w-5" /> {t("review.fuelTitle")}
+        </CardTitle>
+        <CardDescription>{t("review.fuelSub")}</CardDescription>
+      </CardHeader>
+      <CardContent className="gap-3">
+        {confidence < LOW_CONFIDENCE && (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs">{t("review.lowConfidence")}</p>
+          </div>
+        )}
+
+        {bikes.data && bikes.data.length > 1 && (
+          <div className="flex flex-col gap-1.5">
+            <span className="label-micro text-muted dark:text-muted-dark">{t("review.vehicle")}</span>
+            <select
+              value={selBike}
+              onChange={(e) => setSelBike(e.target.value)}
+              className="h-10 rounded-xl border border-border bg-surface px-3 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+            >
+              {bikes.data.map((b) => (
+                <option key={b.id} value={b.id}>{b.nickname}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.date")}</span>
+            <Input type="date" value={filledOn} onChange={(e) => setFilledOn(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.liters")}</span>
+            <Input type="number" inputMode="decimal" step="0.01" value={liters} onChange={(e) => setLiters(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.cost")}</span>
+            <Input type="number" inputMode="decimal" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.odometer")}</span>
+            <Input type="number" inputMode="numeric" value={odo} onChange={(e) => setOdo(e.target.value)} placeholder="—" />
+          </div>
+        </div>
+
+        {fuel?.unitPrice != null && (
+          <p className="text-xs text-muted dark:text-muted-dark">
+            {t("review.unitPrice")}: <span className="num">₺{fuel.unitPrice.toFixed(2)}/L</span>
+          </p>
+        )}
+
+        <button type="button" onClick={() => setIsFull((v) => !v)} className="flex items-center gap-2 self-start text-sm">
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded-md border transition ${
+              isFull ? "border-accent bg-accent text-black" : "border-border dark:border-border-dark"
+            }`}
+          >
+            {isFull && <Check className="h-3 w-3" />}
+          </span>
+          <span className={isFull ? "" : "text-muted dark:text-muted-dark"}>{t("fuel.fullTank")}</span>
+        </button>
+
+        <p className="text-right text-xs text-muted dark:text-muted-dark">
+          {t("review.confidence")}: {Math.round(confidence * 100)}%
+        </p>
+
+        <div className="flex gap-2">
+          <Button
+            onClick={() => void save()}
+            variant="accent"
+            className="flex-1"
+            disabled={create.isPending || !selBike || !filledOn || !(parseFloat(liters) > 0)}
+          >
+            <Plus className="mr-1 h-4 w-4" /> {t("fuel.add")}
+          </Button>
+          <Button asChild variant="ghost">
+            <Link to="/dashboard"><X className="h-4 w-4" /></Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

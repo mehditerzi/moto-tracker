@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Fuel, Plus, Trash2, Gauge } from "lucide-react";
+import { Fuel, Plus, Trash2, Gauge, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBikes } from "@/hooks/useBikes";
 import { useFuelLogs, useCreateFuelLog, useDeleteFuelLog } from "@/hooks/useFuelLogs";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
-import { fuelSummary } from "@/lib/fuelEconomy";
+import { fuelSummary, economySeries, monthlySpend } from "@/lib/fuelEconomy";
+import { MonthlySpendChart, EconomyTrendChart } from "@/components/FuelCharts";
 import { getActiveBikeId, storeActiveBikeId } from "@/hooks/useActiveBike";
 import { formatDate } from "@/lib/format";
 import { pushToast } from "@/hooks/useToast";
@@ -71,6 +72,9 @@ export function FuelPage() {
 
       <CostsCard fuelTotal={fuelTotal} premiumTotal={premiumTotal} />
 
+      <MonthlySpendChart months={monthlySpend(logs.data ?? [])} />
+      <EconomyTrendChart points={economySeries(logs.data ?? [])} />
+
       {bikeId && <AddFuelForm bikeId={bikeId} />}
 
       {logs.isLoading ? (
@@ -89,6 +93,7 @@ export function FuelPage() {
               liters={l.liters}
               cost={l.totalCost}
               odo={l.odometerKm}
+              isFull={l.isFull}
               id={l.id}
             />
           ))}
@@ -112,7 +117,7 @@ function SummaryCard({ summary }: { summary: ReturnType<typeof fuelSummary> }) {
   const dash = "—";
   return (
     <Card>
-      <CardContent className="grid grid-cols-3 gap-3 p-4">
+      <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
         <Stat
           label={t("fuel.economy")}
           value={summary.avgL100 != null ? `${summary.avgL100.toFixed(1)} L` : dash}
@@ -120,6 +125,10 @@ function SummaryCard({ summary }: { summary: ReturnType<typeof fuelSummary> }) {
         <Stat
           label={t("fuel.costPerKm")}
           value={summary.costPerKm != null ? `₺${summary.costPerKm.toFixed(2)}` : dash}
+        />
+        <Stat
+          label={t("fuel.pricePerLiter")}
+          value={summary.pricePerLiter != null ? `₺${summary.pricePerLiter.toFixed(2)}` : dash}
         />
         <Stat label={t("fuel.last30")} value={`₺${Math.round(summary.last30Spend).toLocaleString()}`} />
       </CardContent>
@@ -159,6 +168,7 @@ function AddFuelForm({ bikeId }: { bikeId: string }) {
   const [liters, setLiters] = useState("");
   const [totalCost, setTotalCost] = useState("");
   const [odo, setOdo] = useState("");
+  const [isFull, setIsFull] = useState(true);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,13 +181,14 @@ function AddFuelForm({ bikeId }: { bikeId: string }) {
         liters: litersN,
         totalCost: totalCost ? parseFloat(totalCost) : null,
         odometerKm: odo ? parseInt(odo, 10) : null,
-        isFull: true,
+        isFull,
       });
-      track("fuel_logged", { hasCost: !!totalCost, hasOdo: !!odo });
+      track("fuel_logged", { hasCost: !!totalCost, hasOdo: !!odo, isFull });
       setFilledOn("");
       setLiters("");
       setTotalCost("");
       setOdo("");
+      setIsFull(true);
       pushToast({ variant: "success", title: t("fuel.added") });
     } catch (err) {
       pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(err, t) });
@@ -215,6 +226,20 @@ function AddFuelForm({ bikeId }: { bikeId: string }) {
               <Input id="f-odo" type="number" inputMode="numeric" value={odo} onChange={(e) => setOdo(e.target.value)} placeholder="12500" />
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsFull((v) => !v)}
+            className="flex items-center gap-2 self-start text-sm"
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-md border transition ${
+                isFull ? "border-accent bg-accent text-black" : "border-border dark:border-border-dark"
+              }`}
+            >
+              {isFull && <Check className="h-3 w-3" />}
+            </span>
+            <span className={isFull ? "" : "text-muted dark:text-muted-dark"}>{t("fuel.fullTank")}</span>
+          </button>
           <Button type="submit" variant="accent" disabled={create.isPending}>
             <Plus className="h-4 w-4" /> {t("fuel.add")}
           </Button>
@@ -229,12 +254,14 @@ function FuelRow({
   liters,
   cost,
   odo,
+  isFull,
   id,
 }: {
   dateLabel: string;
   liters: number;
   cost: number | null;
   odo: number | null;
+  isFull: boolean;
   id: string;
 }) {
   const { t } = useTranslation();
@@ -247,9 +274,16 @@ function FuelRow({
             <Fuel className="h-4 w-4 text-muted dark:text-muted-dark" strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
-            <div className="text-[14px] font-medium">
-              {liters.toLocaleString()} L
-              {cost != null && <span className="text-muted dark:text-muted-dark"> · ₺{cost.toLocaleString()}</span>}
+            <div className="flex items-center gap-2 text-[14px] font-medium">
+              <span>
+                {liters.toLocaleString()} L
+                {cost != null && <span className="text-muted dark:text-muted-dark"> · ₺{cost.toLocaleString()}</span>}
+              </span>
+              {!isFull && (
+                <span className="rounded-full bg-surface-elev px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted dark:bg-surface-elev-dark dark:text-muted-dark">
+                  {t("fuel.partial")}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-[12px] text-muted dark:text-muted-dark">
               <span>{dateLabel}</span>
@@ -257,6 +291,9 @@ function FuelRow({
                 <span className="num inline-flex items-center gap-1">
                   <Gauge className="h-3 w-3" /> {odo.toLocaleString()}
                 </span>
+              )}
+              {cost != null && liters > 0 && (
+                <span className="num">₺{(cost / liters).toFixed(2)}/L</span>
               )}
             </div>
           </div>

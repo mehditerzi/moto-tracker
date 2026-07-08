@@ -105,3 +105,52 @@ describe("parseOcr", () => {
     expect(r.dates.sigortaExpiresOn).toBeNull();
   });
 });
+
+describe("parseOcr — yakit receipts", () => {
+  it("parses fuel fields and normalizes Turkish comma decimals", () => {
+    const r = parseOcr(
+      JSON.stringify({
+        doc_type: "yakit",
+        plate: "34 ABC 123",
+        fuel: { filled_on: "02.07.2026", liters: "12,45", total_cost: "1.037,93", unit_price: 83.37 },
+        confidence: 0.9,
+      }),
+    );
+    expect(r.docType).toBe("yakit");
+    expect(r.fuel).toEqual({ filledOn: "2026-07-02", liters: 12.45, totalCost: 1037.93, unitPrice: 83.37 });
+  });
+
+  it("leaves fuel null when the document isn't a receipt", () => {
+    const r = parseOcr(
+      JSON.stringify({ doc_type: "sigorta", plate: null, dates: { sigorta_expires_on: "2027-06-01" }, confidence: 0.9 }),
+    );
+    expect(r.fuel).toBeNull();
+  });
+
+  it("nulls non-positive or garbage amounts", () => {
+    const r = parseOcr(
+      JSON.stringify({
+        doc_type: "yakit",
+        fuel: { filled_on: null, liters: 0, total_cost: "abc", unit_price: -5 },
+        confidence: 0.5,
+      }),
+    );
+    expect(r.fuel).toEqual({ filledOn: null, liters: null, totalCost: null, unitPrice: null });
+  });
+});
+
+describe("parseOcr — model quirks", () => {
+  it('treats the literal string "null" as null', () => {
+    const r = parseOcr(
+      JSON.stringify({ doc_type: "ruhsat", plate: "null", make: "NULL", model: "MT-09", confidence: 0.8 }),
+    );
+    expect(r.plate).toBeNull();
+    expect(r.make).toBeNull();
+    expect(r.model).toBe("MT-09");
+  });
+
+  it("clamps out-of-range confidence instead of rejecting the parse", () => {
+    expect(parseOcr(JSON.stringify({ doc_type: "ruhsat", confidence: -0.4 })).confidence).toBe(0);
+    expect(parseOcr(JSON.stringify({ doc_type: "ruhsat", confidence: 3 })).confidence).toBe(1);
+  });
+});

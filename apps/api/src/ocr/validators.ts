@@ -120,6 +120,29 @@ export function validateAndCorrect(input: ParsedOcr): {
     }
   }
 
+  // ── fuel receipt: litres × unit price must reconcile with the total ──────
+  if (parsed.docType === "yakit" && parsed.fuel) {
+    const f = { ...parsed.fuel };
+    // Fill whichever of the three the OCR missed — two determine the third.
+    if (f.liters == null && f.totalCost != null && f.unitPrice != null && f.unitPrice > 0) {
+      f.liters = Math.round((f.totalCost / f.unitPrice) * 100) / 100;
+      issues.push({ field: "fuel", kind: "corrected", message: "Litre tutar/birim fiyattan hesaplandı" });
+    } else if (f.totalCost == null && f.liters != null && f.unitPrice != null) {
+      f.totalCost = Math.round(f.liters * f.unitPrice * 100) / 100;
+      issues.push({ field: "fuel", kind: "corrected", message: "Tutar litre×birim fiyattan hesaplandı" });
+    } else if (f.liters != null && f.totalCost != null && f.unitPrice != null) {
+      const expected = f.liters * f.unitPrice;
+      if (Math.abs(expected - f.totalCost) > f.totalCost * 0.1) {
+        issues.push({ field: "fuel", kind: "suspect", message: "Litre × birim fiyat toplam tutarla uyuşmuyor" });
+      }
+    }
+    // Plausibility — a passenger-vehicle fill, not a tanker.
+    if (f.liters != null && (f.liters < 0.5 || f.liters > 200)) {
+      issues.push({ field: "fuel", kind: "suspect", message: "Litre beklenen aralık dışında" });
+    }
+    parsed.fuel = f;
+  }
+
   // Any genuine doubt caps confidence so it won't auto-apply silently.
   if (issues.some((i) => i.kind === "suspect")) {
     parsed.confidence = Math.min(parsed.confidence, SUSPECT_CONFIDENCE_CAP);

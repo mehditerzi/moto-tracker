@@ -1,8 +1,12 @@
 import { getDb } from "../db/index.js";
 import { config } from "../config.js";
-import { runVisionOcr as runVisionOcrDefault, runTextOcr as runTextOcrDefault } from "./ollamaClient.js";
+import {
+  runVisionOcr as runVisionOcrDefault,
+  runTextOcr as runTextOcrDefault,
+  runTextExtract,
+} from "./ollamaClient.js";
 import { extractTextWithTesseract } from "./tesseractClient.js";
-import { parseOcr } from "./parser.js";
+import { parseOcr, type ParsedOcr } from "./parser.js";
 import { backstopFromText } from "./backstop.js";
 import { validateAndCorrect } from "./validators.js";
 import { autoApply } from "./autoApply.js";
@@ -24,39 +28,109 @@ export interface OcrResult {
 
 type OcrFn = (filePath: string, signal: AbortSignal) => Promise<OcrResult>;
 
-// Default pipeline: Tesseract → text LLM → vision fallback. Every stage shares
-// the caller's AbortSignal (the per-document deadline), so a hung backend is
+/**
+ * Token budget for the verify pass. The verify model is typically a reasoning
+ * model whose thinking tokens count against num_predict — it needs headroom a
+ * plain parse model must not get (see runTextOcr).
+ */
+const VERIFY_NUM_PREDICT = 4096;
+
+/** "Unsure" = wouldn't auto-apply: unidentified, or below the apply threshold. */
+function isUnsure(p: ParsedOcr): boolean {
+  return p.docType === "unknown" || p.confidence < config.OCR_AUTO_APPLY_THRESHOLD;
+}
+
+/** A result that identified the document beats one that didn't; then confidence. */
+function isBetter(a: ParsedOcr, b: ParsedOcr): boolean {
+  if ((a.docType !== "unknown") !== (b.docType !== "unknown")) return a.docType !== "unknown";
+  return a.confidence > b.confidence;
+}
+
+// Default pipeline: text extraction (dedicated OCR model when configured,
+// Tesseract as fallback/default) → text LLM parse → second-opinion parse with
+// OLLAMA_VERIFY_MODEL when unsure → vision fallback. Every stage shares the
+// caller's AbortSignal (the per-document deadline), so a hung backend is
 // actually cancelled — not just abandoned — when the deadline fires.
 //
 // Vision fallback fires when:
-//   • Tesseract extracted too few chars (blurry/unreadable scan)
+//   • extraction produced too few chars (blurry/unreadable scan)
 //   • text LLM threw (network / HTTP error)
-//   • text LLM returned valid JSON but couldn't identify the document
-//     (doc_type=unknown or confidence<0.3 — typical for garbled Tesseract output)
+//   • the best text parse still couldn't identify the document
+//     (doc_type=unknown or confidence<0.3 — typical for garbled output)
 async function defaultOcrPipeline(filePath: string, signal: AbortSignal): Promise<OcrResult> {
-  const tesseractText = await extractTextWithTesseract(filePath, signal);
-  console.log(`[ocr] tesseract: ${tesseractText.length} chars — first 120: ${tesseractText.slice(0, 120).replace(/\n/g, " ")}`);
-
-  if (tesseractText.length >= 80) {
+  let sourceText = "";
+  if (config.OLLAMA_OCR_MODEL) {
     try {
-      const result = await runTextOcrDefault(tesseractText, undefined, undefined, signal);
-      const parsed = parseOcr(result.rawText);
-      console.log(`[ocr] text LLM: doc_type=${parsed.docType} confidence=${parsed.confidence} plate=${parsed.plate}`);
-      if (parsed.docType !== "unknown" && parsed.confidence >= 0.3) {
-        return { ...result, sourceText: tesseractText };
-      }
-      console.log("[ocr] text LLM result too uncertain — falling back to vision");
+      sourceText = (await runTextExtract(filePath, config.OLLAMA_OCR_MODEL, undefined, signal)).trim();
+      console.log(`[ocr] ${config.OLLAMA_OCR_MODEL}: ${sourceText.length} chars — first 120: ${sourceText.slice(0, 120).replace(/\n/g, " ")}`);
     } catch (e) {
       if (signal.aborted) throw e;
-      console.warn("[ocr] text LLM failed — falling back to vision:", (e as Error).message);
+      console.warn(`[ocr] ${config.OLLAMA_OCR_MODEL} failed — falling back to tesseract:`, (e as Error).message);
     }
+  }
+  if (sourceText.length < 80) {
+    const tesseractText = await extractTextWithTesseract(filePath, signal);
+    console.log(`[ocr] tesseract: ${tesseractText.length} chars — first 120: ${tesseractText.slice(0, 120).replace(/\n/g, " ")}`);
+    if (tesseractText.length > sourceText.length) sourceText = tesseractText;
+  }
+
+  if (sourceText.length >= 80) {
+    let result: { rawText: string; model: string } | null = null;
+    let parsed: ParsedOcr | null = null;
+    try {
+      result = await runTextOcrDefault(sourceText, undefined, undefined, signal);
+      parsed = parseOcr(result.rawText);
+      console.log(`[ocr] text LLM: doc_type=${parsed.docType} confidence=${parsed.confidence} plate=${parsed.plate}`);
+    } catch (e) {
+      if (signal.aborted) throw e;
+      console.warn("[ocr] text LLM failed:", (e as Error).message);
+    }
+
+    // Second opinion when the primary parse is unsure — or broke entirely
+    // (invalid JSON still lands here rather than skipping straight to vision).
+    if ((parsed == null || isUnsure(parsed)) && config.OLLAMA_VERIFY_MODEL) {
+      try {
+        const second = await runTextOcrDefault(sourceText, config.OLLAMA_VERIFY_MODEL, undefined, signal, VERIFY_NUM_PREDICT);
+        const secondParsed = parseOcr(second.rawText);
+        console.log(`[ocr] verify LLM (${config.OLLAMA_VERIFY_MODEL}): doc_type=${secondParsed.docType} confidence=${secondParsed.confidence}`);
+        if (parsed == null || isBetter(secondParsed, parsed)) {
+          result = second;
+          parsed = secondParsed;
+        }
+      } catch (e) {
+        if (signal.aborted) throw e;
+        console.warn("[ocr] verify LLM failed — keeping primary parse:", (e as Error).message);
+      }
+    }
+
+    if (result && parsed && parsed.docType !== "unknown" && parsed.confidence >= 0.3) {
+      return { ...result, sourceText };
+    }
+    console.log("[ocr] text parse too uncertain — falling back to vision");
   }
 
   console.log("[ocr] running vision LLM");
   const vision = await runVisionOcrDefault(filePath, undefined, undefined, signal);
-  // Keep the Tesseract text around (if any) so backstops can still recover a
-  // plate/date the vision model missed.
-  return { ...vision, sourceText: tesseractText || undefined };
+  // Even the vision result gets a second opinion when it's unsure and we have
+  // usable text — the big verify model reads garbled receipts better than a
+  // general vision model reads blurry photos.
+  if (config.OLLAMA_VERIFY_MODEL && sourceText.length >= 80) {
+    try {
+      const visionParsed = parseOcr(vision.rawText);
+      if (isUnsure(visionParsed)) {
+        const second = await runTextOcrDefault(sourceText, config.OLLAMA_VERIFY_MODEL, undefined, signal, VERIFY_NUM_PREDICT);
+        const secondParsed = parseOcr(second.rawText);
+        console.log(`[ocr] verify LLM (post-vision): doc_type=${secondParsed.docType} confidence=${secondParsed.confidence}`);
+        if (isBetter(secondParsed, visionParsed)) return { ...second, sourceText };
+      }
+    } catch (e) {
+      if (signal.aborted) throw e;
+      console.warn("[ocr] post-vision verify failed — keeping vision result:", (e as Error).message);
+    }
+  }
+  // Keep the extracted text around (if any) so backstops can still recover a
+  // plate/date/amount the vision model missed.
+  return { ...vision, sourceText: sourceText || undefined };
 }
 
 let _ocrPipeline: OcrFn = defaultOcrPipeline;
@@ -187,6 +261,7 @@ export async function processDocument(documentId: string): Promise<void> {
              ocr_model = ?,
              bike_id = ?,
              applied_dated_item_id = ?,
+             applied_fuel_log_id = ?,
              updated_at = datetime('now')
          WHERE id = ?`,
     ).run(
@@ -196,6 +271,7 @@ export async function processDocument(documentId: string): Promise<void> {
       model,
       newBikeId,
       apply.appliedDatedItemId,
+      apply.appliedFuelLogId,
       doc.id,
     );
 
