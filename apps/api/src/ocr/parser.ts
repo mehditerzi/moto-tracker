@@ -4,7 +4,13 @@ const optionalString = z
   .union([z.string(), z.null()])
   .optional()
   .default(null)
-  .transform((v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : null));
+  .transform((v) => {
+    if (typeof v !== "string") return null;
+    const t = v.trim();
+    // Some models emit the literal string "null" for an absent field.
+    if (t.length === 0 || t.toLowerCase() === "null") return null;
+    return t;
+  });
 
 const optionalInt = z
   .union([z.coerce.number(), z.string(), z.null()])
@@ -19,8 +25,28 @@ const optionalInt = z
     return i;
   });
 
+// Positive decimal for fuel amounts/prices. Tolerates Turkish comma decimals
+// ("45,50") and thousands dots the model may echo verbatim from the receipt.
+const optionalDecimal = z
+  .union([z.number(), z.string(), z.null()])
+  .optional()
+  .default(null)
+  .transform((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    let n: number;
+    if (typeof v === "number") {
+      n = v;
+    } else {
+      let s = v.trim().replace(/[^\d.,-]/g, "");
+      if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+      n = Number(s);
+    }
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+  });
+
 const RawSchema = z.object({
-  doc_type: z.enum(["ruhsat", "sigorta", "kasko", "muayene", "unknown"]).default("unknown"),
+  doc_type: z.enum(["ruhsat", "sigorta", "kasko", "muayene", "yakit", "unknown"]).default("unknown"),
   plate: optionalString,
   make: optionalString,
   model: optionalString,
@@ -51,11 +77,33 @@ const RawSchema = z.object({
       muayene_expires_on: z.union([z.string(), z.null()]).optional(),
     })
     .default({}),
-  confidence: z.coerce.number().min(0).max(1).default(0),
+  fuel: z
+    .object({
+      filled_on: z.union([z.string(), z.null()]).optional(),
+      liters: optionalDecimal,
+      total_cost: optionalDecimal,
+      unit_price: optionalDecimal,
+    })
+    .nullable()
+    .default(null),
+  // Clamp instead of reject: models occasionally emit confidence outside
+  // [0,1] (even negative), and a bad self-score shouldn't discard an
+  // otherwise usable parse.
+  confidence: z.coerce
+    .number()
+    .catch(0)
+    .transform((n) => Math.min(1, Math.max(0, n))),
 });
 
+export interface ParsedFuel {
+  filledOn: string | null;
+  liters: number | null;
+  totalCost: number | null;
+  unitPrice: number | null;
+}
+
 export interface ParsedOcr {
-  docType: "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown";
+  docType: "ruhsat" | "sigorta" | "kasko" | "muayene" | "yakit" | "unknown";
   plate: string | null;
   make: string | null;
   model: string | null;
@@ -71,6 +119,8 @@ export interface ParsedOcr {
     kaskoExpiresOn: string | null;
     muayeneExpiresOn: string | null;
   };
+  /** Pump receipt fields — null unless the document is a yakit fişi. */
+  fuel: ParsedFuel | null;
   confidence: number;
 }
 
@@ -151,6 +201,14 @@ export function parseOcr(rawText: string): ParsedOcr {
       kaskoExpiresOn: normalizeDate(parsed.dates.kasko_expires_on),
       muayeneExpiresOn: normalizeDate(parsed.dates.muayene_expires_on),
     },
+    fuel: parsed.fuel
+      ? {
+          filledOn: normalizeDate(parsed.fuel.filled_on),
+          liters: parsed.fuel.liters,
+          totalCost: parsed.fuel.total_cost,
+          unitPrice: parsed.fuel.unit_price,
+        }
+      : null,
     confidence: parsed.confidence,
   };
 }

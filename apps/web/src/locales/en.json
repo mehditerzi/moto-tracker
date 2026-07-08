@@ -21,7 +21,12 @@
     "add": "Add fuel-up",
     "added": "Fuel-up saved",
     "totalSpend": "Total spend",
-    "premiums": "Insurance & tax"
+    "premiums": "Insurance & tax",
+    "fullTank": "Full tank",
+    "partial": "Partial",
+    "pricePerLiter": "per litre",
+    "spendByMonth": "Monthly fuel spend",
+    "economyTrend": "Consumption trend"
   },
   "services": {
     "title": "Official services",
@@ -278,6 +283,12 @@
     "pendingSub": "Some fields are missing or low-confidence. Review and add manually.",
     "ruhsatTitle": "Registration details detected",
     "ruhsatSub": "Want to copy these to your vehicle?",
+    "fuelTitle": "Fuel receipt detected",
+    "fuelSub": "Check the values and save the fuel-up.",
+    "fuelApplied": "Fuel-up saved automatically",
+    "goToFuel": "Go to fuel",
+    "unitPrice": "Unit price",
+    "vehicle": "Vehicle",
     "docType": "Document type",
     "plate": "Plate",
     "make": "Make",

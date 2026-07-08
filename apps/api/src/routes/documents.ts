@@ -24,6 +24,7 @@ interface DocRow {
   ocr_model: string | null;
   ocr_error: string | null;
   applied_dated_item_id: string | null;
+  applied_fuel_log_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +42,7 @@ function rowToDocument(r: DocRow) {
       | "sigorta"
       | "kasko"
       | "muayene"
+      | "yakit"
       | "unknown"
       | null,
     ocrExtracted: r.ocr_extracted_json ? JSON.parse(r.ocr_extracted_json) : null,
@@ -48,6 +50,7 @@ function rowToDocument(r: DocRow) {
     ocrModel: r.ocr_model,
     ocrError: r.ocr_error,
     appliedDatedItemId: r.applied_dated_item_id,
+    appliedFuelLogId: r.applied_fuel_log_id,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

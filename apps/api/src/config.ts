@@ -72,6 +72,25 @@ const Env = z.object({
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_VISION_MODEL: z.string().default("gemma4:26b"),
   OLLAMA_PARSE_MODEL: z.string().optional(),
+  /**
+   * Dedicated image→text OCR model (e.g. glm-ocr:latest). When set, it becomes
+   * the primary text-extraction stage; Tesseract stays as the fallback when
+   * the model errors. Unset → Tesseract only (previous behavior).
+   */
+  OLLAMA_OCR_MODEL: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
+  /**
+   * Second-opinion parse model (e.g. qwen3.6:35b-mlx). When the primary parse
+   * is unsure — doc_type unknown or confidence below OCR_AUTO_APPLY_THRESHOLD —
+   * the extracted text is re-parsed with this model and the better result wins.
+   * Unset → no verification pass.
+   */
+  OLLAMA_VERIFY_MODEL: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
   OCR_AUTO_APPLY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   /**
    * Hard ceiling (ms) on a single document's OCR pipeline. Guards against a

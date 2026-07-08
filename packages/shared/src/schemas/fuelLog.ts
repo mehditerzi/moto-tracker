@@ -10,6 +10,8 @@ export const fuelLogSchema = z.object({
   odometerKm: z.number().int().nullable(),
   isFull: z.boolean(),
   notes: z.string().nullable(),
+  /** Receipt scan this fill was created from, when it came via OCR. */
+  sourceDocumentId: z.string().nullable(),
   createdAt: z.string(),
 });
 export type FuelLog = z.infer<typeof fuelLogSchema>;
@@ -22,5 +24,6 @@ export const fuelLogCreateSchema = z.object({
   odometerKm: z.number().int().nonnegative().max(10_000_000).nullable().optional(),
   isFull: z.boolean().default(true),
   notes: z.string().max(500).nullable().optional(),
+  sourceDocumentId: z.string().nullable().optional(),
 });
 export type FuelLogCreateInput = z.infer<typeof fuelLogCreateSchema>;

@@ -53,3 +53,36 @@ describe("ocr/backstop backstopFromText", () => {
     expect(out).toEqual(base);
   });
 });
+
+describe("ocr/backstop — yakit receipt amounts", () => {
+  it("recovers labelled amounts and the date from raw receipt text", () => {
+    const out = backstopFromText(
+      { ...base, docType: "yakit", fuel: { filledOn: null, liters: null, totalCost: null, unitPrice: null } },
+      "SHELL PETROL A.Ş.\nTARİH: 02.07.2026\nKURŞUNSUZ 95\nLİTRE : 12,45\nB.FİYAT : 83,37\nTUTAR : 1.037,93",
+    );
+    expect(out.fuel).toEqual({ filledOn: "2026-07-02", liters: 12.45, totalCost: 1037.93, unitPrice: 83.37 });
+  });
+
+  it("reads an amount printed before the LT unit without stealing the total", () => {
+    const out = backstopFromText(
+      { ...base, docType: "yakit", fuel: null },
+      "OPET 12,45 LT TUTAR: 1.037,93 05.06.2026",
+    );
+    expect(out.fuel?.liters).toBe(12.45);
+    expect(out.fuel?.totalCost).toBe(1037.93);
+    expect(out.fuel?.filledOn).toBe("2026-06-05");
+  });
+
+  it("never overwrites values the model produced", () => {
+    const out = backstopFromText(
+      { ...base, docType: "yakit", fuel: { filledOn: "2026-07-01", liters: 40, totalCost: 2000, unitPrice: 50 } },
+      "LİTRE : 12,45 TUTAR : 1.037,93",
+    );
+    expect(out.fuel).toEqual({ filledOn: "2026-07-01", liters: 40, totalCost: 2000, unitPrice: 50 });
+  });
+
+  it("ignores receipt keywords on non-receipt documents", () => {
+    const out = backstopFromText(base, "TOPLAM 1.037,93 LİTRE 12,45");
+    expect(out.fuel).toBeNull();
+  });
+});

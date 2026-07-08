@@ -21,7 +21,12 @@
     "add": "Yakıt ekle",
     "added": "Yakıt kaydedildi",
     "totalSpend": "Toplam masraf",
-    "premiums": "Sigorta & vergi"
+    "premiums": "Sigorta & vergi",
+    "fullTank": "Depo tam doldu",
+    "partial": "Kısmi",
+    "pricePerLiter": "litre başına",
+    "spendByMonth": "Aylık yakıt masrafı",
+    "economyTrend": "Tüketim eğilimi"
   },
   "services": {
     "title": "Resmi işlemler",
@@ -278,6 +283,12 @@
     "pendingSub": "Eksik veya düşük güvenli alanlar var. İncele ve elle ekle.",
     "ruhsatTitle": "Ruhsat bilgileri okundu",
     "ruhsatSub": "Bu bilgileri aracına kopyalamak ister misin?",
+    "fuelTitle": "Yakıt fişi algılandı",
+    "fuelSub": "Değerleri kontrol edip yakıt kaydını ekle.",
+    "fuelApplied": "Yakıt kaydı otomatik eklendi",
+    "goToFuel": "Yakıt sayfasına git",
+    "unitPrice": "Birim fiyat",
+    "vehicle": "Araç",
     "docType": "Belge türü",
     "plate": "Plaka",
     "make": "Marka",

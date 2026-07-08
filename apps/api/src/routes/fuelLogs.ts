@@ -17,6 +17,7 @@ interface FuelRow {
   odometer_km: number | null;
   is_full: number;
   notes: string | null;
+  source_document_id: string | null;
   created_at: string;
 }
 
@@ -31,6 +32,7 @@ function rowToFuelLog(r: FuelRow, userId: string) {
     odometerKm: r.odometer_km,
     isFull: r.is_full === 1,
     notes: r.notes,
+    sourceDocumentId: r.source_document_id,
     createdAt: r.created_at,
   };
 }
@@ -70,8 +72,8 @@ fuelLogsRouter.post(
     }
     const id = newId();
     db.prepare(
-      `INSERT INTO fuel_log (id, user_id, bike_id, filled_on, liters, total_cost, odometer_km, is_full, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO fuel_log (id, user_id, bike_id, filled_on, liters, total_cost, odometer_km, is_full, notes, source_document_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.user!.id,
@@ -82,6 +84,7 @@ fuelLogsRouter.post(
       body.odometerKm ?? null,
       body.isFull ? 1 : 0,
       body.notes ?? null,
+      body.sourceDocumentId ?? null,
     );
     const row = db.prepare("SELECT * FROM fuel_log WHERE id = ?").get(id) as FuelRow;
     res.status(201).json(rowToFuelLog(row, req.user!.id));

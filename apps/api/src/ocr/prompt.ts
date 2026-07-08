@@ -29,6 +29,17 @@ Kasko poliçesi. Plaka ve kasko bitiş tarihini (kasko_expires_on) içerir.
 === muayene ===
 Muayene belgesi. Plaka ve muayene bitiş tarihini (muayene_expires_on) içerir.
 
+=== yakit ===
+Akaryakıt pompa fişi / benzin istasyonu fişi (POMPA, LİTRE, TUTAR, B.FİYAT gibi
+alanlar; istasyon adı: Shell, Opet, BP, Petrol Ofisi, TotalEnergies vb.). Şu
+alanları fuel nesnesine yaz:
+  TARİH / FİŞ TARİHİ → fuel.filled_on   — fiş tarihi (YYYY-MM-DD)
+  LİTRE / LT / MİKTAR → fuel.liters     — alınan yakıt litresi (ondalık sayı)
+  TUTAR / TOPLAM      → fuel.total_cost — toplam tutar TL (ondalık sayı)
+  B.FİYAT / BİRİM FİYAT → fuel.unit_price — litre fiyatı TL (ondalık sayı)
+Fişte plaka yazıyorsa plate alanına yaz. KDV oranını, fiş no'yu, istasyon
+adresini hiçbir alana yazma. Türkçe ondalık virgülü noktaya çevir: "45,50" → 45.5.
+
 === unknown ===
 Hiçbirine uymuyorsa.
 
@@ -43,7 +54,7 @@ KURALLAR:
 SADECE aşağıdaki JSON'u döndür — açıklama veya kod bloğu ekleme:
 
 {
-  "doc_type": "ruhsat" | "sigorta" | "kasko" | "muayene" | "unknown",
+  "doc_type": "ruhsat" | "sigorta" | "kasko" | "muayene" | "yakit" | "unknown",
   "plate": "boşluksuz plaka veya null",
   "make": "marka (D.1) veya null",
   "model": "Ticari Adı (D.3) veya null — tip kodu (D.2) değil",
@@ -58,6 +69,12 @@ SADECE aşağıdaki JSON'u döndür — açıklama veya kod bloğu ekleme:
     "sigorta_expires_on": "YYYY-MM-DD veya null",
     "kasko_expires_on": "YYYY-MM-DD veya null",
     "muayene_expires_on": "YYYY-MM-DD veya null"
+  },
+  "fuel": {
+    "filled_on": "yakıt fişi tarihi YYYY-MM-DD veya null",
+    "liters": "litre, ondalık sayı veya null",
+    "total_cost": "toplam tutar TL, ondalık sayı veya null",
+    "unit_price": "litre birim fiyatı TL, ondalık sayı veya null"
   },
   "confidence": 0.0
 }`;

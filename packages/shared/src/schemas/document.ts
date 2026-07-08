@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { vehicleTypeSchema } from "./bike.js";
 
-export const docTypeSchema = z.enum(["ruhsat", "sigorta", "kasko", "muayene", "unknown"]);
+export const docTypeSchema = z.enum(["ruhsat", "sigorta", "kasko", "muayene", "yakit", "unknown"]);
 export type DocType = z.infer<typeof docTypeSchema>;
 
 export const ocrStatusSchema = z.enum(["pending", "done", "failed"]);
@@ -28,6 +28,16 @@ export const ocrExtractedSchema = z.object({
     kaskoExpiresOn: z.string().nullable(),
     muayeneExpiresOn: z.string().nullable(),
   }),
+  // Pump receipt (yakit) fields — null/absent for other document types.
+  fuel: z
+    .object({
+      filledOn: z.string().nullable(),
+      liters: z.number().nullable(),
+      totalCost: z.number().nullable(),
+      unitPrice: z.number().nullable(),
+    })
+    .nullable()
+    .optional(),
   confidence: z.number().min(0).max(1),
 });
 export type OcrExtracted = z.infer<typeof ocrExtractedSchema>;
@@ -45,6 +55,7 @@ export const documentSchema = z.object({
   ocrModel: z.string().nullable(),
   ocrError: z.string().nullable(),
   appliedDatedItemId: z.string().nullable(),
+  appliedFuelLogId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

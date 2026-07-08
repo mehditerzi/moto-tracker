@@ -114,3 +114,45 @@ describe("validateAndCorrect", () => {
     expect(parsed.confidence).toBe(0.9);
   });
 });
+
+describe("validateAndCorrect — yakit fuel reconciliation", () => {
+  const fuelBase = (fuel: NonNullable<ParsedOcr["fuel"]>) => base({ docType: "yakit", fuel });
+
+  it("derives a missing total from litres × unit price (corrected, confidence intact)", () => {
+    const { parsed, issues } = validateAndCorrect(
+      fuelBase({ filledOn: "2026-07-01", liters: 30, totalCost: null, unitPrice: 50 }),
+    );
+    expect(parsed.fuel?.totalCost).toBe(1500);
+    expect(issues.some((i) => i.field === "fuel" && i.kind === "corrected")).toBe(true);
+    expect(parsed.confidence).toBe(0.9);
+  });
+
+  it("derives missing litres from total ÷ unit price", () => {
+    const { parsed } = validateAndCorrect(
+      fuelBase({ filledOn: "2026-07-01", liters: null, totalCost: 1500, unitPrice: 50 }),
+    );
+    expect(parsed.fuel?.liters).toBe(30);
+  });
+
+  it("flags a total that doesn't reconcile and caps confidence", () => {
+    const { parsed, issues } = validateAndCorrect(
+      fuelBase({ filledOn: "2026-07-01", liters: 30, totalCost: 900, unitPrice: 50 }),
+    );
+    expect(issues.some((i) => i.field === "fuel" && i.kind === "suspect")).toBe(true);
+    expect(parsed.confidence).toBeLessThanOrEqual(0.5);
+  });
+
+  it("flags implausible litres", () => {
+    const { parsed, issues } = validateAndCorrect(
+      fuelBase({ filledOn: null, liters: 900, totalCost: null, unitPrice: null }),
+    );
+    expect(issues.some((i) => i.field === "fuel" && i.kind === "suspect")).toBe(true);
+    expect(parsed.confidence).toBeLessThanOrEqual(0.5);
+  });
+
+  it("does not touch the input object", () => {
+    const input = fuelBase({ filledOn: null, liters: 30, totalCost: null, unitPrice: 50 });
+    validateAndCorrect(input);
+    expect(input.fuel?.totalCost).toBeNull();
+  });
+});

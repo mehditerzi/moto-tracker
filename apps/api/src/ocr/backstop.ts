@@ -42,13 +42,41 @@ function dateNearKeyword(text: string, keywords: string[]): string | null {
   return null;
 }
 
+/** Turkish-formatted decimal ("1.234,56" or "45,50" or "45.50") → number. */
+function parseTrNumber(s: string): number | null {
+  let t = s.trim();
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const NUM_TOKEN = "(\\d{1,3}(?:\\.\\d{3})*,\\d{1,3}|\\d+(?:[.,]\\d{1,3})?)";
+
+/** First positive number appearing after any of `keywords` (case-insensitive). */
+function numberNearKeyword(text: string, keywords: string[]): number | null {
+  for (const kw of keywords) {
+    const re = new RegExp(`${kw}[^\\d-]{0,25}?${NUM_TOKEN}`, "i");
+    const m = text.match(re);
+    if (m) {
+      const n = parseTrNumber(m[1]!);
+      if (n != null) return n;
+    }
+  }
+  return null;
+}
+
 /**
- * Fill plate / dates the LLM left null using the raw OCR text. Returns a new
- * object; never mutates the input and never overwrites a non-null field.
+ * Fill plate / dates / receipt amounts the LLM left null using the raw OCR
+ * text. Returns a new object; never mutates the input and never overwrites a
+ * non-null field.
  */
 export function backstopFromText(parsed: ParsedOcr, sourceText: string | null | undefined): ParsedOcr {
   if (!sourceText || sourceText.trim().length === 0) return parsed;
-  const out: ParsedOcr = { ...parsed, dates: { ...parsed.dates } };
+  const out: ParsedOcr = {
+    ...parsed,
+    dates: { ...parsed.dates },
+    fuel: parsed.fuel ? { ...parsed.fuel } : null,
+  };
 
   // Plate: fill when missing OR when the LLM's value doesn't pass plate shape.
   const current = normalizePlate(out.plate);
@@ -68,6 +96,44 @@ export function backstopFromText(parsed: ParsedOcr, sourceText: string | null | 
   }
   if (!out.dates.kaskoExpiresOn) {
     out.dates.kaskoExpiresOn = dateNearKeyword(sourceText, ["kasko"]);
+  }
+
+  // Pump receipt amounts, matched by their printed labels. Only for documents
+  // the model already identified as a receipt — these keywords are too generic
+  // ("TOPLAM") to trust on other document types. `[İIiı]` classes because
+  // JS /i doesn't case-fold Turkish dotted/dotless i.
+  if (out.docType === "yakit") {
+    const I = "[İIiı]";
+    const fuel = out.fuel ?? { filledOn: null, liters: null, totalCost: null, unitPrice: null };
+    if (fuel.liters == null) {
+      // "12,45 LT" (amount before the unit) is checked first — it's the more
+      // specific shape, and a trailing "\bLT\b … TUTAR 1.037,93" would
+      // otherwise hand the total to the litres field. The number must carry a
+      // fraction and sit on the same line: pump quantities always print
+      // decimals, while an octane grade ("KURŞUNSUZ 95") right before "LİTRE"
+      // doesn't.
+      const DEC_TOKEN = "(\\d{1,3}(?:\\.\\d{3})*,\\d{1,3}|\\d+\\.\\d{1,3})";
+      const before = sourceText.match(new RegExp(`${DEC_TOKEN}[ \\t]*(?:LT|L${I}TRE)\\b`, "i"));
+      fuel.liters =
+        (before ? parseTrNumber(before[1]!) : null) ??
+        numberNearKeyword(sourceText, [`l${I}tre`, "\\bLT\\b", `m${I}ktar`]);
+    }
+    if (fuel.totalCost == null) {
+      fuel.totalCost = numberNearKeyword(sourceText, ["tutar", "toplam"]);
+    }
+    if (fuel.unitPrice == null) {
+      fuel.unitPrice = numberNearKeyword(sourceText, [`b${I}r${I}m\\s*f${I}yat`, `b\\.?\\s*f${I}yat`]);
+    }
+    if (fuel.filledOn == null) {
+      fuel.filledOn =
+        dateNearKeyword(sourceText, [`tar${I}h`]) ??
+        // Fall back to the first date printed anywhere on the receipt.
+        (() => {
+          const m = sourceText.match(new RegExp(DATE_TOKEN));
+          return m ? normalizeDate(m[1]) : null;
+        })();
+    }
+    out.fuel = fuel;
   }
 
   return out;
