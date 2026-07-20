@@ -6,6 +6,7 @@
 - [iOS widget](./ios-widget.md) — "next deadline" widget (App Group + Xcode)
 - [iOS in-app purchases](./ios-iap.md) — extra-vehicle subscriptions (StoreKit 2 + JWS verify)
 - [Fuel tracking & receipt OCR](./fuel-ocr.md) — economy math + glm-ocr/qwen pipeline
+- [Trip route maps](./trip-maps.md) — polyline capture + MapKit JS setup
 - [Native push (APNs)](./app-store/native-push.md)
 - [Session handoff](./SESSION-HANDOFF.md)
 

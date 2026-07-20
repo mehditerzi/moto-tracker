@@ -11,6 +11,10 @@ export const tripSchema = z.object({
   startedAt: z.string(),
   endedAt: z.string(),
   pointCount: z.number().int(),
+  /** List responses carry only this flag; the detail endpoint has the route. */
+  hasRoute: z.boolean().optional(),
+  /** Encoded polyline (Google algorithm) — only on GET /api/trips/:id. */
+  route: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 export type Trip = z.infer<typeof tripSchema>;
@@ -22,5 +26,7 @@ export const tripCreateSchema = z.object({
   startedAt: z.string().min(1),
   endedAt: z.string().min(1),
   pointCount: z.number().int().nonnegative().default(0),
+  // ~1000 simplified points encode well under this; the cap just bounds abuse.
+  route: z.string().max(200_000).nullable().optional(),
 });
 export type TripCreateInput = z.infer<typeof tripCreateSchema>;

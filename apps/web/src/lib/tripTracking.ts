@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { haversineKm } from "./geo";
+import { encodePolyline, simplifyToBudget, type LatLng } from "./polyline";
 
 // ─── auto-detection engine ────────────────────────────────────────────────────
 
@@ -19,6 +20,8 @@ export interface CompletedTrip {
   startedAt: string;
   endedAt: string;
   pointCount: number;
+  /** Encoded polyline of the (simplified) route, null when too few points. */
+  route: string | null;
 }
 
 // Tunables for "is the vehicle driving?" detection.
@@ -27,6 +30,11 @@ const STOP_SPEED_MS = 0.8; // ~3 km/h → effectively stopped
 const STOP_AFTER_MS = 180_000; // stationary this long ends the trip (3 min)
 const MAX_ACCURACY_M = 100; // drop very fuzzy fixes
 const MAX_SEGMENT_SPEED_MS = 80; // ~288 km/h between fixes → GPS glitch, skip it
+// Route capture: keep a raw point only every ≥ this far (bounds memory on long
+// rides); the kept trace is Douglas-Peucker-simplified again at trip end.
+const ROUTE_THIN_M = 30;
+const ROUTE_MAX_POINTS = 1000;
+const ROUTE_TOLERANCE_M = 20;
 
 /**
  * Stateful, side-effect-free detector. Feed it GPS samples in time order; it
@@ -42,6 +50,7 @@ export class TripDetector {
   private distanceKm = 0;
   private points = 0;
   private stillSince: number | null = null;
+  private route: LatLng[] = [];
 
   push(s: Sample): CompletedTrip | null {
     if (s.accuracy != null && s.accuracy > MAX_ACCURACY_M) return null;
@@ -54,6 +63,7 @@ export class TripDetector {
         this.distanceKm = 0;
         this.points = 1;
         this.stillSince = null;
+        this.route = [[s.lat, s.lng]];
       }
       this.lastPoint = s;
       return null;
@@ -67,6 +77,11 @@ export class TripDetector {
     }
     this.points += 1;
     this.lastPoint = s;
+
+    const lastKept = this.route[this.route.length - 1];
+    if (!lastKept || haversineKm({ lat: lastKept[0], lng: lastKept[1] }, s) * 1000 >= ROUTE_THIN_M) {
+      this.route.push([s.lat, s.lng]);
+    }
 
     if (speed < STOP_SPEED_MS) {
       if (this.stillSince == null) this.stillSince = s.t;
@@ -83,17 +98,23 @@ export class TripDetector {
   }
 
   private end(endT: number): CompletedTrip {
+    const simplified =
+      this.route.length >= 2
+        ? simplifyToBudget(this.route, ROUTE_MAX_POINTS, ROUTE_TOLERANCE_M)
+        : null;
     const trip: CompletedTrip = {
       distanceKm: Math.round(this.distanceKm * 100) / 100,
       startedAt: new Date(this.startedAt).toISOString(),
       endedAt: new Date(endT).toISOString(),
       pointCount: this.points,
+      route: simplified && simplified.length >= 2 ? encodePolyline(simplified) : null,
     };
     this.moving = false;
     this.lastPoint = null;
     this.distanceKm = 0;
     this.points = 0;
     this.stillSince = null;
+    this.route = [];
     return trip;
   }
 }

@@ -144,6 +144,12 @@ const Env = z.object({
     .union([z.literal("true"), z.literal("false")])
     .transform((v) => v === "true")
     .default("false"),
+  // MapKit JS (trip route maps). All optional — maps stay hidden until set.
+  // MAPKIT_KEY is the .p8 contents (PEM or base64), from a developer-portal key
+  // with the MapKit JS service enabled. Team id defaults to APNS_TEAM_ID.
+  MAPKIT_KEY: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  MAPKIT_KEY_ID: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  MAPKIT_TEAM_ID: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   CRON_TIMEZONE: z.string().default("Europe/Istanbul"),
   CRON_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   CRON_ENABLED: z

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { config } from "../config.js";
+import { mapkitEnabled } from "./mapkit.js";
 
 /**
  * Unauthenticated config the sign-in screen needs before a user exists — namely
@@ -12,5 +13,6 @@ publicConfigRouter.get("/", (_req, res) => {
   res.json({
     appleSignIn: !!(config.APPLE_CLIENT_ID && config.APPLE_CLIENT_SECRET),
     googleSignIn: !!(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET),
+    mapkit: mapkitEnabled(),
   });
 });

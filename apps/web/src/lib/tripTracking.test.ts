@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { TripDetector, type Sample } from "./tripTracking";
 import { haversineKm } from "./geo";
+import { decodePolyline } from "./polyline";
 
 // A point ~111 m north of the previous one per 0.001° latitude.
 function north(lat: number, lng: number, t: number, speed: number): Sample {
@@ -81,5 +82,40 @@ describe("TripDetector", () => {
   it("flush ends an in-progress trip and returns null when idle", () => {
     const d = new TripDetector();
     expect(d.flush(1000)).toBeNull();
+  });
+
+  it("records the route as a decodable polyline spanning start to end", () => {
+    const d = new TripDetector();
+    let lat = 41;
+    let t = 0;
+    for (let i = 0; i < 100; i++) {
+      lat += 0.001; // ~111 m per step — well over the thinning threshold
+      t += 5000;
+      d.push({ lat, lng: 29, t, speed: 22, accuracy: 8 });
+    }
+    const trip = d.flush(t);
+    expect(trip!.route).toBeTruthy();
+    const pts = decodePolyline(trip!.route!);
+    expect(pts.length).toBeGreaterThanOrEqual(2);
+    // First and last kept points bracket the drive.
+    expect(pts[0]![0]).toBeCloseTo(41.001, 3);
+    expect(pts[pts.length - 1]![0]).toBeCloseTo(lat, 3);
+    // A second trip on the same detector starts a fresh route.
+    lat += 1;
+    for (let i = 0; i < 5; i++) {
+      lat += 0.001;
+      t += 5000;
+      d.push({ lat, lng: 29, t, speed: 22, accuracy: 8 });
+    }
+    const second = d.flush(t);
+    const secondPts = decodePolyline(second!.route!);
+    expect(secondPts[0]![0]).toBeGreaterThan(42); // no bleed from trip one
+  });
+
+  it("returns a null route for a trip with too few points", () => {
+    const d = new TripDetector();
+    d.push({ lat: 41, lng: 29, t: 1000, speed: 20, accuracy: 8 });
+    const trip = d.flush(2000);
+    expect(trip!.route).toBeNull();
   });
 });

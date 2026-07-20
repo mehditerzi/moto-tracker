@@ -70,3 +70,56 @@ describe("/api/trips", () => {
     expect(res.body.error).toBe("bike_not_found");
   });
 });
+
+describe("/api/trips — routes", () => {
+  it("stores a route; list carries only hasRoute, detail carries the polyline", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const bikeId = await makeBike(app, cookie);
+    const encoded = "_p~iF~ps|U_ulLnnqC_mqNvxq`@";
+
+    const create = await request(app)
+      .post("/api/trips")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send({ ...trip(bikeId, 18.4), route: encoded });
+    expect(create.status).toBe(201);
+    const id = create.body.id as string;
+
+    const list = await request(app).get("/api/trips").set("Cookie", cookie);
+    expect(list.body[0].hasRoute).toBe(true);
+    expect(list.body[0].route).toBeUndefined();
+
+    const detail = await request(app).get(`/api/trips/${id}`).set("Cookie", cookie);
+    expect(detail.status).toBe(200);
+    expect(detail.body.route).toBe(encoded);
+  });
+
+  it("routeless trips report hasRoute=false and a null detail route", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const bikeId = await makeBike(app, cookie);
+    const create = await request(app)
+      .post("/api/trips")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send(trip(bikeId, 20));
+    const detail = await request(app).get(`/api/trips/${create.body.id}`).set("Cookie", cookie);
+    expect(detail.body.hasRoute).toBe(false);
+    expect(detail.body.route).toBeNull();
+  });
+
+  it("does not leak another user's trip detail", async () => {
+    const app = buildTestApp();
+    const a = await signUpAndSignIn(app);
+    const bikeId = await makeBike(app, a.cookie);
+    const create = await request(app)
+      .post("/api/trips")
+      .set("Cookie", a.cookie)
+      .set("Content-Type", "application/json")
+      .send(trip(bikeId, 20));
+    const b = await signUpAndSignIn(app);
+    const res = await request(app).get(`/api/trips/${create.body.id}`).set("Cookie", b.cookie);
+    expect(res.status).toBe(404);
+  });
+});

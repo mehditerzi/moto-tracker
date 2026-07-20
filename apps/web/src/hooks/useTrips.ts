@@ -9,6 +9,16 @@ export function useTrips(bikeId?: string) {
   });
 }
 
+/** One trip including its encoded route — fetched lazily when a map opens. */
+export function useTrip(id: string | null) {
+  return useQuery<Trip>({
+    queryKey: ["trip", id],
+    queryFn: () => api<Trip>(`/api/trips/${id}`),
+    enabled: !!id,
+    staleTime: Infinity, // a finished trip's route never changes
+  });
+}
+
 export function useCreateTrip() {
   const qc = useQueryClient();
   return useMutation({

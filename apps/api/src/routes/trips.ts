@@ -15,10 +15,15 @@ interface TripRow {
   started_at: string;
   ended_at: string;
   point_count: number;
+  route: string | null;
   created_at: string;
 }
 
-function rowToTrip(r: TripRow, userId: string) {
+/**
+ * List responses only say whether a route exists (a full list of 200 encoded
+ * polylines would be hundreds of KB); GET /:id carries the actual route.
+ */
+function rowToTrip(r: TripRow, userId: string, withRoute = false) {
   return {
     id: r.id,
     userId,
@@ -27,6 +32,8 @@ function rowToTrip(r: TripRow, userId: string) {
     startedAt: r.started_at,
     endedAt: r.ended_at,
     pointCount: r.point_count,
+    hasRoute: r.route != null,
+    ...(withRoute ? { route: r.route } : {}),
     createdAt: r.created_at,
   };
 }
@@ -53,6 +60,21 @@ tripsRouter.get(
   }),
 );
 
+// GET /api/trips/:id → one trip including its encoded route (for the map).
+tripsRouter.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const row = getDb()
+      .prepare("SELECT * FROM trip WHERE id = ? AND user_id = ?")
+      .get(req.params.id, req.user!.id) as TripRow | undefined;
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json(rowToTrip(row, req.user!.id, true));
+  }),
+);
+
 tripsRouter.post(
   "/",
   asyncHandler(async (req, res) => {
@@ -68,8 +90,8 @@ tripsRouter.post(
     }
     const id = newId();
     db.prepare(
-      `INSERT INTO trip (id, user_id, bike_id, distance_km, started_at, ended_at, point_count)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trip (id, user_id, bike_id, distance_km, started_at, ended_at, point_count, route)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.user!.id,
@@ -78,6 +100,7 @@ tripsRouter.post(
       body.startedAt,
       body.endedAt,
       body.pointCount,
+      body.route ?? null,
     );
     const row = db.prepare("SELECT * FROM trip WHERE id = ?").get(id) as TripRow;
     res.status(201).json(rowToTrip(row, req.user!.id));
