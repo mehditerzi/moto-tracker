@@ -28,7 +28,8 @@
     "leaveRide": "Ayrıl",
     "rideEnded": "Sürüş sona erdi.",
     "shareText": "Garajım grup sürüşüme katıl — kod: {{code}}",
-    "codeCopied": "Kod kopyalandı."
+    "codeCopied": "Kod kopyalandı.",
+    "backgroundSharing": "Grup sürüşü aktif — konumun paylaşılıyor"
   },
   "fuel": {
     "title": "Yakıt",

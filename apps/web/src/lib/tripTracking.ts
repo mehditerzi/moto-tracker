@@ -179,7 +179,7 @@ function watchWeb(onSample: (s: Sample) => void): GeoSource {
 function watchNative(
   onSample: (s: Sample) => void,
   onError: (e: unknown) => void,
-  opts: StartOptions,
+  opts: Pick<StartOptions, "backgroundTitle" | "backgroundMessage">,
 ): GeoSource {
   let stopped = false;
   let stopFn: (() => void) | null = null;
@@ -200,6 +200,39 @@ function watchNative(
     stop: () => {
       stopped = true;
       stopFn?.();
+    },
+  };
+}
+
+export interface PositionWatchHandle {
+  stop: () => void;
+}
+
+/**
+ * Generic best-available position watch (not tied to trip detection): the
+ * native background-geolocation plugin on device — which keeps the whole app
+ * (JS timers, sockets) alive while backgrounded — with the browser Geolocation
+ * API as fallback on web or when the native watcher errors (e.g. permission
+ * granted "While Using" only). Used by live ride sharing.
+ */
+export function watchBestPosition(
+  onSample: (s: Sample) => void,
+  opts: Pick<StartOptions, "backgroundTitle" | "backgroundMessage">,
+): PositionWatchHandle {
+  if (!isNativePlatform()) return watchWeb(onSample);
+  let fallback: GeoSource | null = null;
+  const native = watchNative(
+    onSample,
+    () => {
+      // Native watcher unavailable — degrade to the foreground web watch once.
+      if (!fallback) fallback = watchWeb(onSample);
+    },
+    opts,
+  );
+  return {
+    stop: () => {
+      native.stop();
+      fallback?.stop();
     },
   };
 }

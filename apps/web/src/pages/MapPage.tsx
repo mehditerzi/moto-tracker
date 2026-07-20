@@ -297,7 +297,10 @@ function ActiveRide({
   leaving: boolean;
 }) {
   const { t } = useTranslation();
-  const { live, ended } = useRideChannel(groupId);
+  const { live, ended } = useRideChannel(groupId, {
+    title: t("brand"),
+    message: t("map.backgroundSharing"),
+  });
   const mapRef = useRef<HTMLDivElement>(null);
   const ctx = useRef<{ mk: MapKitNS; map: MapKitMap; pins: Map<string, unknown> } | null>(null);
   const centered = useRef(false);

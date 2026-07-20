@@ -28,7 +28,8 @@
     "leaveRide": "Leave",
     "rideEnded": "The ride has ended.",
     "shareText": "Join my Garajım group ride — code: {{code}}",
-    "codeCopied": "Code copied."
+    "codeCopied": "Code copied.",
+    "backgroundSharing": "Group ride active — sharing your location"
   },
   "fuel": {
     "title": "Fuel",
