@@ -6,7 +6,7 @@ import { getDb } from "../../src/db/index.js";
  */
 export function grantEntitlement(
   userId: string,
-  productId = "com.medhiterzi.mototracker.garage.10.yearly",
+  productId = "com.mehditerzi.mototracker.garage.10.yearly",
   maxVehicles = 10,
 ): void {
   const oneYear = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();

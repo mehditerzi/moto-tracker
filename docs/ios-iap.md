@@ -1,22 +1,34 @@
-# In-app purchases — extra vehicles (auto-renewable subscriptions)
+# In-app purchases — vehicle packs (auto-renewable subscriptions)
 
-The **first vehicle is free**. Additional vehicles require an active
-auto-renewable App Store subscription. There's **no third-party billing SDK** —
-we verify Apple's signed transactions ourselves against Apple's root CAs.
+The **first vehicle is free**. More vehicles are sold as **packs** — the pack
+size is the total active-vehicle ceiling. There's **no third-party billing
+SDK** — we verify Apple's signed transactions ourselves against Apple's root
+CAs.
 
-Pricing is expressed as **tiers by vehicle count** (Apple has no per-quantity
-billing). All tiers live in one subscription group, so a user is on exactly one.
+Pricing is **₺20/vehicle/month** or **₺100/vehicle/year**, with a volume
+discount baked into the pack price: **10% off at 10+, 20% at 20+, 30% from
+30 up**. Apple has no per-quantity billing, so each pack × period is its own
+product; all live in one subscription group, so a user is on exactly one.
 
-| Tier | Vehicles | Product ID | Suggested price/yr |
+Product ID pattern: `com.mehditerzi.mototracker.garage.<packSize>.<monthly|yearly>`
+
+| Pack | Monthly | Yearly | Product IDs (`…garage.` prefix) |
 |---|---|---|---|
-| Free | 1 | — | — |
-| Garaj 3 | 3 | `com.medhiterzi.mototracker.garage.3.yearly` | ₺100 |
-| Garaj 5 | 5 | `com.medhiterzi.mototracker.garage.5.yearly` | ₺200 |
-| Garaj 10 | 10 | `com.medhiterzi.mototracker.garage.10.yearly` | ₺400 |
+| Free (1) | — | — | — |
+| 3 | ₺60 | ₺300 | `3.monthly` / `3.yearly` |
+| 5 | ₺100 | ₺500 | `5.monthly` / `5.yearly` |
+| 10 (−10%) | ₺180 | ₺900 | `10.monthly` / `10.yearly` |
+| 20 (−20%) | ₺320 | ₺1600 | `20.monthly` / `20.yearly` |
+| 30 (−30%) | ₺420 | ₺2100 | `30.monthly` / `30.yearly` |
+| 40 (−30%) | ₺560 | ₺2800 | `40.monthly` / `40.yearly` |
+| 50 (−30%) | ₺700 | ₺3500 | `50.monthly` / `50.yearly` |
 
-The catalog is the single source of truth in
-[`packages/shared/src/schemas/iap.ts`](../packages/shared/src/schemas/iap.ts) —
-**product IDs, tiers, and vehicle counts must match App Store Connect exactly.**
+The formula and pack list live in
+[`packages/shared/src/schemas/iap.ts`](../packages/shared/src/schemas/iap.ts).
+The server resolves product IDs **by pattern**, so adding a pack size later
+means: create the products in App Store Connect + add the size to `PACK_SIZES`
+(paywall display only) — no entitlement logic changes. Prices in App Store
+Connect should match the formula (Apple price points may round, e.g. ₺299.99).
 
 ## Pieces in this repo
 
@@ -44,16 +56,19 @@ The catalog is the single source of truth in
 **iOS (native)**
 - `ios/App/App/StoreKitPlugin.swift` — StoreKit 2 Capacitor plugin
   (`getProducts` / `purchase` / `restore`), returns signed JWS.
-- `ios/App/Garajim.storekit` — local test config (3 tiers).
+- `ios/App/Garajim.storekit` — local test config (all 14 pack products).
 
 ## App Store Connect setup (one-time)
 
 1. **Subscription group.** Features → In-App Purchases → **Subscription Group**,
    name it `Garaj Aboneliği`.
-2. **Create the three auto-renewable subscriptions** with the product IDs above.
-   For each: duration **1 year**, price per the table, a localized display name
-   (`Garaj 3 Araç`, …) and a reference name. **Type = Auto-Renewable
-   Subscription** (NOT Consumable).
+2. **Create the 14 auto-renewable subscriptions** (7 packs × monthly/yearly)
+   with the product IDs above. For each: duration **1 month** or **1 year**,
+   price per the table, a localized display name (`Garaj 3 Araç (Yıllık)`, …)
+   and a reference name. **Type = Auto-Renewable Subscription** (NOT
+   Consumable). Put the monthly and yearly of the same pack at the same
+   **subscription level**, bigger packs at higher levels, so Apple offers
+   upgrade/downgrade correctly.
 3. **Paid Apps agreement** must be active (Agreements, Tax, and Banking),
    otherwise products never load.
 4. **App-specific Shared Secret** is not needed — StoreKit 2 + JWS verification
@@ -64,14 +79,14 @@ The catalog is the single source of truth in
    it.) Store it like the APNs key.
 6. **App Store Server Notifications V2.** App → App Information → App Store Server
    Notifications → set the **Production** and **Sandbox** URLs both to
-   `https://mototracker.medhiterzi.com/api/iap/webhook`, **Version 2**.
+   `https://mototracker.mehditerzi.com/api/iap/webhook`, **Version 2**.
 
 ## Backend env (`apps/api`)
 
 ```
 # Bundle id defaults to APNS_BUNDLE_ID — usually leave IAP_BUNDLE_ID unset.
 IAP_APP_APPLE_ID=<numeric App Store app id>   # required to verify PRODUCTION notifications
-# IAP_BUNDLE_ID=com.medhiterzi.mototracker    # only if different from APNS_BUNDLE_ID
+# IAP_BUNDLE_ID=com.mehditerzi.mototracker    # only if different from APNS_BUNDLE_ID
 # IAP_APPLE_ROOT_CA_DIR=./certs/apple         # default; contains AppleRootCA-G3.cer
 # IAP_ENABLE_ONLINE_CHECKS=false              # set true for OCSP (needs outbound net)
 ```

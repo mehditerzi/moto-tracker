@@ -57,12 +57,12 @@ describe("vehicle cap / entitlement", () => {
     getDb()
       .prepare(
         `INSERT INTO entitlement (user_id, product_id, tier, max_vehicles, status, original_transaction_id, expires_at, environment)
-         VALUES (?, 'com.medhiterzi.mototracker.garage.3.yearly', 'garage3', 3, 'active', 'otx_1', ?, 'Sandbox')`,
+         VALUES (?, 'com.mehditerzi.mototracker.garage.3.yearly', 'garage3-yearly', 3, 'active', 'otx_1', ?, 'Sandbox')`,
       )
       .run(user.id, oneYear);
 
     const summary = await request(app).get("/api/entitlement").set("Cookie", cookie);
-    expect(summary.body).toMatchObject({ tier: "garage3", maxVehicles: 3, canAddVehicle: true });
+    expect(summary.body).toMatchObject({ tier: "garage3-yearly", maxVehicles: 3, canAddVehicle: true });
 
     const second = await addBike(app, cookie, "Paid Two");
     expect(second.status).toBe(201);
@@ -81,7 +81,7 @@ describe("vehicle cap / entitlement", () => {
     getDb()
       .prepare(
         `INSERT INTO entitlement (user_id, product_id, tier, max_vehicles, status, original_transaction_id, expires_at, environment)
-         VALUES (?, 'com.medhiterzi.mototracker.garage.3.yearly', 'garage3', 3, 'active', 'otx_2', ?, 'Sandbox')`,
+         VALUES (?, 'com.mehditerzi.mototracker.garage.3.yearly', 'garage3-yearly', 3, 'active', 'otx_2', ?, 'Sandbox')`,
       )
       .run(user.id, yesterday);
 
