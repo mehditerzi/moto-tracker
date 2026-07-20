@@ -1,12 +1,48 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Bike as BikeIcon, ChevronRight } from "lucide-react";
+import { Plus, Bike as BikeIcon, ChevronRight, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
+import { PaywallSheet } from "@/components/PaywallSheet";
 import { useBikes } from "@/hooks/useBikes";
+import { useEntitlement } from "@/hooks/useEntitlement";
 import { vehicleIcon } from "@/lib/vehicleType";
 import { env } from "@/env";
+
+/**
+ * At-cap upsell: shown above the vehicle list whenever the garage is full so
+ * the upgrade path is one visible tap — not buried behind a disabled button.
+ */
+function GarageFullBanner() {
+  const { t } = useTranslation();
+  const ent = useEntitlement();
+  const [paywall, setPaywall] = useState(false);
+  if (!ent.data || ent.data.canAddVehicle) return null;
+  return (
+    <>
+      <Card className="flex items-center justify-between gap-3 border-accent/40 bg-accent/5 p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Sparkles className="h-5 w-5 shrink-0 text-accent-dim" />
+          <div className="min-w-0">
+            <div className="text-[14px] font-semibold">
+              {t("paywall.garageFull", { used: ent.data.activeVehicles, max: ent.data.maxVehicles })}
+            </div>
+            <div className="text-[13px] text-muted dark:text-muted-dark">
+              {t("paywall.garageFullSub")}
+            </div>
+          </div>
+        </div>
+        <Button size="sm" variant="accent" onClick={() => setPaywall(true)}>
+          {t("paywall.choosePack")}
+        </Button>
+      </Card>
+      <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
+    </>
+  );
+}
 
 export function BikesPage() {
   const { t } = useTranslation();
@@ -62,6 +98,8 @@ export function BikesPage() {
           <Plus className="h-4 w-4" /> {t("dashboard.add")}
         </AddVehicleButton>
       </header>
+
+      <GarageFullBanner />
 
       <div className="grid gap-2.5">
         {data.map((b, i) => {

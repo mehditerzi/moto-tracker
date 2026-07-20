@@ -33,6 +33,10 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Sign in with Apple (Service ID + ES256 client-secret JWT; see
+      # docs/apple-signin.md and scripts/apple-client-secret.mjs).
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
       # By default the api talks to an Ollama already running on the host
       # (Docker Desktop / Linux with host-gateway). To run a bundled Ollama
       # container instead, set OLLAMA_URL=http://ollama:11434 in .env and

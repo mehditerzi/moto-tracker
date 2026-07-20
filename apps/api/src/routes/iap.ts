@@ -65,22 +65,37 @@ iapRouter.post(
     const db = getDb();
 
     let applied = 0;
+    let sigFailures = 0;
+    let unknownProducts = 0;
     for (const jws of transactions) {
       let tx: VerifiedTransaction;
       try {
         tx = normalize(await verifyTransaction(jws), "verify");
-      } catch {
-        continue; // skip anything that fails signature/environment checks
+      } catch (e) {
+        // Common cause during development: StoreKit-configuration purchases in
+        // the simulator are signed by Xcode's LOCAL test cert, not Apple —
+        // they can never pass this check. Sandbox purchases on a device do.
+        sigFailures++;
+        console.warn(`[iap] verify: signature check failed for user ${userId}:`, (e as Error).message);
+        continue;
       }
       // Only our known subscription products grant vehicles.
-      if (!tierForProductId(tx.productId)) continue;
+      if (!tierForProductId(tx.productId)) {
+        unknownProducts++;
+        console.warn(`[iap] verify: unknown product ${tx.productId} for user ${userId}`);
+        continue;
+      }
       const active = tx.expiresDateMs !== null && tx.expiresDateMs > Date.now();
       applyTransaction(userId, tx, active ? "active" : "expired", db);
       applied++;
     }
 
     if (applied === 0) {
-      res.status(400).json({ error: "no_valid_transaction" });
+      // Name the dominant failure so the client can explain it instead of
+      // shrugging — a silent failure here reads as "the button does nothing".
+      const error =
+        sigFailures > 0 ? "verification_failed" : unknownProducts > 0 ? "unknown_product" : "no_valid_transaction";
+      res.status(400).json({ error });
       return;
     }
     res.json(getEntitlementSummary(userId, db));

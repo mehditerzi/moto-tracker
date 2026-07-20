@@ -13,9 +13,13 @@ import {
   restorePurchases,
   type StoreKitProduct,
 } from "@/lib/nativeIap";
-import { ENTITLEMENT_KEY } from "@/hooks/useEntitlement";
+import { ENTITLEMENT_KEY, useEntitlement } from "@/hooks/useEntitlement";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
+import { track } from "@/lib/telemetry";
+
+/** Client-side error codes thrown by the StoreKit bridge, mapped to errors.* copy. */
+const BRIDGE_ERRORS = new Set(["iap_plugin_missing", "iap_unavailable"]);
 
 /**
  * The upgrade sheet shown when a user hits the free single-vehicle limit.
@@ -31,6 +35,11 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [prices, setPrices] = useState<Record<string, StoreKitProduct>>({});
   const [busy, setBusy] = useState<string | null>(null); // productId or "restore"
   const [period, setPeriod] = useState<IapPeriod>("yearly");
+  const ent = useEntitlement();
+  // Smallest pack that actually grows the user's garage — highlighted so the
+  // obvious next step is one tap, not a study of seven options.
+  const needAtLeast = Math.max(ent.data?.activeVehicles ?? 1, ent.data?.maxVehicles ?? 1) + 1;
+  const recommended = IAP_TIERS.find((x) => x.period === period && x.maxVehicles >= needAtLeast)?.productId;
 
   useEffect(() => {
     if (!open || !native) return;
@@ -54,12 +63,20 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
       const summary = await purchaseTier(productId);
       qc.setQueryData(ENTITLEMENT_KEY, summary);
       qc.invalidateQueries({ queryKey: ["bikes"] });
+      track("iap_purchase_success", { productId });
       pushToast({ variant: "success", title: t("paywall.purchaseSuccess") });
       onClose();
     } catch (e) {
-      if ((e as Error).message !== "purchase_cancelled") {
-        pushToast({ variant: "danger", title: friendlyError(e, t) });
+      const code = (e as Error).message;
+      if (code === "purchase_cancelled") {
+        track("iap_purchase_cancelled", { productId });
+        return;
       }
+      track("iap_purchase_failed", { productId, code });
+      pushToast({
+        variant: "danger",
+        title: BRIDGE_ERRORS.has(code) ? t(`errors.${code}`) : friendlyError(e, t),
+      });
     } finally {
       setBusy(null);
     }
@@ -145,21 +162,35 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
                   ))}
                 </div>
 
+                <p className="mt-2 text-center text-[12px] text-muted dark:text-muted-dark">
+                  {period === "yearly" ? t("paywall.yearlyHint") : t("paywall.monthlyHint")}
+                </p>
+
                 <div className="mt-3 grid max-h-[45vh] gap-2.5 overflow-y-auto">
                   {IAP_TIERS.filter((tier) => tier.period === period).map((tier) => {
                     const live = prices[tier.productId];
                     const price = live?.displayPrice ?? `₺${tier.displayPriceTry}`;
                     const isBusy = busy === tier.productId;
                     const discount = discountFor(tier.maxVehicles);
+                    const isRecommended = tier.productId === recommended;
                     return (
                       <div
                         key={tier.productId}
-                        className="flex items-center justify-between gap-3 rounded-2xl bg-surface p-4 ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark"
+                        className={`flex items-center justify-between gap-3 rounded-2xl bg-surface p-4 ring-1 dark:bg-surface-elev-dark ${
+                          isRecommended
+                            ? "ring-2 ring-accent"
+                            : "ring-border dark:ring-border-dark"
+                        }`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 text-[15px] font-semibold">
                             <Check className="h-4 w-4 shrink-0 text-accent" />
                             {t("paywall.tierVehicles", { count: tier.maxVehicles })}
+                            {isRecommended && (
+                              <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-black">
+                                {t("paywall.recommended")}
+                              </span>
+                            )}
                             {discount > 0 && (
                               <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-dim">
                                 {t("paywall.discount", { percent: Math.round(discount * 100) })}
