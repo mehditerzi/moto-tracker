@@ -150,6 +150,9 @@ const Env = z.object({
   MAPKIT_KEY: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   MAPKIT_KEY_ID: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   MAPKIT_TEAM_ID: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  // The Maps ID the key is associated with (e.g. maps.com.mehditerzi.mototracker).
+  // Sent as the token's `sub` claim when set — required by Maps-ID-bound keys.
+  MAPKIT_MAPS_ID: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   CRON_TIMEZONE: z.string().default("Europe/Istanbul"),
   CRON_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   CRON_ENABLED: z

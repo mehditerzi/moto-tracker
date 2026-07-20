@@ -44,7 +44,15 @@ mapkitRouter.get("/", (_req, res) => {
   // while the web runs on the public origin — a pinned origin would break one
   // of them. Short TTL + auth-required issuance is the control instead.
   const claims = b64url(
-    Buffer.from(JSON.stringify({ iss: teamId(), iat: now, exp: now + TOKEN_TTL_S })),
+    Buffer.from(
+      JSON.stringify({
+        iss: teamId(),
+        iat: now,
+        exp: now + TOKEN_TTL_S,
+        // Maps-ID-bound keys expect the Maps ID as `sub`.
+        ...(config.MAPKIT_MAPS_ID ? { sub: config.MAPKIT_MAPS_ID } : {}),
+      }),
+    ),
   );
   const sig = crypto.sign("SHA256", Buffer.from(`${header}.${claims}`), {
     key: privateKeyPem(),

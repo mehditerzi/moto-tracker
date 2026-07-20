@@ -66,6 +66,7 @@ services:
       MAPKIT_KEY: ${MAPKIT_KEY:-}
       MAPKIT_KEY_ID: ${MAPKIT_KEY_ID:-}
       MAPKIT_TEAM_ID: ${MAPKIT_TEAM_ID:-}
+      MAPKIT_MAPS_ID: ${MAPKIT_MAPS_ID:-}
       CRON_TIMEZONE: ${CRON_TIMEZONE:-Europe/Istanbul}
       CRON_HOUR: ${CRON_HOUR:-9}
       CRON_ENABLED: ${CRON_ENABLED:-true}
