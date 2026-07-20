@@ -8,6 +8,17 @@ import { api } from "./api";
  */
 
 // MapKit JS ships no types — model just the surface we use.
+export interface MapKitSearchResult {
+  displayLines?: string[];
+  coordinate: { latitude: number; longitude: number };
+  name?: string;
+  formattedAddress?: string;
+}
+export interface MapKitRoute {
+  polyline: unknown;
+  distance: number; // meters
+  expectedTravelTime: number; // seconds
+}
 export interface MapKitNS {
   init(opts: { authorizationCallback: (done: (token: string) => void) => void }): void;
   Map: new (el: HTMLElement, opts?: Record<string, unknown>) => MapKitMap;
@@ -16,9 +27,26 @@ export interface MapKitNS {
   CoordinateSpan: new (latDelta: number, lngDelta: number) => unknown;
   PolylineOverlay: new (coords: unknown[], opts?: Record<string, unknown>) => unknown;
   Style: new (opts: Record<string, unknown>) => unknown;
+  MarkerAnnotation: new (coord: unknown, opts?: Record<string, unknown>) => unknown;
+  Search: new (opts?: Record<string, unknown>) => {
+    search(
+      q: string,
+      cb: (err: unknown, data: { places: MapKitSearchResult[] }) => void,
+    ): number;
+  };
+  Directions: new () => {
+    route(
+      req: { origin: unknown; destination: unknown; transportType?: unknown },
+      cb: (err: unknown, data: { routes: MapKitRoute[] }) => void,
+    ): number;
+  };
+  Directions_Transport?: unknown;
 }
 export interface MapKitMap {
   addOverlay(o: unknown): void;
+  removeOverlay(o: unknown): void;
+  addAnnotation(a: unknown): void;
+  removeAnnotation(a: unknown): void;
   setRegionAnimated(region: unknown, animated?: boolean): void;
   destroy(): void;
 }
