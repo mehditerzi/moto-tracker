@@ -62,6 +62,10 @@ services:
       APNS_TEAM_ID: ${APNS_TEAM_ID:-}
       APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
       APNS_PRODUCTION: ${APNS_PRODUCTION:-true}
+      # MapKit JS (trip route maps) — .p8 with the MapKit JS service enabled.
+      MAPKIT_KEY: ${MAPKIT_KEY:-}
+      MAPKIT_KEY_ID: ${MAPKIT_KEY_ID:-}
+      MAPKIT_TEAM_ID: ${MAPKIT_TEAM_ID:-}
       CRON_TIMEZONE: ${CRON_TIMEZONE:-Europe/Istanbul}
       CRON_HOUR: ${CRON_HOUR:-9}
       CRON_ENABLED: ${CRON_ENABLED:-true}

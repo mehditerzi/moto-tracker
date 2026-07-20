@@ -38,6 +38,7 @@
   },
   "trips": {
     "title": "Trips",
+    "mapFailed": "The route map couldn't be loaded.",
     "empty": "No trips yet",
     "emptySub": "With tracking on, drives of {{km}} km or more are logged automatically.",
     "unknownVehicle": "Vehicle",

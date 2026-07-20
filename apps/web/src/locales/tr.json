@@ -38,6 +38,7 @@
   },
   "trips": {
     "title": "Yolculuklar",
+    "mapFailed": "Rota haritası yüklenemedi.",
     "empty": "Henüz yolculuk yok",
     "emptySub": "Takip açıkken {{km}} km ve üzeri sürüşler otomatik kaydedilir.",
     "unknownVehicle": "Araç",

@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Navigation, Route as RouteIcon, MapPin } from "lucide-react";
+import { Navigation, Route as RouteIcon, MapPin, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTrips } from "@/hooks/useTrips";
+import { useTrips, useTrip } from "@/hooks/useTrips";
 import { useBikes } from "@/hooks/useBikes";
+import { usePublicConfig } from "@/hooks/usePublicConfig";
+import { TripMap } from "@/components/TripMap";
 import { vehicleIcon } from "@/lib/vehicleType";
 import { formatDate } from "@/lib/format";
 import {
@@ -18,6 +21,9 @@ export function TripsPage() {
   const trips = useTrips();
   const bikes = useBikes();
   const enabled = useTripTrackingEnabled();
+  const cfg = usePublicConfig();
+  const [openTripId, setOpenTripId] = useState<string | null>(null);
+  const mapsOn = cfg.data?.mapkit ?? false;
 
   const bikeById = new Map<string, Bike>((bikes.data ?? []).map((b) => [b.id, b]));
 
@@ -48,6 +54,8 @@ export function TripsPage() {
           {trips.data.map((trip, i) => {
             const bike = bikeById.get(trip.bikeId);
             const Icon = vehicleIcon(bike?.vehicleType);
+            const expandable = mapsOn && trip.hasRoute;
+            const open = openTripId === trip.id;
             return (
               <motion.div
                 key={trip.id}
@@ -55,7 +63,12 @@ export function TripsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
               >
-                <Card className="flex items-center justify-between gap-4 p-4">
+                <Card
+                  className={`flex items-center justify-between gap-4 p-4 ${
+                    expandable ? "cursor-pointer" : ""
+                  } ${open ? "rounded-b-none" : ""}`}
+                  onClick={expandable ? () => setOpenTripId(open ? null : trip.id) : undefined}
+                >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
                       <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
@@ -69,18 +82,51 @@ export function TripsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <span className="num text-[17px] font-semibold leading-none">
-                      {Math.round(trip.distanceKm)}
-                    </span>
-                    <span className="ml-1 text-[12px] text-muted dark:text-muted-dark">km</span>
+                  <div className="flex shrink-0 items-center gap-2 text-right">
+                    <div>
+                      <span className="num text-[17px] font-semibold leading-none">
+                        {Math.round(trip.distanceKm)}
+                      </span>
+                      <span className="ml-1 text-[12px] text-muted dark:text-muted-dark">km</span>
+                    </div>
+                    {expandable && (
+                      <ChevronDown
+                        className={`h-4 w-4 text-muted transition-transform dark:text-muted-dark ${
+                          open ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
                   </div>
                 </Card>
+                {open && <TripRoutepanel tripId={trip.id} />}
               </motion.div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** The expanded half of a trip row: fetches the full trip and draws its route. */
+function TripRoutepanelInner({ tripId }: { tripId: string }) {
+  const { t } = useTranslation();
+  const trip = useTrip(tripId);
+  if (trip.isLoading) return <Skeleton className="h-52 rounded-b-2xl" />;
+  if (!trip.data?.route) {
+    return (
+      <p className="py-4 text-center text-[13px] text-muted dark:text-muted-dark">
+        {t("trips.mapFailed")}
+      </p>
+    );
+  }
+  return <TripMap route={trip.data.route} />;
+}
+
+function TripRoutepanel({ tripId }: { tripId: string }) {
+  return (
+    <div className="rounded-b-2xl border border-t-0 border-border bg-surface p-2 dark:border-border-dark dark:bg-surface-dark">
+      <TripRoutepanelInner tripId={tripId} />
     </div>
   );
 }
