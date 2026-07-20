@@ -16,6 +16,7 @@ import { BikeFormPage } from "@/pages/BikeFormPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { TripsPage } from "@/pages/TripsPage";
 import { FuelPage } from "@/pages/FuelPage";
+import { MapPage } from "@/pages/MapPage";
 import { DatedItemFormPage } from "@/pages/DatedItemFormPage";
 import { DatedItemDetailPage } from "@/pages/DatedItemDetailPage";
 import { DocumentCapturePage } from "@/pages/DocumentCapturePage";
@@ -78,6 +79,7 @@ const router = createBrowserRouter([
       { path: "bikes", element: <BikesPage /> },
       { path: "trips", element: <TripsPage /> },
       { path: "fuel", element: <FuelPage /> },
+      { path: "map", element: <MapPage /> },
       { path: "bikes/new", element: <BikeFormPage /> },
       { path: "bikes/:id/edit", element: <BikeFormPage /> },
       {

@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { runMigrations } from "./db/migrate.js";
 import { seedCatalog } from "./db/seedCatalog.js";
 import { startCron } from "./notify/cron.js";
+import { attachRideWs } from "./lib/rideHub.js";
 
 // Apply any pending DB migrations before serving traffic. Idempotent: already-
 // applied migrations are skipped via the _migrations table.
@@ -23,7 +24,9 @@ if (cat.seeded) {
 }
 
 const app = buildApp();
-app.listen(config.PORT, () => {
+const server = app.listen(config.PORT, () => {
   console.log(`[api] listening on http://localhost:${config.PORT}`);
   startCron();
 });
+// Live group-ride positions (WebSocket upgrade on /api/ride-ws).
+attachRideWs(server);

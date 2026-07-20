@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut, Settings, Bike as BikeIcon, Navigation, Fuel } from "lucide-react";
+import { LogOut, Settings, Bike as BikeIcon, Navigation, Fuel, Map as MapIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ export function AppShell() {
               <NavIconLink to="/bikes" label={t("nav.bikes")} icon={<BikeIcon className="h-[18px] w-[18px]" />} />
               <NavIconLink to="/trips" label={t("nav.trips")} icon={<Navigation className="h-[18px] w-[18px]" />} />
               <NavIconLink to="/fuel" label={t("nav.fuel")} icon={<Fuel className="h-[18px] w-[18px]" />} />
+              <NavIconLink to="/map" label={t("nav.map")} icon={<MapIcon className="h-[18px] w-[18px]" />} />
               <NavIconLink to="/settings" label={t("nav.settings")} icon={<Settings className="h-[18px] w-[18px]" />} />
               <Button
                 variant="ghost"
