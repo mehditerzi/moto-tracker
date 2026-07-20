@@ -39,7 +39,14 @@ services:
       # `docker compose --profile bundled-ollama up -d`.
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:26b}
+      OLLAMA_PARSE_MODEL: ${OLLAMA_PARSE_MODEL:-}
+      # Dedicated OCR text-extraction model + second-opinion verify model.
+      OLLAMA_OCR_MODEL: ${OLLAMA_OCR_MODEL:-}
+      OLLAMA_VERIFY_MODEL: ${OLLAMA_VERIFY_MODEL:-}
       OCR_AUTO_APPLY_THRESHOLD: ${OCR_AUTO_APPLY_THRESHOLD:-0.7}
+      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-120000}
+      # In-App Purchases — numeric App Store app id (production notifications).
+      IAP_APP_APPLE_ID: ${IAP_APP_APPLE_ID:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@mototracker.app}

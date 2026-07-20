@@ -71,7 +71,11 @@ const Env = z.object({
   UPLOADS_DIR: z.string().default("./data/uploads"),
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
   OLLAMA_VISION_MODEL: z.string().default("gemma4:26b"),
-  OLLAMA_PARSE_MODEL: z.string().optional(),
+  // Empty string = unset (docker-compose `${VAR:-}` passes "" when absent).
+  OLLAMA_PARSE_MODEL: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
   /**
    * Dedicated image→text OCR model (e.g. glm-ocr:latest). When set, it becomes
    * the primary text-extraction stage; Tesseract stays as the fallback when
@@ -97,7 +101,10 @@ const Env = z.object({
    * hung Ollama/Tesseract leaving the document stuck in `pending` forever and
    * stalling the serialized worker queue behind it.
    */
-  OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
+  OCR_TIMEOUT_MS: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.coerce.number().int().positive().default(120000),
+  ),
   /**
    * Max documents processed concurrently across all users. The worker also
    * serializes per-user, so one user can never have two scans running at once;
@@ -124,7 +131,11 @@ const Env = z.object({
   IAP_BUNDLE_ID: z.string().optional(),
   // Numeric App Store app id (App Store Connect → App Information → Apple ID).
   // REQUIRED to verify PRODUCTION server notifications; unused in sandbox.
-  IAP_APP_APPLE_ID: z.coerce.number().int().positive().optional(),
+  // Empty string = unset (docker-compose `${VAR:-}` passes "" when absent).
+  IAP_APP_APPLE_ID: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.coerce.number().int().positive().optional(),
+  ),
   // Directory of Apple root CA .cer/.der/.pem files (see certs/apple/README.md).
   IAP_APPLE_ROOT_CA_DIR: z.string().default("./certs/apple"),
   // Turn on OCSP online revocation checks (needs outbound network to Apple).
