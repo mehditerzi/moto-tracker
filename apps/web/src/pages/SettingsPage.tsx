@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2 } from "lucide-react";
+import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,44 @@ import {
   PUSH_DIAG_EVENT,
   type PushDiag,
 } from "@/lib/nativePush";
+import { useEntitlement } from "@/hooks/useEntitlement";
+import { PaywallSheet } from "@/components/PaywallSheet";
+
+/**
+ * Subscription section: always visible so the upgrade/manage path isn't only
+ * discoverable by hitting the vehicle cap.
+ */
+function SubscriptionCard() {
+  const { t } = useTranslation();
+  const ent = useEntitlement();
+  const [paywall, setPaywall] = useState(false);
+  const d = ent.data;
+  return (
+    <Card>
+      <SectionHeader icon={<Crown className="h-3.5 w-3.5" />} label={t("settings.subscription")} />
+      <CardContent className="gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[14px] font-semibold">
+              {d && d.tier !== "free"
+                ? t("paywall.tierVehicles", { count: d.maxVehicles })
+                : t("settings.freePlan")}
+            </div>
+            <div className="text-[13px] text-muted dark:text-muted-dark">
+              {d
+                ? t("settings.vehiclesUsed", { used: d.activeVehicles, max: d.maxVehicles })
+                : "…"}
+            </div>
+          </div>
+          <Button size="sm" variant="accent" onClick={() => setPaywall(true)}>
+            {d && d.tier !== "free" ? t("settings.changePack") : t("paywall.choosePack")}
+          </Button>
+        </div>
+      </CardContent>
+      <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
+    </Card>
+  );
+}
 
 const LEAD_OPTIONS = [60, 30, 14, 7, 3, 1, 0];
 
@@ -143,6 +181,8 @@ export function SettingsPage() {
           <LogOut className="h-4 w-4" /> {t("settings.signOut")}
         </Button>
       </header>
+
+      <SubscriptionCard />
 
       <Card>
         <SectionHeader icon={<Globe className="h-3.5 w-3.5" />} label={t("settings.language")} />

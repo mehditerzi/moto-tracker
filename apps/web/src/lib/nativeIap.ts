@@ -58,6 +58,12 @@ async function verifyOnServer(transactions: string[]): Promise<EntitlementSummar
 }
 
 /** Buy a tier, then have the server verify and grant it. */
+/** True when a Capacitor error means the native plugin isn't in this build. */
+function isPluginMissing(e: unknown): boolean {
+  const err = e as { code?: string; message?: string };
+  return err?.code === "UNIMPLEMENTED" || /not implemented/i.test(err?.message ?? "");
+}
+
 export async function purchaseTier(productId: string): Promise<EntitlementSummary> {
   if (!isNative()) throw new Error("iap_unavailable");
   // Plant our user's appAccountToken so Apple's server notifications (renewals,
@@ -69,7 +75,14 @@ export async function purchaseTier(productId: string): Promise<EntitlementSummar
   } catch {
     /* ignore — token is a best-effort mapping aid */
   }
-  const { transactions } = await plugin().purchase({ productId, appAccountToken });
+  let transactions: string[];
+  try {
+    ({ transactions } = await plugin().purchase({ productId, appAccountToken }));
+  } catch (e) {
+    // An old build without the StoreKit plugin must say so, not fail generically.
+    if (isPluginMissing(e)) throw new Error("iap_plugin_missing");
+    throw e;
+  }
   if (!transactions.length) throw new Error("purchase_cancelled");
   return verifyOnServer(transactions);
 }
@@ -77,7 +90,13 @@ export async function purchaseTier(productId: string): Promise<EntitlementSummar
 /** Restore previous purchases (e.g. after reinstall / new device). */
 export async function restorePurchases(): Promise<EntitlementSummary> {
   if (!isNative()) throw new Error("iap_unavailable");
-  const { transactions } = await plugin().restore();
+  let transactions: string[];
+  try {
+    ({ transactions } = await plugin().restore());
+  } catch (e) {
+    if (isPluginMissing(e)) throw new Error("iap_plugin_missing");
+    throw e;
+  }
   if (!transactions.length) throw new Error("no_purchases");
   return verifyOnServer(transactions);
 }
