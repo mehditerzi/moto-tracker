@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { env } from "@/env";
+import { watchBestPosition } from "@/lib/tripTracking";
 
 export interface RideMember {
   userId: string;
@@ -62,8 +63,15 @@ const RECONNECT_MS = 3000;
  * The live half of a group ride: keeps a WebSocket open (one-time ticket per
  * connection, auto-reconnect), streams our GPS position up, and exposes the
  * latest roster. `ended` flips when the owner closes the ride remotely.
+ *
+ * Positions come from the native background watcher on device (sharing keeps
+ * working with the screen off / app backgrounded — same mechanism as trip
+ * recording), falling back to the browser Geolocation API on web.
  */
-export function useRideChannel(groupId: string | null): { live: RideMember[]; ended: boolean } {
+export function useRideChannel(
+  groupId: string | null,
+  background?: { title: string; message: string },
+): { live: RideMember[]; ended: boolean } {
   const [live, setLive] = useState<RideMember[]>([]);
   const [ended, setEnded] = useState(false);
   const qc = useQueryClient();
@@ -78,20 +86,15 @@ export function useRideChannel(groupId: string | null): { live: RideMember[]; en
     let sendTimer: ReturnType<typeof setInterval> | null = null;
     let lastPos: { lat: number; lng: number; speed: number | null } | null = null;
 
-    const watchId =
-      typeof navigator !== "undefined" && navigator.geolocation
-        ? navigator.geolocation.watchPosition(
-            (p) => {
-              lastPos = {
-                lat: p.coords.latitude,
-                lng: p.coords.longitude,
-                speed: p.coords.speed,
-              };
-            },
-            () => {},
-            { enableHighAccuracy: true, maximumAge: 2000 },
-          )
-        : null;
+    const watch = watchBestPosition(
+      (s) => {
+        lastPos = { lat: s.lat, lng: s.lng, speed: s.speed ?? null };
+      },
+      {
+        backgroundTitle: background?.title ?? "Garajım",
+        backgroundMessage: background?.message ?? "",
+      },
+    );
 
     async function connect() {
       if (stopped.current) return;
@@ -126,11 +129,14 @@ export function useRideChannel(groupId: string | null): { live: RideMember[]; en
 
     return () => {
       stopped.current = true;
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watch.stop();
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (sendTimer) clearInterval(sendTimer);
       ws?.close();
     };
+    // `background` strings are display-only; reconnecting on language change
+    // would drop the socket for nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, qc]);
 
   return { live, ended };
