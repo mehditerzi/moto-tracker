@@ -341,17 +341,21 @@
   },
   "paywall": {
     "title": "Daha fazla araç ekle",
-    "subtitle": "İlk aracınız ücretsiz. Daha fazlası için yıllık plan alın.",
+    "subtitle": "İlk aracınız ücretsiz. Daha fazlası için araç paketi alın.",
     "webNotice": "Ek araçlar Garajım iOS uygulamasından yönetilir. Yükseltmek için iPhone'unuzda uygulamayı açın; ek araçlarınız burada da görünecektir.",
     "tierVehicles": "{{count}} araca kadar",
     "perYear": "yılda {{price}}",
+    "perMonth": "ayda {{price}}",
+    "yearly": "Yıllık",
+    "monthly": "Aylık",
+    "discount": "−%{{percent}}",
     "choose": "Seç",
     "restore": "Satın alımları geri yükle",
     "restoring": "Geri yükleniyor…",
     "restoreSuccess": "Satın alımlar geri yüklendi.",
     "restoreNone": "Önceki satın alım bulunamadı.",
     "purchaseSuccess": "Hazır — aracınızı ekleyebilirsiniz.",
-    "legal": "Otomatik yenilenen abonelik. App Store'dan iptal edilene kadar her yıl yenilenir. Apple Kimliği ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz."
+    "legal": "Otomatik yenilenen abonelik. App Store'dan iptal edilene kadar her dönem yenilenir. Apple Kimliği ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz."
   },
   "install": {
     "title": "Ana Ekrana Ekle",

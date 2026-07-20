@@ -18,7 +18,7 @@ function tx(userToken: string): VerifiedTransaction {
   return {
     transactionId: "tx_1",
     originalTransactionId: "otx_1",
-    productId: "com.medhiterzi.mototracker.garage.3.yearly",
+    productId: "com.mehditerzi.mototracker.garage.3.yearly",
     purchaseDateMs: Date.now(),
     expiresDateMs: Date.now() + 365 * 24 * 3600 * 1000,
     environment: "Sandbox",

@@ -341,17 +341,21 @@
   },
   "paywall": {
     "title": "Add more vehicles",
-    "subtitle": "Your first vehicle is free. Add more with a yearly plan.",
+    "subtitle": "Your first vehicle is free. Add more with a vehicle pack.",
     "webNotice": "Additional vehicles are managed in the Garajım iOS app. Open the app on your iPhone to upgrade, then your extra vehicles will be available here too.",
     "tierVehicles": "Up to {{count}} vehicles",
     "perYear": "{{price}} / year",
+    "perMonth": "{{price}} / month",
+    "yearly": "Yearly",
+    "monthly": "Monthly",
+    "discount": "−{{percent}}%",
     "choose": "Choose",
     "restore": "Restore purchases",
     "restoring": "Restoring…",
     "restoreSuccess": "Purchases restored.",
     "restoreNone": "No previous purchases found.",
     "purchaseSuccess": "You're all set — add your vehicle.",
-    "legal": "Auto-renewable subscription. Renews yearly until cancelled in the App Store. Manage or cancel anytime in your Apple ID settings."
+    "legal": "Auto-renewable subscription. Renews each period until cancelled in the App Store. Manage or cancel anytime in your Apple ID settings."
   },
   "install": {
     "title": "Add to Home Screen",

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { IAP_TIERS } from "@mototracker/shared";
+import { IAP_TIERS, IAP_PRODUCT_IDS, discountFor, type IapPeriod } from "@mototracker/shared";
 import {
   isNativeIapAvailable,
   fetchProducts,
@@ -30,11 +30,12 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
   const native = isNativeIapAvailable();
   const [prices, setPrices] = useState<Record<string, StoreKitProduct>>({});
   const [busy, setBusy] = useState<string | null>(null); // productId or "restore"
+  const [period, setPeriod] = useState<IapPeriod>("yearly");
 
   useEffect(() => {
     if (!open || !native) return;
     let cancelled = false;
-    fetchProducts(IAP_TIERS.map((tier) => tier.productId))
+    fetchProducts([...IAP_PRODUCT_IDS])
       .then((products) => {
         if (cancelled) return;
         setPrices(Object.fromEntries(products.map((p) => [p.id, p])));
@@ -127,11 +128,29 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
               </div>
             ) : (
               <>
-                <div className="mt-5 grid gap-2.5">
-                  {IAP_TIERS.map((tier) => {
+                <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
+                  {(["yearly", "monthly"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPeriod(p)}
+                      className={`rounded-xl py-2 text-[13px] font-medium transition ${
+                        period === p
+                          ? "bg-surface shadow-card text-text dark:bg-surface-dark dark:text-text-dark"
+                          : "text-muted dark:text-muted-dark"
+                      }`}
+                    >
+                      {t(`paywall.${p}`)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-3 grid max-h-[45vh] gap-2.5 overflow-y-auto">
+                  {IAP_TIERS.filter((tier) => tier.period === period).map((tier) => {
                     const live = prices[tier.productId];
                     const price = live?.displayPrice ?? `₺${tier.displayPriceTry}`;
                     const isBusy = busy === tier.productId;
+                    const discount = discountFor(tier.maxVehicles);
                     return (
                       <div
                         key={tier.productId}
@@ -141,9 +160,14 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
                           <div className="flex items-center gap-1.5 text-[15px] font-semibold">
                             <Check className="h-4 w-4 shrink-0 text-accent" />
                             {t("paywall.tierVehicles", { count: tier.maxVehicles })}
+                            {discount > 0 && (
+                              <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-dim">
+                                {t("paywall.discount", { percent: Math.round(discount * 100) })}
+                              </span>
+                            )}
                           </div>
                           <div className="mt-0.5 text-[13px] text-muted dark:text-muted-dark">
-                            {t("paywall.perYear", { price })}
+                            {t(period === "yearly" ? "paywall.perYear" : "paywall.perMonth", { price })}
                           </div>
                         </div>
                         <Button

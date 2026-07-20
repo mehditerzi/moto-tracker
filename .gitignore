@@ -20,3 +20,6 @@ uploads/
 .audit/
 ngrok.yml
 ollama/
+
+# App Store Connect API keys — never commit
+secrets/
