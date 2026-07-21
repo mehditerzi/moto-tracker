@@ -1,34 +1,33 @@
-# In-app purchases — vehicle packs (auto-renewable subscriptions)
+# In-app purchases — vehicle packs, by term
 
-The **first vehicle is free**. More vehicles are sold as **packs** — the pack
-size is the total active-vehicle ceiling. There's **no third-party billing
-SDK** — we verify Apple's signed transactions ourselves against Apple's root
-CAs.
+The **first vehicle is free**. More vehicles are sold as **packs** (pack size =
+total active-vehicle ceiling), each over several **terms**. No third-party
+billing SDK — Apple's signed transactions are verified against Apple's root CAs.
 
-Pricing is **₺20/vehicle/month** or **₺100/vehicle/year**, with a volume
-discount baked into the pack price: **10% off at 10+, 20% at 20+, 30% from
-30 up**. Apple has no per-quantity billing, so each pack × period is its own
-product; all live in one subscription group, so a user is on exactly one.
+Two kinds of term:
+- **Auto-renewable** — **6 months** and **1 year**, in the "Garaj Aboneliği"
+  subscription group. Apple renews them and sends notifications.
+- **Non-renewing** — **2 / 3 / 5 / 10 years**, as one-time In-App Purchases
+  (`inAppPurchaseType = NON_RENEWING_SUBSCRIPTION`). Apple does **not**
+  auto-renew or restore these; the server derives expiry = purchase + term
+  (`computeExpiryMs`) and the account-based entitlement is the source of truth
+  (survives reinstall/new device via login).
 
-Product ID pattern: `com.mehditerzi.mototracker.garage.<packSize>.<monthly|yearly>`
+Price is **per vehicle per term** × the pack volume discount (10% at 10+, 20% at
+20+, 30% from 30): ₺60 (6mo) / ₺100 (1yr) / ₺200 (2yr) / ₺300 (3yr) / ₺500
+(5yr) / ₺1000 (10yr) per vehicle. 7 packs × 6 terms = **42 products**.
 
-| Pack | Monthly | Yearly | Product IDs (`…garage.` prefix) |
-|---|---|---|---|
-| Free (1) | — | — | — |
-| 3 | ₺60 | ₺300 | `3.monthly` / `3.yearly` |
-| 5 | ₺100 | ₺500 | `5.monthly` / `5.yearly` |
-| 10 (−10%) | ₺180 | ₺900 | `10.monthly` / `10.yearly` |
-| 20 (−20%) | ₺320 | ₺1600 | `20.monthly` / `20.yearly` |
-| 30 (−30%) | ₺420 | ₺2100 | `30.monthly` / `30.yearly` |
-| 40 (−30%) | ₺560 | ₺2800 | `40.monthly` / `40.yearly` |
-| 50 (−30%) | ₺700 | ₺3500 | `50.monthly` / `50.yearly` |
+Product ID: `com.mehditerzi.mototracker.garage.<packSize>.<termKey>` where
+`termKey ∈ {6mo, yearly, 2yr, 3yr, 5yr, 10yr}` (the 1-year token stays `yearly`
+for continuity with the original products). Example prices for the 3-pack:
+₺180 / ₺300 / ₺600 / ₺900 / ₺1500 / ₺3000.
 
-The formula and pack list live in
-[`packages/shared/src/schemas/iap.ts`](../packages/shared/src/schemas/iap.ts).
-The server resolves product IDs **by pattern**, so adding a pack size later
-means: create the products in App Store Connect + add the size to `PACK_SIZES`
-(paywall display only) — no entitlement logic changes. Prices in App Store
-Connect should match the formula (Apple price points may round, e.g. ₺299.99).
+The term table + pack list live in
+[`packages/shared/src/schemas/iap.ts`](../packages/shared/src/schemas/iap.ts);
+the server resolves product IDs **by pattern**. Scripts:
+`scripts/asc-terms-subscriptions.mjs` (auto-renewable 6mo/1yr),
+`scripts/asc-nonrenewing.mjs` (the 28 non-renewing IAPs),
+`scripts/asc-equalize-prices.mjs` (world pricing for subscriptions).
 
 ## Pieces in this repo
 
