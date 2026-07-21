@@ -8,6 +8,7 @@ import { tierForProductId, type EntitlementStatus } from "@mototracker/shared";
 import { iapEnabled, verifyTransaction, verifyNotification } from "../lib/appstore.js";
 import {
   applyTransaction,
+  effectiveExpiryMs,
   findUserByOriginalTransaction,
   findUserByAccountToken,
   getOrCreateAccountToken,
@@ -85,7 +86,9 @@ iapRouter.post(
         console.warn(`[iap] verify: unknown product ${tx.productId} for user ${userId}`);
         continue;
       }
-      const active = tx.expiresDateMs !== null && tx.expiresDateMs > Date.now();
+      // Effective expiry accounts for non-renewing terms (purchase + duration).
+      const expiryMs = effectiveExpiryMs(tx);
+      const active = expiryMs !== null && expiryMs > Date.now();
       applyTransaction(userId, tx, active ? "active" : "expired", db);
       applied++;
     }
@@ -165,7 +168,8 @@ iapWebhookRouter.post(
       const userId =
         findUserByOriginalTransaction(tx.originalTransactionId) ??
         (tx.appAccountToken ? findUserByAccountToken(tx.appAccountToken) : null);
-      const status = statusForNotification(notification.notificationType!, tx.expiresDateMs);
+      // Use effective expiry so a non-renewing refund/revoke evaluates correctly.
+      const status = statusForNotification(notification.notificationType!, effectiveExpiryMs(tx));
       if (userId) {
         applyTransaction(userId, tx, status, getDb());
       } else {

@@ -4,9 +4,21 @@ import { getDb } from "../db/index.js";
 import {
   FREE_MAX_VEHICLES,
   tierForProductId,
+  computeExpiryMs,
   type EntitlementStatus,
   type EntitlementSummary,
 } from "@mototracker/shared";
+
+/**
+ * Effective expiry (ms) for a verified transaction: Apple's expiresDate for
+ * auto-renewable products, or purchase + term for non-renewing ones (Apple
+ * sends no expiresDate on those). Null when the product is unknown.
+ */
+export function effectiveExpiryMs(tx: VerifiedTransaction): number | null {
+  const tier = tierForProductId(tx.productId);
+  if (!tier) return null;
+  return computeExpiryMs(tier, tx.purchaseDateMs, tx.expiresDateMs);
+}
 
 /** A verified App Store transaction, normalized to what entitlement needs. */
 export interface VerifiedTransaction {
@@ -168,7 +180,9 @@ export function applyTransaction(
   db: DB = getDb(),
 ): void {
   const tier = tierForProductId(tx.productId);
-  const expiresIso = tx.expiresDateMs !== null ? new Date(tx.expiresDateMs).toISOString() : null;
+  // Non-renewing IAPs carry no Apple expiresDate — derive it from the term.
+  const expiresMs = tier ? computeExpiryMs(tier, tx.purchaseDateMs, tx.expiresDateMs) : tx.expiresDateMs;
+  const expiresIso = expiresMs !== null ? new Date(expiresMs).toISOString() : null;
 
   const write = db.transaction(() => {
     db.prepare(

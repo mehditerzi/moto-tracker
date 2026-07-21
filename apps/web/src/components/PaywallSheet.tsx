@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { IAP_TIERS, IAP_PRODUCT_IDS, discountFor, type IapPeriod } from "@mototracker/shared";
+import { IAP_TIERS, IAP_PRODUCT_IDS, IAP_TERMS, discountFor } from "@mototracker/shared";
 import {
   isNativeIapAvailable,
   fetchProducts,
@@ -34,12 +34,13 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
   const native = isNativeIapAvailable();
   const [prices, setPrices] = useState<Record<string, StoreKitProduct>>({});
   const [busy, setBusy] = useState<string | null>(null); // productId or "restore"
-  const [period, setPeriod] = useState<IapPeriod>("yearly");
+  const [termKey, setTermKey] = useState("yearly");
+  const term = IAP_TERMS.find((x) => x.key === termKey)!;
   const ent = useEntitlement();
   // Smallest pack that actually grows the user's garage — highlighted so the
   // obvious next step is one tap, not a study of seven options.
   const needAtLeast = Math.max(ent.data?.activeVehicles ?? 1, ent.data?.maxVehicles ?? 1) + 1;
-  const recommended = IAP_TIERS.find((x) => x.period === period && x.maxVehicles >= needAtLeast)?.productId;
+  const recommended = IAP_TIERS.find((x) => x.termKey === termKey && x.maxVehicles >= needAtLeast)?.productId;
 
   useEffect(() => {
     if (!open || !native) return;
@@ -145,29 +146,31 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
               </div>
             ) : (
               <>
-                <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
-                  {(["yearly", "monthly"] as const).map((p) => (
+                <div className="mt-4 flex flex-wrap gap-1.5 rounded-2xl bg-surface-elev p-1 dark:bg-surface-elev-dark">
+                  {IAP_TERMS.map((tm) => (
                     <button
-                      key={p}
+                      key={tm.key}
                       type="button"
-                      onClick={() => setPeriod(p)}
-                      className={`rounded-xl py-2 text-[13px] font-medium transition ${
-                        period === p
+                      onClick={() => setTermKey(tm.key)}
+                      className={`flex-1 whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-medium transition ${
+                        termKey === tm.key
                           ? "bg-surface shadow-card text-text dark:bg-surface-dark dark:text-text-dark"
                           : "text-muted dark:text-muted-dark"
                       }`}
                     >
-                      {t(`paywall.${p}`)}
+                      {t(`paywall.term_${tm.key}`)}
                     </button>
                   ))}
                 </div>
 
                 <p className="mt-2 text-center text-[12px] text-muted dark:text-muted-dark">
-                  {period === "yearly" ? t("paywall.yearlyHint") : t("paywall.monthlyHint")}
+                  {term.renewable
+                    ? t("paywall.renewsHint")
+                    : t("paywall.oneTimeHint", { years: term.months / 12 })}
                 </p>
 
-                <div className="mt-3 grid max-h-[45vh] gap-2.5 overflow-y-auto">
-                  {IAP_TIERS.filter((tier) => tier.period === period).map((tier) => {
+                <div className="mt-3 grid max-h-[42vh] gap-2.5 overflow-y-auto">
+                  {IAP_TIERS.filter((tier) => tier.termKey === termKey).map((tier) => {
                     const live = prices[tier.productId];
                     const price = live?.displayPrice ?? `₺${tier.displayPriceTry}`;
                     const isBusy = busy === tier.productId;
@@ -177,9 +180,7 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
                       <div
                         key={tier.productId}
                         className={`flex items-center justify-between gap-3 rounded-2xl bg-surface p-4 ring-1 dark:bg-surface-elev-dark ${
-                          isRecommended
-                            ? "ring-2 ring-accent"
-                            : "ring-border dark:ring-border-dark"
+                          isRecommended ? "ring-2 ring-accent" : "ring-border dark:ring-border-dark"
                         }`}
                       >
                         <div className="min-w-0">
@@ -198,7 +199,8 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
                             )}
                           </div>
                           <div className="mt-0.5 text-[13px] text-muted dark:text-muted-dark">
-                            {t(period === "yearly" ? "paywall.perYear" : "paywall.perMonth", { price })}
+                            <span className="font-medium text-text dark:text-text-dark">{price}</span>{" "}
+                            / {t(`paywall.per_${tier.termKey}`)}
                           </div>
                         </div>
                         <Button
@@ -222,7 +224,7 @@ export function PaywallSheet({ open, onClose }: { open: boolean; onClose: () => 
                   {busy === "restore" ? t("paywall.restoring") : t("paywall.restore")}
                 </button>
                 <p className="mt-3 text-center text-[11px] leading-relaxed text-muted/80 dark:text-muted-dark/80">
-                  {t("paywall.legal")}
+                  {term.renewable ? t("paywall.legal") : t("paywall.legalOneTime")}
                 </p>
               </>
             )}

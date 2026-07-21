@@ -1,30 +1,48 @@
 import { z } from "zod";
 
 /**
- * Monetization model: a user's FIRST vehicle is free. More vehicles are sold as
- * **packs** — auto-renewable App Store subscriptions whose pack size is the
- * total active-vehicle ceiling. Pricing is per vehicle (₺20/month or
- * ₺100/year) with a volume discount baked into each pack's price: 10% off at
- * 10+ vehicles, 20% at 20+, capped at 30% from 30 up.
+ * Monetization: the FIRST vehicle is free; more are sold as vehicle PACKS
+ * (pack size = total active-vehicle ceiling). Each pack is offered over several
+ * TERMS. Two kinds of term:
  *
- * Apple has no per-quantity billing, so each sellable pack × period is its own
- * product in App Store Connect, ID pattern:
+ *   - **Auto-renewable** (6 months, 1 year) — normal App Store subscriptions in
+ *     the "Garaj Aboneliği" group; Apple renews them and sends notifications.
+ *   - **Non-renewing** (2, 3, 5, 10 years) — one-time In-App Purchases. Apple
+ *     does NOT auto-renew or restore these; access lasts `months` from purchase
+ *     and OUR server is the source of truth (it stores the entitlement + expiry,
+ *     which survives a reinstall / new device because the user has an account).
  *
- *   com.mehditerzi.mototracker.garage.<packSize>.<monthly|yearly>
+ * Price is per vehicle per term, with a pack volume discount baked in (10% at
+ * 10+, 20% at 20+, 30% from 30). Apple has no per-quantity billing, so each
+ * pack × term is its own product; the server resolves product IDs by pattern.
  *
- * `tierForProductId` PARSES that pattern rather than matching a fixed list, so
- * adding a new pack size in App Store Connect (and to PACK_SIZES for the
- * paywall) needs no server redeploy to be honored. All products live in one
- * subscription group, so a user is on exactly one at a time.
+ * Product ID: `com.mehditerzi.mototracker.garage.<packSize>.<termKey>`
+ * (the 1-year token is `yearly` for continuity with the originally-created
+ * products — do not rename it.)
  */
 export const FREE_MAX_VEHICLES = 1;
 
 export const IAP_PRODUCT_PREFIX = "com.mehditerzi.mototracker.garage.";
 
-export type IapPeriod = "monthly" | "yearly";
+export interface IapTerm {
+  /** Product-id token and stable internal key. */
+  key: string;
+  /** Access duration in months (also the non-renewing expiry offset). */
+  months: number;
+  /** Price per vehicle, in ₺, before the pack volume discount. */
+  perVehicleTry: number;
+  /** true = auto-renewable subscription; false = non-renewing one-time IAP. */
+  renewable: boolean;
+}
 
-/** Per-vehicle price before volume discount. */
-export const UNIT_PRICE_TRY: Record<IapPeriod, number> = { monthly: 20, yearly: 100 };
+export const IAP_TERMS: readonly IapTerm[] = [
+  { key: "6mo", months: 6, perVehicleTry: 60, renewable: true },
+  { key: "yearly", months: 12, perVehicleTry: 100, renewable: true },
+  { key: "2yr", months: 24, perVehicleTry: 200, renewable: false },
+  { key: "3yr", months: 36, perVehicleTry: 300, renewable: false },
+  { key: "5yr", months: 60, perVehicleTry: 500, renewable: false },
+  { key: "10yr", months: 120, perVehicleTry: 1000, renewable: false },
+];
 
 /** Pack sizes offered on the paywall (must exist in App Store Connect). */
 export const PACK_SIZES: readonly number[] = [3, 5, 10, 20, 30, 40, 50];
@@ -37,69 +55,87 @@ export function discountFor(packSize: number): number {
   return 0;
 }
 
-/** Formula price in ₺ (whole lira) — the App Store price should match this. */
-export function packPriceTry(packSize: number, period: IapPeriod): number {
-  return Math.round(packSize * UNIT_PRICE_TRY[period] * (1 - discountFor(packSize)));
+export function termFor(key: string): IapTerm | undefined {
+  return IAP_TERMS.find((t) => t.key === key);
 }
 
-/**
- * Overrides for product IDs Apple has permanently burned — a deleted product's
- * ID can never be reused, even across product types. Key: `<packSize>.<period>`.
- */
-export const PRODUCT_ID_OVERRIDES: Record<string, string> = {
-  // First created as a NON-consumable by mistake (2026-07-20), then deleted;
-  // the subscription lives under the "garaj" segment instead.
-  "3.monthly": "com.mehditerzi.mototracker.garaj.3.monthly",
-};
+/** Formula price in ₺ (whole lira) — the App Store price should match this. */
+export function packPriceTry(packSize: number, term: IapTerm): number {
+  return Math.round(packSize * term.perVehicleTry * (1 - discountFor(packSize)));
+}
 
-export function productIdFor(packSize: number, period: IapPeriod): string {
-  return PRODUCT_ID_OVERRIDES[`${packSize}.${period}`] ?? `${IAP_PRODUCT_PREFIX}${packSize}.${period}`;
+export function productIdFor(packSize: number, termKey: string): string {
+  return `${IAP_PRODUCT_PREFIX}${packSize}.${termKey}`;
 }
 
 export interface IapTier {
   /** App Store product identifier (must match App Store Connect exactly). */
   productId: string;
-  /** Stable internal tier key (used in the DB and analytics), e.g. "garage10-yearly". */
+  /** Stable internal tier key, e.g. "garage10-yearly". */
   tier: string;
   /** Max active (non-archived) vehicles this pack unlocks. */
   maxVehicles: number;
-  period: IapPeriod;
+  termKey: string;
+  termMonths: number;
+  /** true = auto-renewable; false = non-renewing one-time IAP. */
+  renewable: boolean;
   /** Formula price, for the paywall before StoreKit's localized price loads. */
   displayPriceTry: number;
 }
 
-function tierFor(packSize: number, period: IapPeriod): IapTier {
+function tierFor(packSize: number, term: IapTerm): IapTier {
   return {
-    productId: productIdFor(packSize, period),
-    tier: `garage${packSize}-${period}`,
+    productId: productIdFor(packSize, term.key),
+    tier: `garage${packSize}-${term.key}`,
     maxVehicles: packSize,
-    period,
-    displayPriceTry: packPriceTry(packSize, period),
+    termKey: term.key,
+    termMonths: term.months,
+    renewable: term.renewable,
+    displayPriceTry: packPriceTry(packSize, term),
   };
 }
 
-/** Every offered pack × period, smallest pack first. */
-export const IAP_TIERS: readonly IapTier[] = (["monthly", "yearly"] as const).flatMap((period) =>
-  PACK_SIZES.map((n) => tierFor(n, period)),
+/** Every offered pack × term. */
+export const IAP_TIERS: readonly IapTier[] = IAP_TERMS.flatMap((term) =>
+  PACK_SIZES.map((n) => tierFor(n, term)),
 );
 
 /** All product IDs the client should request from StoreKit. */
 export const IAP_PRODUCT_IDS: readonly string[] = IAP_TIERS.map((t) => t.productId);
 
-// "garaj" is the burned-ID fallback segment (see PRODUCT_ID_OVERRIDES).
-const PRODUCT_ID_RE = /^com\.mehditerzi\.mototracker\.(?:garage|garaj)\.(\d{1,3})\.(monthly|yearly)$/;
+const PRODUCT_ID_RE =
+  /^com\.mehditerzi\.mototracker\.garage\.(\d{1,3})\.(6mo|yearly|2yr|3yr|5yr|10yr)$/;
 
 /**
- * Resolve a product ID to its pack. Pattern-based: any garage.<n>.<period> id
- * is honored (1 < n ≤ 500) even if it isn't in PACK_SIZES yet, so packs added
- * in App Store Connect later grant the right ceiling without a redeploy.
+ * Resolve a product ID to its pack + term. Pattern-based, so new pack sizes
+ * added in App Store Connect are honored without a redeploy.
  */
 export function tierForProductId(productId: string): IapTier | undefined {
   const m = productId.match(PRODUCT_ID_RE);
   if (!m) return undefined;
   const packSize = Number(m[1]);
-  if (!Number.isInteger(packSize) || packSize <= FREE_MAX_VEHICLES || packSize > 500) return undefined;
-  return tierFor(packSize, m[2] as IapPeriod);
+  const term = termFor(m[2]!);
+  if (!term || !Number.isInteger(packSize) || packSize <= FREE_MAX_VEHICLES || packSize > 500) {
+    return undefined;
+  }
+  return tierFor(packSize, term);
+}
+
+/**
+ * Effective expiry (ms) for a verified transaction. Auto-renewable terms use
+ * Apple's expiresDate; non-renewing terms have no Apple expiry, so it's
+ * computed as purchase date + the term's duration.
+ */
+export function computeExpiryMs(
+  tier: IapTier,
+  purchaseMs: number | null,
+  appleExpiresMs: number | null,
+): number | null {
+  if (tier.renewable) return appleExpiresMs;
+  if (purchaseMs === null) return null;
+  const d = new Date(purchaseMs);
+  d.setMonth(d.getMonth() + tier.termMonths);
+  return d.getTime();
 }
 
 /** Subscription lifecycle status we track locally. */

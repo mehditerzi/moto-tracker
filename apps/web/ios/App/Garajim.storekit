@@ -1,9 +1,430 @@
 {
   "identifier": "A1B2C3D4-0000-0000-0000-000000000001",
-  "nonRenewingSubscriptions": [],
+  "nonRenewingSubscriptions": [
+    {
+      "displayPrice": "600.00",
+      "familyShareable": false,
+      "internalID": "30000003",
+      "localizations": [
+        {
+          "description": "En fazla 3 araç takip edin",
+          "displayName": "Garaj 3 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.3.2yr",
+      "referenceName": "Garaj 3 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "900.00",
+      "familyShareable": false,
+      "internalID": "30000004",
+      "localizations": [
+        {
+          "description": "En fazla 3 araç takip edin",
+          "displayName": "Garaj 3 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.3.3yr",
+      "referenceName": "Garaj 3 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "1500.00",
+      "familyShareable": false,
+      "internalID": "30000005",
+      "localizations": [
+        {
+          "description": "En fazla 3 araç takip edin",
+          "displayName": "Garaj 3 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.3.5yr",
+      "referenceName": "Garaj 3 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "3000.00",
+      "familyShareable": false,
+      "internalID": "30000006",
+      "localizations": [
+        {
+          "description": "En fazla 3 araç takip edin",
+          "displayName": "Garaj 3 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.3.10yr",
+      "referenceName": "Garaj 3 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "1000.00",
+      "familyShareable": false,
+      "internalID": "30000009",
+      "localizations": [
+        {
+          "description": "En fazla 5 araç takip edin",
+          "displayName": "Garaj 5 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.5.2yr",
+      "referenceName": "Garaj 5 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "1500.00",
+      "familyShareable": false,
+      "internalID": "30000010",
+      "localizations": [
+        {
+          "description": "En fazla 5 araç takip edin",
+          "displayName": "Garaj 5 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.5.3yr",
+      "referenceName": "Garaj 5 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "2500.00",
+      "familyShareable": false,
+      "internalID": "30000011",
+      "localizations": [
+        {
+          "description": "En fazla 5 araç takip edin",
+          "displayName": "Garaj 5 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.5.5yr",
+      "referenceName": "Garaj 5 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "5000.00",
+      "familyShareable": false,
+      "internalID": "30000012",
+      "localizations": [
+        {
+          "description": "En fazla 5 araç takip edin",
+          "displayName": "Garaj 5 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.5.10yr",
+      "referenceName": "Garaj 5 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "1800.00",
+      "familyShareable": false,
+      "internalID": "30000015",
+      "localizations": [
+        {
+          "description": "En fazla 10 araç takip edin",
+          "displayName": "Garaj 10 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.10.2yr",
+      "referenceName": "Garaj 10 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "2700.00",
+      "familyShareable": false,
+      "internalID": "30000016",
+      "localizations": [
+        {
+          "description": "En fazla 10 araç takip edin",
+          "displayName": "Garaj 10 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.10.3yr",
+      "referenceName": "Garaj 10 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "4500.00",
+      "familyShareable": false,
+      "internalID": "30000017",
+      "localizations": [
+        {
+          "description": "En fazla 10 araç takip edin",
+          "displayName": "Garaj 10 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.10.5yr",
+      "referenceName": "Garaj 10 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "9000.00",
+      "familyShareable": false,
+      "internalID": "30000018",
+      "localizations": [
+        {
+          "description": "En fazla 10 araç takip edin",
+          "displayName": "Garaj 10 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.10.10yr",
+      "referenceName": "Garaj 10 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "3200.00",
+      "familyShareable": false,
+      "internalID": "30000021",
+      "localizations": [
+        {
+          "description": "En fazla 20 araç takip edin",
+          "displayName": "Garaj 20 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.20.2yr",
+      "referenceName": "Garaj 20 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "4800.00",
+      "familyShareable": false,
+      "internalID": "30000022",
+      "localizations": [
+        {
+          "description": "En fazla 20 araç takip edin",
+          "displayName": "Garaj 20 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.20.3yr",
+      "referenceName": "Garaj 20 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "8000.00",
+      "familyShareable": false,
+      "internalID": "30000023",
+      "localizations": [
+        {
+          "description": "En fazla 20 araç takip edin",
+          "displayName": "Garaj 20 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.20.5yr",
+      "referenceName": "Garaj 20 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "16000.00",
+      "familyShareable": false,
+      "internalID": "30000024",
+      "localizations": [
+        {
+          "description": "En fazla 20 araç takip edin",
+          "displayName": "Garaj 20 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.20.10yr",
+      "referenceName": "Garaj 20 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "4200.00",
+      "familyShareable": false,
+      "internalID": "30000027",
+      "localizations": [
+        {
+          "description": "En fazla 30 araç takip edin",
+          "displayName": "Garaj 30 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.30.2yr",
+      "referenceName": "Garaj 30 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "6300.00",
+      "familyShareable": false,
+      "internalID": "30000028",
+      "localizations": [
+        {
+          "description": "En fazla 30 araç takip edin",
+          "displayName": "Garaj 30 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.30.3yr",
+      "referenceName": "Garaj 30 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "10500.00",
+      "familyShareable": false,
+      "internalID": "30000029",
+      "localizations": [
+        {
+          "description": "En fazla 30 araç takip edin",
+          "displayName": "Garaj 30 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.30.5yr",
+      "referenceName": "Garaj 30 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "21000.00",
+      "familyShareable": false,
+      "internalID": "30000030",
+      "localizations": [
+        {
+          "description": "En fazla 30 araç takip edin",
+          "displayName": "Garaj 30 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.30.10yr",
+      "referenceName": "Garaj 30 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "5600.00",
+      "familyShareable": false,
+      "internalID": "30000033",
+      "localizations": [
+        {
+          "description": "En fazla 40 araç takip edin",
+          "displayName": "Garaj 40 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.40.2yr",
+      "referenceName": "Garaj 40 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "8400.00",
+      "familyShareable": false,
+      "internalID": "30000034",
+      "localizations": [
+        {
+          "description": "En fazla 40 araç takip edin",
+          "displayName": "Garaj 40 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.40.3yr",
+      "referenceName": "Garaj 40 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "14000.00",
+      "familyShareable": false,
+      "internalID": "30000035",
+      "localizations": [
+        {
+          "description": "En fazla 40 araç takip edin",
+          "displayName": "Garaj 40 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.40.5yr",
+      "referenceName": "Garaj 40 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "28000.00",
+      "familyShareable": false,
+      "internalID": "30000036",
+      "localizations": [
+        {
+          "description": "En fazla 40 araç takip edin",
+          "displayName": "Garaj 40 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.40.10yr",
+      "referenceName": "Garaj 40 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "7000.00",
+      "familyShareable": false,
+      "internalID": "30000039",
+      "localizations": [
+        {
+          "description": "En fazla 50 araç takip edin",
+          "displayName": "Garaj 50 Araç (2 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.50.2yr",
+      "referenceName": "Garaj 50 Araç (2 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "10500.00",
+      "familyShareable": false,
+      "internalID": "30000040",
+      "localizations": [
+        {
+          "description": "En fazla 50 araç takip edin",
+          "displayName": "Garaj 50 Araç (3 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.50.3yr",
+      "referenceName": "Garaj 50 Araç (3 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "17500.00",
+      "familyShareable": false,
+      "internalID": "30000041",
+      "localizations": [
+        {
+          "description": "En fazla 50 araç takip edin",
+          "displayName": "Garaj 50 Araç (5 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.50.5yr",
+      "referenceName": "Garaj 50 Araç (5 Yıl)",
+      "type": "NonRenewingSubscription"
+    },
+    {
+      "displayPrice": "35000.00",
+      "familyShareable": false,
+      "internalID": "30000042",
+      "localizations": [
+        {
+          "description": "En fazla 50 araç takip edin",
+          "displayName": "Garaj 50 Araç (10 Yıl)",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.mehditerzi.mototracker.garage.50.10yr",
+      "referenceName": "Garaj 50 Araç (10 Yıl)",
+      "type": "NonRenewingSubscription"
+    }
+  ],
   "products": [],
   "settings": {
-    "_applicationInternalID": "0000000000",
+    "_applicationInternalID": "6783515081",
     "_developerTeamID": "289RQZ99Z9",
     "_failTransactionsEnabled": false,
     "_lastSynchronizedDate": 0,
@@ -20,7 +441,7 @@
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "300.00",
+          "displayPrice": "180.00",
           "familyShareable": false,
           "groupNumber": 1,
           "internalID": "30000001",
@@ -28,20 +449,20 @@
           "localizations": [
             {
               "description": "En fazla 3 araç takip edin",
-              "displayName": "Garaj 3 Araç (Yıllık)",
+              "displayName": "Garaj 3 Araç (6 Ay)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garage.3.yearly",
-          "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 3 Araç (Yıllık)",
+          "productID": "com.mehditerzi.mototracker.garage.3.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 3 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "60.00",
+          "displayPrice": "300.00",
           "familyShareable": false,
           "groupNumber": 1,
           "internalID": "30000002",
@@ -49,13 +470,34 @@
           "localizations": [
             {
               "description": "En fazla 3 araç takip edin",
-              "displayName": "Garaj 3 Araç (Aylık)",
+              "displayName": "Garaj 3 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garaj.3.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 3 Araç (Aylık)",
+          "productID": "com.mehditerzi.mototracker.garage.3.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Garaj 3 Araç (1 Yıl)",
+          "subscriptionGroupID": "20000001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "300.00",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "30000007",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "En fazla 5 araç takip edin",
+              "displayName": "Garaj 5 Araç (6 Ay)",
+              "locale": "tr_TR"
+            }
+          ],
+          "productID": "com.mehditerzi.mototracker.garage.5.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 5 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
@@ -65,39 +507,39 @@
           "displayPrice": "500.00",
           "familyShareable": false,
           "groupNumber": 2,
-          "internalID": "30000003",
+          "internalID": "30000008",
           "introductoryOffer": null,
           "localizations": [
             {
               "description": "En fazla 5 araç takip edin",
-              "displayName": "Garaj 5 Araç (Yıllık)",
+              "displayName": "Garaj 5 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
           "productID": "com.mehditerzi.mototracker.garage.5.yearly",
           "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 5 Araç (Yıllık)",
+          "referenceName": "Garaj 5 Araç (1 Yıl)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "100.00",
+          "displayPrice": "540.00",
           "familyShareable": false,
-          "groupNumber": 2,
-          "internalID": "30000004",
+          "groupNumber": 3,
+          "internalID": "30000013",
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "En fazla 5 araç takip edin",
-              "displayName": "Garaj 5 Araç (Aylık)",
+              "description": "En fazla 10 araç takip edin",
+              "displayName": "Garaj 10 Araç (6 Ay)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garage.5.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 5 Araç (Aylık)",
+          "productID": "com.mehditerzi.mototracker.garage.10.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 10 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
@@ -107,39 +549,39 @@
           "displayPrice": "900.00",
           "familyShareable": false,
           "groupNumber": 3,
-          "internalID": "30000005",
+          "internalID": "30000014",
           "introductoryOffer": null,
           "localizations": [
             {
               "description": "En fazla 10 araç takip edin",
-              "displayName": "Garaj 10 Araç (Yıllık)",
+              "displayName": "Garaj 10 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
           "productID": "com.mehditerzi.mototracker.garage.10.yearly",
           "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 10 Araç (Yıllık)",
+          "referenceName": "Garaj 10 Araç (1 Yıl)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "180.00",
+          "displayPrice": "960.00",
           "familyShareable": false,
-          "groupNumber": 3,
-          "internalID": "30000006",
+          "groupNumber": 4,
+          "internalID": "30000019",
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "En fazla 10 araç takip edin",
-              "displayName": "Garaj 10 Araç (Aylık)",
+              "description": "En fazla 20 araç takip edin",
+              "displayName": "Garaj 20 Araç (6 Ay)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garage.10.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 10 Araç (Aylık)",
+          "productID": "com.mehditerzi.mototracker.garage.20.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 20 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
@@ -149,39 +591,39 @@
           "displayPrice": "1600.00",
           "familyShareable": false,
           "groupNumber": 4,
-          "internalID": "30000007",
+          "internalID": "30000020",
           "introductoryOffer": null,
           "localizations": [
             {
               "description": "En fazla 20 araç takip edin",
-              "displayName": "Garaj 20 Araç (Yıllık)",
+              "displayName": "Garaj 20 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
           "productID": "com.mehditerzi.mototracker.garage.20.yearly",
           "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 20 Araç (Yıllık)",
+          "referenceName": "Garaj 20 Araç (1 Yıl)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "320.00",
+          "displayPrice": "1260.00",
           "familyShareable": false,
-          "groupNumber": 4,
-          "internalID": "30000008",
+          "groupNumber": 5,
+          "internalID": "30000025",
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "En fazla 20 araç takip edin",
-              "displayName": "Garaj 20 Araç (Aylık)",
+              "description": "En fazla 30 araç takip edin",
+              "displayName": "Garaj 30 Araç (6 Ay)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garage.20.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 20 Araç (Aylık)",
+          "productID": "com.mehditerzi.mototracker.garage.30.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 30 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
@@ -191,39 +633,39 @@
           "displayPrice": "2100.00",
           "familyShareable": false,
           "groupNumber": 5,
-          "internalID": "30000009",
+          "internalID": "30000026",
           "introductoryOffer": null,
           "localizations": [
             {
               "description": "En fazla 30 araç takip edin",
-              "displayName": "Garaj 30 Araç (Yıllık)",
+              "displayName": "Garaj 30 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
           "productID": "com.mehditerzi.mototracker.garage.30.yearly",
           "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 30 Araç (Yıllık)",
+          "referenceName": "Garaj 30 Araç (1 Yıl)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "420.00",
+          "displayPrice": "1680.00",
           "familyShareable": false,
-          "groupNumber": 5,
-          "internalID": "30000010",
+          "groupNumber": 6,
+          "internalID": "30000031",
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "En fazla 30 araç takip edin",
-              "displayName": "Garaj 30 Araç (Aylık)",
+              "description": "En fazla 40 araç takip edin",
+              "displayName": "Garaj 40 Araç (6 Ay)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garage.30.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 30 Araç (Aylık)",
+          "productID": "com.mehditerzi.mototracker.garage.40.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 40 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
@@ -233,39 +675,39 @@
           "displayPrice": "2800.00",
           "familyShareable": false,
           "groupNumber": 6,
-          "internalID": "30000011",
+          "internalID": "30000032",
           "introductoryOffer": null,
           "localizations": [
             {
               "description": "En fazla 40 araç takip edin",
-              "displayName": "Garaj 40 Araç (Yıllık)",
+              "displayName": "Garaj 40 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
           "productID": "com.mehditerzi.mototracker.garage.40.yearly",
           "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 40 Araç (Yıllık)",
+          "referenceName": "Garaj 40 Araç (1 Yıl)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
         {
           "adHocOffers": [],
           "codeOffers": [],
-          "displayPrice": "560.00",
+          "displayPrice": "2100.00",
           "familyShareable": false,
-          "groupNumber": 6,
-          "internalID": "30000012",
+          "groupNumber": 7,
+          "internalID": "30000037",
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "En fazla 40 araç takip edin",
-              "displayName": "Garaj 40 Araç (Aylık)",
+              "description": "En fazla 50 araç takip edin",
+              "displayName": "Garaj 50 Araç (6 Ay)",
               "locale": "tr_TR"
             }
           ],
-          "productID": "com.mehditerzi.mototracker.garage.40.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 40 Araç (Aylık)",
+          "productID": "com.mehditerzi.mototracker.garage.50.6mo",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Garaj 50 Araç (6 Ay)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         },
@@ -275,39 +717,18 @@
           "displayPrice": "3500.00",
           "familyShareable": false,
           "groupNumber": 7,
-          "internalID": "30000013",
+          "internalID": "30000038",
           "introductoryOffer": null,
           "localizations": [
             {
               "description": "En fazla 50 araç takip edin",
-              "displayName": "Garaj 50 Araç (Yıllık)",
+              "displayName": "Garaj 50 Araç (1 Yıl)",
               "locale": "tr_TR"
             }
           ],
           "productID": "com.mehditerzi.mototracker.garage.50.yearly",
           "recurringSubscriptionPeriod": "P1Y",
-          "referenceName": "Garaj 50 Araç (Yıllık)",
-          "subscriptionGroupID": "20000001",
-          "type": "RecurringSubscription"
-        },
-        {
-          "adHocOffers": [],
-          "codeOffers": [],
-          "displayPrice": "700.00",
-          "familyShareable": false,
-          "groupNumber": 7,
-          "internalID": "30000014",
-          "introductoryOffer": null,
-          "localizations": [
-            {
-              "description": "En fazla 50 araç takip edin",
-              "displayName": "Garaj 50 Araç (Aylık)",
-              "locale": "tr_TR"
-            }
-          ],
-          "productID": "com.mehditerzi.mototracker.garage.50.monthly",
-          "recurringSubscriptionPeriod": "P1M",
-          "referenceName": "Garaj 50 Araç (Aylık)",
+          "referenceName": "Garaj 50 Araç (1 Yıl)",
           "subscriptionGroupID": "20000001",
           "type": "RecurringSubscription"
         }
