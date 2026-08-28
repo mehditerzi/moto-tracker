@@ -10,7 +10,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
+import { NumberInput } from "@/components/ui/number-input";
+import { DateInput } from "@/components/ui/date-input";
 import { Field } from "@/components/ui/field";
+import { FIELD_WIDTH } from "@/components/ui/control";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
@@ -392,7 +395,7 @@ export function BikeFormPage() {
                 autoCapitalize="words"
               />
             </Field>
-            <Field label={t("bike.plate")} hint={t("bike.optional")}>
+            <Field label={t("bike.plate")} optional>
               <Input
                 {...form.register("plate")}
                 placeholder="34 ABC 123"
@@ -414,7 +417,7 @@ export function BikeFormPage() {
                 restored at `sm`, where the column is 194px and everything fits
                 on one line in both languages. */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label={t("bike.make")} hint={t("bike.optional")}>
+              <Field label={t("bike.make")} optional>
                 <Controller
                   control={form.control}
                   name="make"
@@ -432,7 +435,7 @@ export function BikeFormPage() {
                   )}
                 />
               </Field>
-              <Field label={t("bike.model")} hint={t("bike.optional")}>
+              <Field label={t("bike.model")} optional>
                 <Controller
                   control={form.control}
                   name="model"
@@ -450,14 +453,36 @@ export function BikeFormPage() {
                 />
               </Field>
             </div>
-            {/* Year and km are short enough to sit two-up — 2023 and 12000 fit
-                anywhere. Their LABELS are not: "Şu anki km" is 73px and
-                "Current km" 76px, and with the 71px "optional" hint beside them
-                neither fits a 118px cell, while "Yıl" / "Year" does. So one
-                label wrapped and the other didn't, and the two inputs sat 17px
-                apart. Same treatment as the pair above, for the same reason. */}
+            {/* Year and km are the two fields on this form that are NOT the
+                width of the column they sit in — a 4-digit year used to get the
+                same 248px box as a 17-character chassis number, which is the
+                loudest way a form can look wrong. `FIELD_WIDTH.tiny` (108px)
+                and `FIELD_WIDTH.number` (152px) are the content widths for
+                exactly these two, and they are applied to the <Field> so the
+                LABEL row is measured against the field, not against the cell.
+
+                The row still breaks at `sm` rather than flowing, and the widths
+                are why: 108 + 12 (gap) + 152 = 272px, and the form's content box
+                is 248px at 320px — the pair genuinely does not fit a phone. From
+                `sm` the cells are 194px and both fields clear their own labels
+                with room to spare.
+
+                Label rows, in Geist at the sizes these actually render at
+                (14px/500 label, 10px/400 + 0.05em tracking for the "optional"
+                annotation, 8px gap):
+
+                  Yıl        15.8 + 8 + 71.2 =  95.0  in 108  ✓
+                  Year       29.8 + 8 + 53.4 =  91.2  in 108  ✓
+                  Kilometre  64.7 + 8 + 71.2 = 143.9  in 152  ✓
+                  Odometer   67.0 + 8 + 53.4 = 128.4  in 152  ✓
+
+                Both labels are also single words, so even if a future font
+                revision moved those numbers there is nothing in them to wrap.
+                "Şu anki km" (73.4 → 152.5, half a pixel over) is what forced the
+                rename: with `km` now inside the control the label was naming the
+                unit twice anyway. */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label={t("bike.year")} hint={t("bike.optional")}>
+              <Field label={t("bike.year")} optional width="tiny">
                 <Controller
                   control={form.control}
                   name="year"
@@ -472,13 +497,8 @@ export function BikeFormPage() {
                   )}
                 />
               </Field>
-              <Field label={t("bike.currentKm")} hint={t("bike.optional")}>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  {...form.register("currentKm")}
-                  placeholder="12000"
-                />
+              <Field label={t("bike.currentKm")} optional width="number">
+                <NumberInput suffix="km" {...form.register("currentKm")} placeholder="12000" />
               </Field>
             </div>
             {/* Everything below is copied off the ruhsat and is exactly what the
@@ -492,7 +512,7 @@ export function BikeFormPage() {
               summary={t("bike.moreDetails")}
               hint={t("bike.moreDetailsSub")}
             >
-              <Field label={t("bike.color")} hint={t("bike.optional")}>
+              <Field label={t("bike.color")} optional>
                 <Controller
                   control={form.control}
                   name="color"
@@ -506,7 +526,7 @@ export function BikeFormPage() {
                   )}
                 />
               </Field>
-              <Field label={t("bike.fuelType")} hint={t("bike.optional")}>
+              <Field label={t("bike.fuelType")} optional>
                 <Controller
                   control={form.control}
                   name="fuelType"
@@ -526,13 +546,21 @@ export function BikeFormPage() {
                   that cannot cope with that: WebKit lays out its own
                   gg.aa.yyyy segments and clips them rather than scrolling.
                   "İlk tescil tarihi" (95px) plus the "optional" hint (71px)
-                  does not fit that column either. */}
+                  does not fit that column either.
+
+                  `width="date"` is deliberately NOT used, even though it is the
+                  content width for this control elsewhere. It is built for a
+                  FormRow — below `sm` it is `flex-1`, which in this column-flex
+                  panel would size the field's HEIGHT rather than its width — and
+                  its 184px at `sm` is under the 207px that "First registration
+                  date" + "OPTIONAL" needs, so the English label would wrap where
+                  it does not today. The panel is single-column anyway. */}
               <Field
                 label={t("bike.firstRegistrationDate")}
-                hint={t("bike.optional")}
+                optional
                 error={form.formState.errors.firstRegistrationDate?.message}
               >
-                <Input type="date" {...form.register("firstRegistrationDate")} />
+                <DateInput {...form.register("firstRegistrationDate")} />
               </Field>
               {/* Chassis and engine numbers are ~17 characters of Geist Mono.
                   That is 170px of text; a half-column inside this panel gives
@@ -543,7 +571,7 @@ export function BikeFormPage() {
                   on the narrowest phone we support. These stay one-up at every
                   size for that reason; the labels ("Motor blok numarası",
                   138px) would not have fitted a half-column either. */}
-              <Field label={t("bike.chassisNo")} hint={t("bike.optional")}>
+              <Field label={t("bike.chassisNo")} optional>
                 <Input
                   {...form.register("chassisNo")}
                   placeholder="VF3..."
@@ -553,7 +581,7 @@ export function BikeFormPage() {
                   className="uppercase font-mono tracking-wide"
                 />
               </Field>
-              <Field label={t("bike.engineNo")} hint={t("bike.optional")}>
+              <Field label={t("bike.engineNo")} optional>
                 <Input
                   {...form.register("engineNo")}
                   placeholder="ZD4..."
@@ -563,13 +591,19 @@ export function BikeFormPage() {
                   className="uppercase font-mono tracking-wide"
                 />
               </Field>
-              <Field label={t("bike.cylinderCc")} hint={t("bike.optional")}>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  {...form.register("cylinderCc")}
-                  placeholder="937"
-                />
+              {/* `cc` moved off the label and into the control, matching the
+                  scanner's review screen (review.cylinderCc has read "Silindir
+                  hacmi" / "Displacement" since it was migrated). Still full
+                  width: `FIELD_WIDTH.short` (128px) is the right content width
+                  for a 3–4 digit figure, but "Silindir hacmi" + "İSTEĞE BAĞLI"
+                  measures 169px, and every width in the scale below `full` is
+                  narrower than that — the Turkish "optional" annotation alone is
+                  71px. A wrapped label here would be the only two-line label in
+                  a single-column panel, which reads as a defect rather than as
+                  alignment. Full width is also this panel's rule, not an
+                  exception to it. */}
+              <Field label={t("bike.cylinderCc")} optional>
+                <NumberInput suffix="cc" {...form.register("cylinderCc")} placeholder="937" />
               </Field>
             </DetailsDisclosure>
             {/* The org's ceiling, refused by the API. No price, no plan, no
@@ -677,14 +711,19 @@ function FormSkeleton() {
                 <Skeleton className="h-11" />
               </div>
             </div>
+            {/* Year and km are the two content-shaped fields on this form, so
+                the skeleton has to be content-shaped too — a full-width bar
+                here would snap to 108px/152px the moment the record lands,
+                which is the layout jump this skeleton exists to prevent. Widths
+                come from the same FIELD_WIDTH table the fields use. */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Skeleton className="h-4 w-10" />
-                <Skeleton className="h-11" />
+                <Skeleton className={`h-11 ${FIELD_WIDTH.tiny}`} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Skeleton className="h-4 w-14" />
-                <Skeleton className="h-11" />
+                <Skeleton className={`h-11 ${FIELD_WIDTH.number}`} />
               </div>
             </div>
             <Skeleton className="h-14 rounded-2xl" />
