@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Wrench, ChevronRight } from "lucide-react";
+import { Plus, Wrench, ChevronRight, RotateCw } from "lucide-react";
 import { addMonths, parseISO, differenceInCalendarDays, format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import type { MaintenanceItem } from "@mototracker/shared";
 import { useMaintenanceForBike } from "@/hooks/useMaintenanceItems";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 
 function dueDate(m: MaintenanceItem): string | null {
@@ -40,10 +41,24 @@ export function MaintenancePanel({ bikeId }: Props) {
         </Button>
       </div>
 
+      {/* A one-line "Yükleniyor…" is a third the height of the list it turns
+          into, so the whole dashboard below it jumped as soon as the data
+          landed. Two rows in the real row height hold the space instead. */}
       {q.isLoading ? (
-        <p className="text-sm text-muted dark:text-muted-dark">{t("dashboard.loading")}</p>
+        <div className="flex flex-col gap-2" aria-hidden>
+          <Skeleton className="h-[46px] rounded-xl" />
+          <Skeleton className="h-[46px] rounded-xl" />
+        </div>
       ) : q.isError ? (
-        <p className="text-sm text-danger">{t("dashboard.loadFailed")}</p>
+        // Was a red sentence with nothing to tap: the panel dead-ended on any
+        // blip and only a full app reload brought it back.
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-danger">{t("dashboard.loadFailed")}</p>
+          <Button variant="outline" size="sm" onClick={() => void q.refetch()} disabled={q.isFetching}>
+            <RotateCw className={cn("h-3.5 w-3.5", q.isFetching && "animate-spin")} />
+            {t("common.retry")}
+          </Button>
+        </div>
       ) : (q.data ?? []).length === 0 ? (
         <p className="text-sm text-muted dark:text-muted-dark">{t("items.noMaintenance")}</p>
       ) : (

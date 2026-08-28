@@ -98,7 +98,10 @@ export function OnboardingPage() {
       <div
         ref={trackRef}
         onScroll={onScroll}
-        className="relative flex flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // overscroll-x-contain: without it, swiping past the last slide hands
+        // the gesture to the WebView, which reads it as the back-navigation
+        // swipe — on the very first screen of the app.
+        className="relative flex flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {SLIDES.map(({ key, Icon }, i) => (
           <section

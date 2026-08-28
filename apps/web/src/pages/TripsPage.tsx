@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Navigation, Route as RouteIcon, MapPin, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -26,7 +26,12 @@ export function TripsPage() {
   const [openTripId, setOpenTripId] = useState<string | null>(null);
   const mapsOn = cfg.data?.mapkit ?? false;
 
-  const bikeById = new Map<string, Bike>((bikes.data ?? []).map((b) => [b.id, b]));
+  // Rebuilding this on every render meant walking the whole garage again just
+  // to expand or collapse one trip row.
+  const bikeById = useMemo(
+    () => new Map<string, Bike>((bikes.data ?? []).map((b) => [b.id, b])),
+    [bikes.data],
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -42,9 +47,11 @@ export function TripsPage() {
       {(trips.data?.length ?? 0) > 0 && <TripInsights trips={trips.data!} />}
 
       {trips.isLoading ? (
+        // 76px is the real row height (p-4 around a 44px icon). At h-16 the
+        // list grew 12px per row the moment the data landed, shoving the page.
         <div className="flex flex-col gap-2.5">
-          <Skeleton className="h-16 rounded-2xl" />
-          <Skeleton className="h-16 rounded-2xl" />
+          <Skeleton className="h-[76px] rounded-2xl" />
+          <Skeleton className="h-[76px] rounded-2xl" />
         </div>
       ) : trips.isError ? (
         <ErrorState onRetry={() => void trips.refetch()} />
@@ -62,13 +69,34 @@ export function TripsPage() {
                 key={trip.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+                // Capped. The API returns up to 200 trips, and an uncapped
+                // `i * 0.04` meant the last card only began to appear eight
+                // seconds after the list rendered — the whole screen read as
+                // slow. Eight steps is enough to feel like a cascade.
+                transition={{ delay: Math.min(i, 8) * 0.04, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
               >
+                {/* The expandable row is a real control: it was a bare div with
+                    an onClick, so the map could not be opened from a keyboard
+                    and assistive tech was told nothing about the disclosure. */}
                 <Card
                   className={`flex items-center justify-between gap-4 p-4 ${
-                    expandable ? "cursor-pointer" : ""
+                    expandable
+                      ? "cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                      : ""
                   } ${open ? "rounded-b-none" : ""}`}
+                  role={expandable ? "button" : undefined}
+                  tabIndex={expandable ? 0 : undefined}
+                  aria-expanded={expandable ? open : undefined}
                   onClick={expandable ? () => setOpenTripId(open ? null : trip.id) : undefined}
+                  onKeyDown={
+                    expandable
+                      ? (e: React.KeyboardEvent) => {
+                          if (e.key !== "Enter" && e.key !== " ") return;
+                          e.preventDefault();
+                          setOpenTripId(open ? null : trip.id);
+                        }
+                      : undefined
+                  }
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
@@ -194,21 +222,32 @@ function TrackingToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () 
             </p>
           </div>
         </div>
+        {/* The switch itself stays 44×24 — that is the design. The tappable
+            element around it is 44px tall, which the bare track was not: this is
+            the one control on the screen and it was missing a third of the
+            minimum touch target. */}
         <button
           type="button"
           role="switch"
           aria-checked={enabled}
           aria-label={t("trips.tracking")}
           onClick={onToggle}
-          className={`relative mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
-            enabled ? "bg-accent" : "bg-border dark:bg-border-dark"
-          }`}
+          // -mt-1.5 + pt-2.5 reproduces the old `mt-1` offset exactly, so the
+          // track does not move; only the hit area grows.
+          className="-mb-2.5 -mt-1.5 flex min-h-[44px] shrink-0 touch-manipulation items-center py-2.5"
         >
           <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-              enabled ? "translate-x-5" : "translate-x-0.5"
+            aria-hidden
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+              enabled ? "bg-accent" : "bg-border dark:bg-border-dark"
             }`}
-          />
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                enabled ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </span>
         </button>
       </CardContent>
     </Card>

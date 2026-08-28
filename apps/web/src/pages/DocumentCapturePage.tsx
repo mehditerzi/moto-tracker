@@ -50,6 +50,16 @@ export function DocumentCapturePage() {
   /** Long-edge cap applied to gallery picks (matches the in-camera MAX_OUTPUT_EDGE). */
   const MAX_GALLERY_EDGE = 2400;
 
+  /** Back to the two big buttons. Clearing both file inputs matters: without it
+   *  re-picking the SAME photo fires no `change` event, so the obvious retry
+   *  (tap gallery, choose the same shot) silently does nothing. */
+  function resetPicker() {
+    setPreview(null);
+    setBusy(false);
+    if (galleryInput.current) galleryInput.current.value = "";
+    if (cameraInput.current) cameraInput.current.value = "";
+  }
+
   async function handleFile(file: File) {
     setPreview(URL.createObjectURL(file));
     setBusy(true);
@@ -61,10 +71,7 @@ export function DocumentCapturePage() {
     } catch (e) {
       // An aborted upload is not an error — reset silently to the picker.
       if ((e as Error).name === "AbortError") {
-        setPreview(null);
-        setBusy(false);
-        if (galleryInput.current) galleryInput.current.value = "";
-        if (cameraInput.current) cameraInput.current.value = "";
+        resetPicker();
         return;
       }
       // Map raw API error codes to friendly messages instead of leaking
@@ -85,7 +92,11 @@ export function DocumentCapturePage() {
         title: t("capture.uploadFailed"),
         description: KNOWN[code] ?? t("capture.errorGeneric"),
       });
-      setBusy(false);
+      // Only `busy` used to be cleared here. `preview` stayed set, so the screen
+      // kept rendering the "uploading…" panel — now with its Cancel button gone,
+      // because that is `{busy && …}`. The toast vanished after four seconds and
+      // left a dead screen with no camera, no gallery and no way back.
+      resetPicker();
     }
   }
 

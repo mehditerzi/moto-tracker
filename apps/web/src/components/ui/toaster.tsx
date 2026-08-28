@@ -5,8 +5,13 @@ import { cn } from "@/lib/cn";
 export function Toaster() {
   const toasts = useToasts();
   return (
+    // Above the mobile tab bar, not on top of it. The bar is `fixed bottom-0`
+    // and ~58px + pb-safe tall, while this stack sat at `bottom-4` with a
+    // higher z-index and `pointer-events-auto` — so every toast covered Home /
+    // Bikes and swallowed taps on them for its full four seconds. There is no
+    // tab bar from `sm` up, so the original offset comes back there.
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem+var(--safe-bottom))] z-50 flex justify-center sm:bottom-4"
       role="status"
       aria-live="polite"
     >

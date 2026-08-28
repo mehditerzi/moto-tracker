@@ -22,13 +22,20 @@ export function ForgotPasswordPage() {
     if (!email) { setError(t("auth.emailRequired")); return; }
     setBusy(true);
     setError("");
-    const res = await authClient.requestPasswordReset({
-      email,
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (res.error) { setError(res.error.message ?? t("auth.forgotFailed")); return; }
-    setSent(true);
+    try {
+      const res = await authClient.requestPasswordReset({
+        email,
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (res.error) { setError(res.error.message ?? t("auth.forgotFailed")); return; }
+      setSent(true);
+    } catch {
+      // Without the catch a rejected call (offline, most often) left `busy`
+      // true: a disabled button and no message at all.
+      setError(t("auth.forgotFailed"));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

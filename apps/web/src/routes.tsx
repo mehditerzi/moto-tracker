@@ -1,6 +1,8 @@
-import { useEffect, lazy, Suspense, type ReactNode } from "react";
+import { useEffect, useState, lazy, Suspense, type ReactNode } from "react";
 import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { registerNativePush } from "@/lib/nativePush";
 import { syncPurchasesSilently } from "@/lib/nativeIap";
 import { queryClient } from "@/lib/queryClient";
@@ -67,7 +69,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     }
   }, [authed]);
   if (me.isPending) {
-    return <FullPagePending />;
+    return <SessionPending />;
   }
   if (me.isError || !me.data) {
     // Logged-out users always enter through onboarding; its Skip / Get Started
@@ -84,6 +86,41 @@ function FullPagePending() {
     <div className="flex min-h-dvh items-center justify-center">
       <p className="text-sm text-muted dark:text-muted-dark">…</p>
     </div>
+  );
+}
+
+/** How long the session check may sit silent before we offer a way out. */
+const SESSION_STUCK_MS = 8000;
+
+/**
+ * The same treatment, plus an escape.
+ *
+ * `/api/me` has no timeout of its own, so a request that never settles (captive
+ * wifi, a dead connection in a tunnel) leaves `isPending` true indefinitely —
+ * and this branch renders before AppShell, so there is no header, no tab bar
+ * and nothing at all to tap. Force-quitting the app was the only way out.
+ */
+function SessionPending() {
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setStuck(true), SESSION_STUCK_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 pb-safe pl-safe pr-safe pt-safe text-center">
+      <p className="text-sm text-muted dark:text-muted-dark">…</p>
+      {stuck && <StuckEscape />}
+    </div>
+  );
+}
+
+/** Split out purely so `useTranslation` is not paid for on every cold start. */
+function StuckEscape() {
+  const { t } = useTranslation();
+  return (
+    <Button variant="outline" onClick={() => window.location.reload()}>
+      {t("common.retry")}
+    </Button>
   );
 }
 
