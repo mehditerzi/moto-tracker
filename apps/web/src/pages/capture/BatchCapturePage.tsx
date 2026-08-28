@@ -11,6 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { HiddenFileInput } from "@/components/ui/file-input";
 import { CameraCapture, type BurstShot } from "@/components/CameraCapture";
 import { downscaleImageFile } from "@/lib/camera";
 import { uploadDocument, useDeleteDocument } from "@/hooks/useDocuments";
@@ -314,16 +315,11 @@ export function BatchCapturePage({ batchId }: { batchId: string }) {
           </Button>
 
           {/* Multi-select: a fleet manager often already has the photos. */}
-          <input
+          <HiddenFileInput
             ref={galleryInput}
-            type="file"
             accept="image/*"
             multiple
-            className="hidden"
-            onChange={(e) => {
-              const picked = Array.from(e.target.files ?? []);
-              e.target.value = "";
-              if (picked.length === 0) return;
+            onPick={(picked) => {
               void Promise.all(
                 picked.map((f) =>
                   downscaleImageFile(f, MAX_GALLERY_EDGE).catch(() => f),
@@ -337,17 +333,11 @@ export function BatchCapturePage({ batchId }: { batchId: string }) {
               });
             }}
           />
-          <input
+          <HiddenFileInput
             ref={cameraInput}
-            type="file"
             accept="image/*"
             capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) addFiles([f]);
-            }}
+            onPick={(picked) => addFiles(picked)}
           />
         </CardContent>
       </Card>

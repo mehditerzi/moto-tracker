@@ -62,13 +62,15 @@ export function FleetCustomersPage() {
               className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted dark:text-muted-dark"
               aria-hidden
             />
-            <input
+            <Input
               type="search"
+              controlSize="sm"
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
               aria-label={t("fleet.customers.search")}
               placeholder={t("fleet.customers.search")}
-              className="h-8 w-48 rounded-lg border border-border bg-surface pl-8 pr-2 text-[12px] dark:border-border-dark dark:bg-surface-elev-dark"
+              enterKeyHint="search"
+              className="w-52 pl-8"
             />
           </div>
         </SectionHeading>
@@ -192,23 +194,41 @@ function NewCustomerForm({ orgId }: { orgId: string }) {
   return (
     <form
       onSubmit={submit}
-      className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface/70 p-4 dark:border-border-dark dark:bg-surface-dark/60"
+      className="flex flex-wrap items-end gap-x-3 gap-y-4 rounded-2xl border border-border bg-surface/70 p-4 dark:border-border-dark dark:bg-surface-dark/60"
     >
-      <div className="min-w-[180px] flex-1">
-        <Field label={t("fleet.customers.name")} error={error}>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-      </div>
-      <div className="w-44">
-        <Field label={t("fleet.customers.phone")} hint={t("fleet.optional")}>
-          <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </Field>
-      </div>
-      <div className="w-56">
-        <Field label={t("fleet.customers.email")} hint={t("fleet.optional")}>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </Field>
-      </div>
+      <Field label={t("fleet.customers.name")} error={error} width="grow">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoCapitalize="words"
+          autoComplete="organization"
+          enterKeyHint="next"
+        />
+      </Field>
+      <Field label={t("fleet.customers.phone")} optional className="w-44">
+        <Input
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          enterKeyHint="next"
+          className="num"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </Field>
+      <Field label={t("fleet.customers.email")} optional className="w-56">
+        <Input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="done"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </Field>
       <Button type="submit" variant="accent" disabled={create.isPending}>
         <UserPlus className="h-4 w-4" /> {t("fleet.customers.add")}
       </Button>

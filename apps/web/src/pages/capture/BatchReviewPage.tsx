@@ -23,8 +23,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field } from "@/components/ui/field";
+import { Field, FormRow } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
+import { Select } from "@/components/ui/select";
+import { DateInput } from "@/components/ui/date-input";
+import { NumberInput } from "@/components/ui/number-input";
+import type { FieldWidth } from "@/components/ui/control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
 import { PaywallSheet } from "@/components/PaywallSheet";
@@ -728,12 +732,10 @@ function DocumentPane({
         </div>
 
         {draft.action === "update" && (
-          <Field label={t("batch.targetVehicle")} id={`target-${doc.id}`}>
-            <select
-              id={`target-${doc.id}`}
+          <Field label={t("batch.targetVehicle")}>
+            <Select
               value={draft.targetBikeId ?? ""}
               onChange={(e) => onDraft({ ...draft, targetBikeId: e.target.value })}
-              className="h-11 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
             >
               {garage.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -741,7 +743,7 @@ function DocumentPane({
                   {b.plate ? ` · ${b.plate}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         )}
 
@@ -766,11 +768,12 @@ function DocumentPane({
 
         {/* ── the fields that need a human ─────────────────────────────── */}
         {needsLook.length > 0 ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+          <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
             <p className="inline-flex items-center gap-2 text-[13px] font-medium text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
               {t("batch.checkTheseCount", { count: needsLook.length })}
             </p>
+            <FormRow>
             {needsLook.map((key) => (
               <ReviewField
                 key={key}
@@ -781,6 +784,7 @@ function DocumentPane({
                 onChange={(v) => setFields(key === "make" ? { make: v, model: "" } : { [key]: v })}
               />
             ))}
+            </FormRow>
           </div>
         ) : (
           <p className="inline-flex items-center gap-2 rounded-xl bg-success/10 p-3 text-[13px] text-success">
@@ -800,7 +804,7 @@ function DocumentPane({
           {showAll ? t("batch.hideOther") : t("batch.showOther", { count: settled.length })}
         </button>
         {showAll && (
-          <div className="flex flex-col gap-2">
+          <FormRow>
             {settled.map((key) => (
               <ReviewField
                 key={key}
@@ -816,7 +820,7 @@ function DocumentPane({
                 onChange={(v) => setFields(key === "make" ? { make: v, model: "" } : { [key]: v })}
               />
             ))}
-          </div>
+          </FormRow>
         )}
 
         {/* Renewal dates. Pre-filled from the ruhsat when it carried one. */}
@@ -830,12 +834,11 @@ function DocumentPane({
               >
                 {t(`items.${type}`)}
               </label>
-              <input
+              <DateInput
                 id={`date-${doc.id}-${type}`}
-                type="date"
+                className="min-w-0 flex-1"
                 value={draft.dates[type] ?? ""}
                 onChange={(e) => setDate(type, e.target.value)}
-                className="h-11 flex-1 rounded-lg border border-border bg-surface px-2 text-base text-text dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
               />
             </div>
           ))}
@@ -880,6 +883,7 @@ function ReviewField({
 }) {
   const { t } = useTranslation();
   const label = t(`review.${fieldKey}` as "review.plate");
+  const isNumeric = fieldKey === "year" || fieldKey === "cylinderCc";
 
   // `error` is what wires aria-invalid/aria-describedby, so a suspect field is
   // announced with its reason rather than just its name. A `corrected` note is
@@ -887,6 +891,7 @@ function ReviewField({
   return (
     <Field
       label={label}
+      width={FIELD_WIDTH_BY_KEY[fieldKey]}
       error={corrected ? undefined : issue}
       hint={corrected ? t("batch.corrected") : undefined}
     >
@@ -899,19 +904,55 @@ function ReviewField({
           }
           placeholder={label}
         />
+      ) : fieldKey === "firstRegistrationDate" ? (
+        <DateInput value={value} onChange={(e) => onChange(e.target.value)} />
+      ) : isNumeric ? (
+        <NumberInput
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={label}
+          suffix={fieldKey === "cylinderCc" ? "cc" : undefined}
+          enterKeyHint="next"
+        />
       ) : (
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={label}
-          inputMode={fieldKey === "year" || fieldKey === "cylinderCc" ? "numeric" : undefined}
-          type={fieldKey === "firstRegistrationDate" ? "date" : "text"}
-          autoCapitalize={fieldKey === "plate" ? "characters" : undefined}
+          // Plates and the chassis/engine codes are transcribed character by
+          // character off a document; autocorrect "helping" is pure damage.
+          autoCapitalize={UPPERCASE_KEYS.has(fieldKey) ? "characters" : "words"}
+          autoCorrect={UPPERCASE_KEYS.has(fieldKey) ? "off" : undefined}
+          spellCheck={UPPERCASE_KEYS.has(fieldKey) ? false : undefined}
+          autoComplete="off"
+          enterKeyHint="next"
+          className={UPPERCASE_KEYS.has(fieldKey) ? "num uppercase" : undefined}
         />
       )}
     </Field>
   );
 }
+
+/** Codes copied off the ruhsat verbatim. */
+const UPPERCASE_KEYS = new Set<FieldKey>(["plate", "chassisNo", "engineNo"]);
+
+/**
+ * A field is as wide as its content. A 4-digit year rendered at the same width
+ * as a 17-character chassis number is the single loudest source of "the form
+ * looks wrong" — the eye reads column edges before it reads labels.
+ */
+const FIELD_WIDTH_BY_KEY: Record<FieldKey, FieldWidth> = {
+  plate: "grow",
+  make: "grow",
+  model: "grow",
+  year: "tiny",
+  firstRegistrationDate: "date",
+  color: "grow",
+  chassisNo: "full",
+  cylinderCc: "short",
+  fuelType: "grow",
+  engineNo: "full",
+};
 
 // ─── after ────────────────────────────────────────────────────────────────────
 

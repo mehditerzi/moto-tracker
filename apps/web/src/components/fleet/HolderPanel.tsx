@@ -4,7 +4,9 @@ import { ArrowRightLeft, UserPlus } from "lucide-react";
 import type { OrgMode, OrgRole } from "@mototracker/shared";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { MoneyInput, NumberInput } from "@/components/ui/number-input";
+import { DateInput } from "@/components/ui/date-input";
 import { useConfirm } from "@/components/ConfirmSheet";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
@@ -138,18 +140,16 @@ function AssignmentControls({
           {current.startKm != null && ` · ${t("fleet.detail.startKm", { km: current.startKm })}`}
         </p>
         {manages && (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="w-40">
-              <Field label={t("fleet.detail.endKm")} hint={t("fleet.optional")}>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={endKm}
-                  onChange={(e) => setEndKm(e.target.value)}
-                  placeholder={currentKm != null ? String(currentKm) : ""}
-                />
-              </Field>
-            </div>
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-4">
+            <Field label={t("fleet.detail.endKm")} optional width="number">
+              <NumberInput
+                suffix="km"
+                value={endKm}
+                onChange={(e) => setEndKm(e.target.value)}
+                placeholder={currentKm != null ? String(currentKm) : ""}
+                enterKeyHint="done"
+              />
+            </Field>
             <Button variant="outline" onClick={doEnd} disabled={end.isPending}>
               <ArrowRightLeft className="h-4 w-4" /> {t("fleet.detail.endAssignment")}
             </Button>
@@ -163,16 +163,13 @@ function AssignmentControls({
     <div className="flex flex-col gap-3">
       <p className="text-[14px] text-muted dark:text-muted-dark">{t("fleet.holder.idle")}</p>
       {manages && (
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-[200px] flex-1">
-            <Field label={t("fleet.detail.assignTo")} id="assign-user">
-              <select
-                id="assign-user"
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-4">
+          <Field label={t("fleet.detail.assignTo")} width="grow">
+              <Select
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-surface px-2.5 text-[15px] dark:border-border-dark dark:bg-surface-elev-dark"
+                placeholder={t("fleet.detail.pickMember")}
               >
-                <option value="">{t("fleet.detail.pickMember")}</option>
                 {(members.data ?? [])
                   .filter((m) => m.status === "active")
                   .map((m) => (
@@ -180,20 +177,17 @@ function AssignmentControls({
                       {m.name ?? m.email ?? m.userId} · {t(`fleet.roles.${m.role}`)}
                     </option>
                   ))}
-              </select>
-            </Field>
-          </div>
-          <div className="w-40">
-            <Field label={t("fleet.detail.startKm2")} hint={t("fleet.optional")}>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={startKm}
-                onChange={(e) => setStartKm(e.target.value)}
-                placeholder={currentKm != null ? String(currentKm) : ""}
-              />
-            </Field>
-          </div>
+              </Select>
+          </Field>
+          <Field label={t("fleet.detail.startKm2")} optional width="number">
+            <NumberInput
+              suffix="km"
+              value={startKm}
+              onChange={(e) => setStartKm(e.target.value)}
+              placeholder={currentKm != null ? String(currentKm) : ""}
+              enterKeyHint="done"
+            />
+          </Field>
           <Button variant="accent" onClick={doAssign} disabled={!userId || assign.isPending}>
             <UserPlus className="h-4 w-4" /> {t("fleet.detail.assign")}
           </Button>
@@ -301,18 +295,16 @@ function ContractControls({
           {current.handoverKm != null && ` · ${t("fleet.detail.handoverKm", { km: current.handoverKm })}`}
         </p>
         {manages && (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="w-40">
-              <Field label={t("fleet.detail.returnKm")} hint={t("fleet.optional")}>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={returnKm}
-                  onChange={(e) => setReturnKm(e.target.value)}
-                  placeholder={currentKm != null ? String(currentKm) : ""}
-                />
-              </Field>
-            </div>
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-4">
+            <Field label={t("fleet.detail.returnKm")} optional width="number">
+              <NumberInput
+                suffix="km"
+                value={returnKm}
+                onChange={(e) => setReturnKm(e.target.value)}
+                placeholder={currentKm != null ? String(currentKm) : ""}
+                enterKeyHint="done"
+              />
+            </Field>
             <Button variant="accent" onClick={doClose} disabled={close.isPending}>
               <ArrowRightLeft className="h-4 w-4" /> {t("fleet.detail.markReturned")}
             </Button>
@@ -329,50 +321,39 @@ function ContractControls({
     <div className="flex flex-col gap-3">
       <p className="text-[14px] text-muted dark:text-muted-dark">{t("fleet.holder.idle")}</p>
       {manages && (
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-[200px] flex-1">
-            <Field label={t("fleet.detail.rentTo")} id="contract-customer">
-              <select
-                id="contract-customer"
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-4">
+          <Field label={t("fleet.detail.rentTo")} width="grow">
+              <Select
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-surface px-2.5 text-[15px] dark:border-border-dark dark:bg-surface-elev-dark"
+                placeholder={t("fleet.detail.pickCustomer")}
               >
-                <option value="">{t("fleet.detail.pickCustomer")}</option>
                 {(customers.data ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
-              </select>
-            </Field>
-          </div>
-          <div className="w-44">
-            <Field label={t("fleet.detail.endsAt")} hint={t("fleet.optional")}>
-              <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
-            </Field>
-          </div>
-          <div className="w-36">
-            <Field label={t("fleet.detail.handoverKmLabel")} hint={t("fleet.optional")}>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={handoverKm}
-                onChange={(e) => setHandoverKm(e.target.value)}
-                placeholder={currentKm != null ? String(currentKm) : ""}
-              />
-            </Field>
-          </div>
-          <div className="w-36">
-            <Field label={t("fleet.detail.dailyRate")} hint={t("fleet.optional")}>
-              <Input
-                type="number"
-                inputMode="decimal"
-                value={dailyRate}
-                onChange={(e) => setDailyRate(e.target.value)}
-              />
-            </Field>
-          </div>
+              </Select>
+          </Field>
+          <Field label={t("fleet.detail.endsAt")} optional width="date">
+            <DateInput value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+          </Field>
+          <Field label={t("fleet.detail.handoverKmLabel")} optional width="number">
+            <NumberInput
+              suffix="km"
+              value={handoverKm}
+              onChange={(e) => setHandoverKm(e.target.value)}
+              placeholder={currentKm != null ? String(currentKm) : ""}
+              enterKeyHint="next"
+            />
+          </Field>
+          <Field label={t("fleet.detail.dailyRate")} optional width="money">
+            <MoneyInput
+              value={dailyRate}
+              onChange={(e) => setDailyRate(e.target.value)}
+              enterKeyHint="done"
+            />
+          </Field>
           <Button variant="accent" onClick={doCreate} disabled={!customerId || create.isPending}>
             <UserPlus className="h-4 w-4" /> {t("fleet.detail.openContract")}
           </Button>

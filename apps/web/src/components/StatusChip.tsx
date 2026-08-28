@@ -106,9 +106,16 @@ export function StatusChip({ type, bikeId, item, index = 0 }: Props) {
               </span>
             </div>
           ) : (
+            /* `flex-wrap`. Two of these sit side by side on a phone, so the
+               numeral and its unit share ~98px at 320px and ~135px on an
+               iPhone 15. A three-digit count — the ordinary state of a policy
+               just after renewal — needs 139px for "365 gün kaldı", and the
+               chip is `overflow-hidden`, so without wrapping the unit was
+               simply cut off. Wrapping drops "gün kaldı" under the numeral
+               instead; the grid row keeps both chips the same height. */
             <div
               className={cn(
-                "mt-3 flex items-baseline gap-1.5",
+                "mt-3 flex flex-wrap items-baseline gap-x-1.5",
                 statusTextClass(info.status),
               )}
             >

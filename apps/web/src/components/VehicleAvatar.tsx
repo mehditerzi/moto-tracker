@@ -48,6 +48,20 @@ export interface VehicleAvatarProps {
  *
  * See lib/vehicleType.ts for why the fallback is a colour-derived tint rather
  * than stock or per-model photography.
+ *
+ * WHERE IT MAY BE USED. At identifier size — the switcher pill, a garage list
+ * row, ~44px — the tint IS the content: it distinguishes two vehicles in a list
+ * whether or not either has been photographed, and the guarantee above is what
+ * keeps a list from twitching as photos decode. Callers may render it
+ * unconditionally there.
+ *
+ * At HERO size it may only be rendered when `vehicle.photoUrl` (or a
+ * `previewSrc`) actually exists. A screen-wide tinted rectangle with a glyph in
+ * the middle is not an identifier, it is a full-width announcement that there
+ * is nothing to show — and reserving that space to avoid a reflow buys
+ * stability with a permanent cost paid by every vehicle that has no photo. Fix
+ * the reflow by ordering the page so the photo sits below the content that must
+ * not move (see DashboardPage), not by filling the hole.
  */
 export function VehicleAvatar({
   vehicle,

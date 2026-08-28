@@ -5,6 +5,9 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from "lucide-rea
 import type { FleetImportPreview, FleetImportRow } from "@mototracker/shared";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { HiddenFileInput } from "@/components/ui/file-input";
 import { ApiError } from "@/lib/api";
 import { friendlyError } from "@/lib/apiError";
 import { pushToast } from "@/hooks/useToast";
@@ -119,13 +122,11 @@ export function FleetImportPage() {
           {t("fleet.import.intro")}
         </p>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-surface/70 p-4 dark:border-border-dark dark:bg-surface-dark/60">
-          <input
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-4 rounded-2xl border border-border bg-surface/70 p-4 dark:border-border-dark dark:bg-surface-dark/60">
+          <HiddenFileInput
             ref={fileRef}
-            type="file"
             accept=".csv,text/csv,text/plain"
-            className="sr-only"
-            onChange={(e) => void onFile(e.target.files?.[0])}
+            onPick={([f]) => void onFile(f)}
           />
           <Button variant="outline" onClick={() => fileRef.current?.click()}>
             <FileSpreadsheet className="h-4 w-4" /> {t("fleet.import.chooseFile")}
@@ -134,19 +135,17 @@ export function FleetImportPage() {
             {fileName || t("fleet.import.noFileChosen")}
           </span>
           <div className="w-44">
-            <Field label={t("fleet.import.delimiter")} id="import-delimiter">
-              <select
-                id="import-delimiter"
+            <Field label={t("fleet.import.delimiter")}>
+              <Select
                 value={delimiter}
                 onChange={(e) => setDelimiter(e.target.value as Delimiter | "")}
-                className="h-11 w-full rounded-xl border border-border bg-surface px-2.5 text-[15px] dark:border-border-dark dark:bg-surface-elev-dark"
               >
                 <option value="">{t("fleet.import.delimiterAuto")}</option>
                 <option value=";">{t("fleet.import.delimiterSemicolon")}</option>
                 <option value=",">{t("fleet.import.delimiterComma")}</option>
                 <option value={"\t"}>{t("fleet.import.delimiterTab")}</option>
                 <option value="|">{t("fleet.import.delimiterPipe")}</option>
-              </select>
+              </Select>
             </Field>
           </div>
           <Button variant="accent" onClick={runPreview} disabled={!csv || doPreview.isPending}>
@@ -158,7 +157,8 @@ export function FleetImportPage() {
           <summary className="cursor-pointer text-[13px] text-muted underline-offset-2 hover:underline dark:text-muted-dark">
             {t("fleet.import.pasteInstead")}
           </summary>
-          <textarea
+          <Textarea
+            mono
             value={csv}
             onChange={(e) => {
               setCsv(e.target.value);
@@ -167,7 +167,7 @@ export function FleetImportPage() {
             }}
             rows={6}
             aria-label={t("fleet.import.pasteInstead")}
-            className="mt-2 w-full rounded-xl border border-border bg-surface p-3 font-mono text-[12px] dark:border-border-dark dark:bg-surface-elev-dark"
+            className="mt-2"
             placeholder={"plaka;marka;model;sigorta\n34 ABC 123;Honda;PCX 125;31.12.2026"}
           />
         </details>

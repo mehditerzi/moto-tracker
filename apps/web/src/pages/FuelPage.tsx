@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Fuel, Plus, Trash2, Gauge, Check } from "lucide-react";
+import { Fuel, Plus, Trash2, Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DateInput } from "@/components/ui/date-input";
+import { MoneyInput, NumberInput } from "@/components/ui/number-input";
+import { Select } from "@/components/ui/select";
+import { Field, FormRow } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VehicleAvatar } from "@/components/VehicleAvatar";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { ErrorState } from "@/components/ErrorState";
 import { useConfirm } from "@/components/ConfirmSheet";
@@ -20,6 +24,7 @@ import { formatDate } from "@/lib/format";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
 import { track } from "@/lib/telemetry";
+import type { Bike } from "@mototracker/shared";
 
 export function FuelPage() {
   const { t, i18n } = useTranslation();
@@ -37,6 +42,7 @@ export function FuelPage() {
   const summary = fuelSummary(logs.data ?? []);
   const fuelTotal = (logs.data ?? []).reduce((s, l) => s + (l.totalCost ?? 0), 0);
   const premiumTotal = (items.data ?? []).reduce((s, i) => s + (i.cost ?? 0), 0);
+  const bike = bikes.data?.find((b) => b.id === bikeId);
 
   if (bikes.isError) return <ErrorState onRetry={() => void bikes.refetch()} />;
 
@@ -69,41 +75,38 @@ export function FuelPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <div className="label-micro text-muted dark:text-muted-dark">{t("nav.fuel")}</div>
-          <h1 className="mt-1.5 text-[26px] font-semibold leading-none tracking-tight">
-            {t("fuel.title")}
-          </h1>
-        </div>
-        {bikes.data && bikes.data.length > 1 && (
-          <select
-            value={bikeId ?? ""}
-            onChange={(e) => {
-              setBikeId(e.target.value);
-              storeActiveBikeId(e.target.value);
-            }}
-            // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
-            className="h-10 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
-            aria-label={t("review.vehicle")}
-          >
-            {bikes.data.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nickname}
-              </option>
-            ))}
-          </select>
-        )}
+      <header>
+        <div className="label-micro text-muted dark:text-muted-dark">{t("nav.fuel")}</div>
+        <h1 className="mt-1.5 text-[26px] font-semibold leading-none tracking-tight">
+          {t("fuel.title")}
+        </h1>
       </header>
 
+      {/* Fuel is recorded per vehicle, so the vehicle is the screen's axis and
+          not a control tucked into a corner of the header. It is stated even
+          with a single vehicle — otherwise the one figure the page exists to
+          show ("₺/km") is attached to nothing the reader can name. */}
+      {bike && (
+        <VehicleBar
+          bike={bike}
+          bikes={bikes.data ?? []}
+          onChange={(id) => {
+            setBikeId(id);
+            storeActiveBikeId(id);
+          }}
+        />
+      )}
+
       <SummaryCard summary={summary} />
+
+      {/* The most repeated action on the screen now sits above the analysis
+          rather than below two charts. */}
+      {bikeId && <AddFuelForm bikeId={bikeId} vehicleName={bike?.nickname ?? ""} />}
 
       <CostsCard fuelTotal={fuelTotal} premiumTotal={premiumTotal} />
 
       <MonthlySpendChart months={monthlySpend(logs.data ?? [])} />
       <EconomyTrendChart points={economySeries(logs.data ?? [])} />
-
-      {bikeId && <AddFuelForm bikeId={bikeId} />}
 
       {logs.isLoading ? (
         <div className="flex flex-col gap-2">
@@ -120,7 +123,8 @@ export function FuelPage() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <section className="flex flex-col gap-2">
+          <h2 className="label-micro text-muted dark:text-muted-dark">{t("fuel.history")}</h2>
           {logs.data!.map((l) => (
             <FuelRow
               key={l.id}
@@ -132,9 +136,63 @@ export function FuelPage() {
               id={l.id}
             />
           ))}
-        </div>
+        </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Which vehicle this screen is about. One row, one identity: the avatar and the
+ * name/plate belong to whatever the picker currently reads, so there is never a
+ * moment where the numbers below say one thing and the header another.
+ */
+function VehicleBar({
+  bike,
+  bikes,
+  onChange,
+}: {
+  bike: Bike;
+  bikes: Bike[];
+  onChange: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const many = bikes.length > 1;
+  return (
+    <Card className="p-3 sm:p-3">
+      <div className="flex items-center gap-3">
+        <VehicleAvatar vehicle={bike} size="thumb" className="h-12 w-12 shrink-0 rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <div className="label-micro text-muted dark:text-muted-dark">{t("fuel.vehicle")}</div>
+          {many ? (
+            <Select
+              className="mt-1 font-medium"
+              value={bike.id}
+              onChange={(e) => onChange(e.target.value)}
+              aria-label={t("fuel.switchVehicle")}
+            >
+              {bikes.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.nickname}
+                  {b.plate ? ` · ${b.plate}` : ""}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="truncate text-[16px] font-semibold leading-tight">
+                {bike.nickname}
+              </span>
+              {bike.plate && (
+                <span className="num shrink-0 text-[12px] text-muted dark:text-muted-dark">
+                  {bike.plate}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -204,7 +262,7 @@ function todayISO(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function AddFuelForm({ bikeId }: { bikeId: string }) {
+function AddFuelForm({ bikeId, vehicleName }: { bikeId: string; vehicleName: string }) {
   const { t } = useTranslation();
   const create = useCreateFuelLog();
   // People log a fill-up while standing at the pump, so today is right almost
@@ -215,11 +273,19 @@ function AddFuelForm({ bikeId }: { bikeId: string }) {
   const [totalCost, setTotalCost] = useState("");
   const [odo, setOdo] = useState("");
   const [isFull, setIsFull] = useState(true);
+  const [litersError, setLitersError] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const litersN = parseFloat(liters);
-    if (!filledOn || !(litersN > 0)) return;
+    if (!(litersN > 0)) {
+      // The submit used to return silently when litres was blank or zero, which
+      // is indistinguishable from a save that failed on the network.
+      setLitersError(t("fuel.litersRequired"));
+      return;
+    }
+    if (!filledOn) return;
+    setLitersError("");
     try {
       await create.mutateAsync({
         bikeId,
@@ -244,48 +310,68 @@ function AddFuelForm({ bikeId }: { bikeId: string }) {
   return (
     <Card>
       <CardContent className="p-4">
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="f-date">{t("fuel.date")}</Label>
-              <Input id="f-date" type="date" value={filledOn} onChange={(e) => setFilledOn(e.target.value)} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="f-liters">{t("fuel.liters")}</Label>
-              <Input
-                id="f-liters"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                value={liters}
-                onChange={(e) => setLiters(e.target.value)}
-                placeholder="35"
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-[15px] font-semibold leading-tight">{t("fuel.addTitle")}</h2>
+            {/* Says, in words, which vehicle this fill-up will be filed against.
+                Previously nothing on the form named the vehicle at all. */}
+            <p className="text-[12px] text-muted dark:text-muted-dark">
+              {t("fuel.loggingFor", { name: vehicleName })}
+            </p>
+          </div>
+
+          <FormRow>
+            <Field label={t("fuel.date")} width="grow">
+              <DateInput
+                value={filledOn}
+                onChange={(e) => setFilledOn(e.target.value)}
+                enterKeyHint="next"
                 required
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="f-cost">{t("fuel.cost")}</Label>
-              <Input id="f-cost" type="number" inputMode="decimal" step="0.01" value={totalCost} onChange={(e) => setTotalCost(e.target.value)} placeholder="1500" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="f-odo">{t("fuel.odometer")}</Label>
-              <Input id="f-odo" type="number" inputMode="numeric" value={odo} onChange={(e) => setOdo(e.target.value)} placeholder="12500" />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsFull((v) => !v)}
-            className="flex items-center gap-2 self-start text-sm"
-          >
-            <span
-              className={`flex h-5 w-5 items-center justify-center rounded-md border transition ${
-                isFull ? "border-accent bg-accent text-black" : "border-border dark:border-border-dark"
-              }`}
-            >
-              {isFull && <Check className="h-3 w-3" />}
-            </span>
-            <span className={isFull ? "" : "text-muted dark:text-muted-dark"}>{t("fuel.fullTank")}</span>
-          </button>
+            </Field>
+            {/* 4–5 characters wide, because that is how much a litre reading is. */}
+            <Field label={t("fuel.liters")} width="tiny" error={litersError}>
+              <NumberInput
+                decimal
+                suffix="L"
+                value={liters}
+                onChange={(e) => {
+                  setLiters(e.target.value);
+                  if (litersError) setLitersError("");
+                }}
+                placeholder="35"
+                enterKeyHint="next"
+              />
+            </Field>
+          </FormRow>
+
+          <FormRow>
+            <Field label={t("fuel.cost")} optional width="grow">
+              <MoneyInput
+                value={totalCost}
+                onChange={(e) => setTotalCost(e.target.value)}
+                placeholder="1500"
+                enterKeyHint="next"
+              />
+            </Field>
+            <Field label={t("fuel.odometer")} optional width="short">
+              <NumberInput
+                suffix="km"
+                value={odo}
+                onChange={(e) => setOdo(e.target.value)}
+                placeholder="12500"
+                enterKeyHint="done"
+              />
+            </Field>
+          </FormRow>
+
+          <Checkbox
+            checked={isFull}
+            onChange={(e) => setIsFull(e.target.checked)}
+            label={t("fuel.fullTank")}
+            description={t("fuel.fullTankHint")}
+          />
+
           <Button type="submit" variant="accent" disabled={create.isPending}>
             <Plus className="h-4 w-4" /> {t("fuel.add")}
           </Button>

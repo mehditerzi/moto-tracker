@@ -11,7 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
-import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DateInput } from "@/components/ui/date-input";
+import { MoneyInput, NumberInput } from "@/components/ui/number-input";
+import { Field, FormRow } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
 import { ApiError } from "@/lib/api";
@@ -649,15 +653,20 @@ function ReminderDatesPanel({
                   : "border-border dark:border-border-dark"
               }`}
             >
-              <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
+              <label
+                htmlFor={`reminder-${type}`}
+                className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark"
+              >
                 {t(`items.${type}`)}
-              </span>
-              <input
-                type="date"
+              </label>
+              {/* Was the only 36px control on a touch screen in the consumer
+                  app, and had no label association at all. */}
+              <DateInput
+                id={`reminder-${type}`}
+                className="min-w-0 flex-1"
                 value={dates[type]}
                 disabled={done}
                 onChange={(e) => setDates((s) => ({ ...s, [type]: e.target.value }))}
-                className="h-9 flex-1 rounded-lg border border-border bg-surface px-2 text-sm text-text transition focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-60 dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
               />
               {done ? (
                 <span className="inline-flex items-center gap-1 px-2 text-xs text-success">
@@ -724,18 +733,24 @@ function CompareFieldRow({
 
       {isSimple && (
         <div className="flex items-center gap-2">
+          {/* Was a bare <button> painted like a checkbox: no role, no state
+              exposed, invisible to assistive tech. */}
           <button
             type="button"
+            role="checkbox"
+            aria-checked={accepted}
+            aria-label={label}
             onClick={() => onAcceptChange(!accepted)}
             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
-              accepted ? "border-accent bg-accent text-white" : "border-border dark:border-border-dark"
+              accepted ? "border-accent bg-accent text-black" : "border-border dark:border-border-dark"
             }`}
           >
-            {accepted && <Check className="h-3 w-3" />}
+            {accepted && <Check className="h-3 w-3" strokeWidth={3} />}
           </button>
           {isCatalog ? (
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <Combobox
+                controlSize="sm"
                 value={displayVal}
                 onChange={onValueChange}
                 fetchOptions={
@@ -744,15 +759,15 @@ function CompareFieldRow({
                     : (q) => fetchModels(makeValue || "", q)
                 }
                 placeholder={label}
-                inputClassName="h-8 text-base sm:text-sm"
               />
             </div>
           ) : (
             <Input
+              controlSize="sm"
               value={displayVal}
               onChange={(e) => onValueChange(e.target.value)}
               placeholder={label}
-              className="h-8 flex-1 text-base sm:text-sm"
+              className="min-w-0 flex-1"
             />
           )}
         </div>
@@ -799,11 +814,12 @@ function CompareFieldRow({
             </button>
             {editing && accepted && (
               <Input
+                controlSize="sm"
                 value={currentValue}
                 onChange={(e) => onValueChange(e.target.value)}
                 onBlur={() => setEditing(false)}
                 autoFocus
-                className="h-7 w-28 shrink-0 text-right text-base sm:text-sm"
+                className="w-32 shrink-0 text-right"
               />
             )}
             {accepted && (
@@ -919,56 +935,45 @@ function FuelReceiptReviewForm({
         )}
 
         {bikes.data && bikes.data.length > 1 && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="fuel-bike" className="label-micro text-muted dark:text-muted-dark">
-              {t("review.vehicle")}
-            </label>
-            <select
-              id="fuel-bike"
-              value={selBike}
-              onChange={(e) => setSelBike(e.target.value)}
-              // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
-              className="h-10 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
-            >
+          <Field label={t("review.vehicle")}>
+            <Select value={selBike} onChange={(e) => setSelBike(e.target.value)}>
               {bikes.data.map((b) => (
                 <option key={b.id} value={b.id}>{b.nickname}</option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.date")}</span>
-            <Input type="date" value={filledOn} onChange={(e) => setFilledOn(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.liters")}</span>
-            <Input
-              type="text"
-              inputMode="decimal"
-              enterKeyHint="next"
-              autoComplete="off"
+        {/* Same four fields, same order and same widths as the fuel page's own
+            form — a receipt review and a manual entry should not feel like two
+            different screens. */}
+        <FormRow>
+          <Field label={t("fuel.date")} width="grow">
+            <DateInput value={filledOn} onChange={(e) => setFilledOn(e.target.value)} enterKeyHint="next" />
+          </Field>
+          <Field label={t("fuel.liters")} width="tiny">
+            <NumberInput
+              decimal
+              suffix="L"
               value={liters}
               onChange={(e) => setLiters(decimalOnly(e.target.value))}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.cost")}</span>
-            <Input
-              type="text"
-              inputMode="decimal"
               enterKeyHint="next"
-              autoComplete="off"
-              value={cost}
-              onChange={(e) => setCost(decimalOnly(e.target.value))}
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.odometer")}</span>
-            <Input type="number" inputMode="numeric" value={odo} onChange={(e) => setOdo(e.target.value)} placeholder="—" />
-          </div>
-        </div>
+          </Field>
+        </FormRow>
+        <FormRow>
+          <Field label={t("fuel.cost")} width="grow">
+            <MoneyInput value={cost} onChange={(e) => setCost(decimalOnly(e.target.value))} enterKeyHint="next" />
+          </Field>
+          <Field label={t("fuel.odometer")} optional width="short">
+            <NumberInput
+              suffix="km"
+              value={odo}
+              onChange={(e) => setOdo(e.target.value)}
+              enterKeyHint="done"
+            />
+          </Field>
+        </FormRow>
 
         {fuel?.unitPrice != null && (
           <p className="text-xs text-muted dark:text-muted-dark">
@@ -976,16 +981,13 @@ function FuelReceiptReviewForm({
           </p>
         )}
 
-        <button type="button" onClick={() => setIsFull((v) => !v)} className="flex items-center gap-2 self-start text-sm">
-          <span
-            className={`flex h-5 w-5 items-center justify-center rounded-md border transition ${
-              isFull ? "border-accent bg-accent text-black" : "border-border dark:border-border-dark"
-            }`}
-          >
-            {isFull && <Check className="h-3 w-3" />}
-          </span>
-          <span className={isFull ? "" : "text-muted dark:text-muted-dark"}>{t("fuel.fullTank")}</span>
-        </button>
+        <Checkbox
+          checked={isFull}
+          onChange={(e) => setIsFull(e.target.checked)}
+          label={t("fuel.fullTank")}
+          description={t("fuel.fullTankHint")}
+          className="self-start"
+        />
 
         <p className="text-right text-xs text-muted dark:text-muted-dark">
           {t("review.confidence")}: {Math.round(confidence * 100)}%
@@ -1131,39 +1133,28 @@ function DateDocReviewForm({
 
         {/* Vehicle picker — only when the scan wasn't already tied to one. */}
         {!bikeId && bikes.data && bikes.data.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="doc-bike" className="label-micro text-muted dark:text-muted-dark">
-              {t("review.pickVehicle")}
-            </label>
-            <select
-              id="doc-bike"
-              value={selBike}
-              onChange={(e) => setSelBike(e.target.value)}
-              // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
-              className="h-11 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
-            >
+          <Field label={t("review.pickVehicle")}>
+            <Select value={selBike} onChange={(e) => setSelBike(e.target.value)}>
               {bikes.data.map((b) => (
                 <option key={b.id} value={b.id}>{b.nickname}</option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
         )}
 
-        {/* Editable date — the main interaction */}
-        <div className="flex flex-col items-center gap-2 py-2">
-          <label className="label-micro text-muted dark:text-muted-dark" htmlFor="doc-date">
-            {t("items.expiresOn")}
-          </label>
-          <input
-            id="doc-date"
-            type="date"
+        {/* Editable date — the main interaction. Shares its hero treatment with
+            the dated-item form via ui/date-input rather than a second copy. */}
+        <Field
+          label={t("items.expiresOn")}
+          labelClassName="label-micro text-muted dark:text-muted-dark"
+          className="items-center py-1 text-center"
+        >
+          <DateInput
+            variant="hero"
             value={editedDate}
             onChange={(e) => setEditedDate(e.target.value)}
-            className="w-full rounded-2xl border border-border bg-surface px-4 py-4 text-center text-[22px] font-semibold tracking-tight transition
-              focus:outline-none focus:ring-2 focus:ring-accent/50
-              dark:border-border-dark dark:bg-surface-dark dark:text-text-dark text-text"
           />
-        </div>
+        </Field>
 
         <p className="text-right text-xs text-muted dark:text-muted-dark">
           {t("review.confidence")}: {Math.round(confidence * 100)}%

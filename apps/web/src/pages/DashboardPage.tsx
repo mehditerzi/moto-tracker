@@ -150,19 +150,6 @@ export function DashboardPage() {
         transition={{ duration: 0.22 }}
         className="flex flex-col gap-5"
       >
-        {/* Always rendered, photo or not. It used to appear only when a photo
-            existed, which meant tapping between two vehicles in the switcher —
-            the most repeated interaction on the app's front door — jumped the
-            whole page by 160px. The tile reserves its space with an
-            aspect-ratio rather than a pixel height, so nothing reflows at any
-            width or while the photo loads. */}
-        <VehicleAvatar
-          vehicle={active.bike}
-          emphasis
-          label={t("bike.photoOf", { name: active.bike.nickname })}
-          className="aspect-[16/7] w-full rounded-2xl border border-border dark:border-border-dark"
-        />
-
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -174,7 +161,12 @@ export function DashboardPage() {
                   which garage they are in. */}
               {activeOrg && <OrgVehicleBadge orgName={activeOrg.orgName} />}
             </div>
-            <h1 className="mt-1.5 truncate text-[32px] font-semibold leading-none tracking-tight">
+            {/* `leading-tight`, not `leading-none`. Geist's content box is
+                1.30em, so a line box of exactly 1em combined with `truncate`
+                (which brings `overflow:hidden`) clipped 0.15em off the top and
+                bottom of every glyph — the descender of a ğ/ş/y and the dot of
+                an İ, i.e. most Turkish nicknames. 1.25em clears both. */}
+            <h1 className="mt-1.5 truncate text-[32px] font-semibold leading-tight tracking-tight">
               {active.bike.nickname}
             </h1>
             <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted dark:text-muted-dark">
@@ -190,10 +182,46 @@ export function DashboardPage() {
             <SharedVehicleBadgeById bikeId={active.bike.id} />
             <QuickKmUpdate bikeId={active.bike.id} currentKm={active.bike.currentKm} />
           </div>
-          <Button asChild variant="outline" size="icon" aria-label={t("dashboard.edit")}>
+          {/* h-11/w-11 rather than the `icon` size's 40px: this is the only way
+              into the vehicle's record from the front door and it has to meet
+              the 44px target the rest of the app holds itself to. */}
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            aria-label={t("dashboard.edit")}
+          >
             <Link to={`/bikes/${active.bike.id}/edit`}><Pencil className="h-4 w-4" /></Link>
           </Button>
         </header>
+
+        {/* BELOW the header, and only when there is something to show.
+
+            It used to sit between the switcher and the header, rendered
+            unconditionally, because making it conditional jumped the page by
+            ~160px whenever you switched between a vehicle with a photo and one
+            without. Reserving the space did fix the jump, but it charged every
+            photo-less vehicle a screen-wide tinted rectangle whose entire
+            message was "no photo here".
+
+            Ordering it below the header fixes the same jump for free and keeps
+            nothing on screen that has nothing to say. What you look at when you
+            tap the switcher — the name, the make/model, the plate, the km — now
+            sits at a fixed offset under the switcher and cannot move; only the
+            status chips and below shift, by exactly the height of a photo that
+            is actually there. Animating the height was not an option worth
+            taking: `key={active.bike.id}` remounts this whole subtree on every
+            switch, so there is no persistent box for a layout transition to
+            animate between. */}
+        {active.bike.photoUrl && (
+          <VehicleAvatar
+            vehicle={active.bike}
+            emphasis
+            label={t("bike.photoOf", { name: active.bike.nickname })}
+            className="aspect-[16/7] w-full rounded-2xl border border-border dark:border-border-dark"
+          />
+        )}
 
         {activeOrg && <OrgVehicleNotice orgName={activeOrg.orgName} />}
 
@@ -368,7 +396,12 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
           onChange={(e) => setValue(e.target.value)}
           onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
-          className="h-7 w-28 text-sm"
+          // Was `h-7 ... text-sm`: a 28px control (under the 44px target) whose
+          // 14px text made iOS zoom the page the moment it took focus — on a
+          // field the app asks you to use after every ride. Height and the
+          // 16px-on-phones size now come from Input itself; only the width is
+          // set here, wide enough for a six-figure odometer.
+          className="w-32"
           disabled={update.isPending}
           autoFocus
         />

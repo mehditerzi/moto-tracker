@@ -2,6 +2,7 @@ import { NavLink, Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LayoutGrid, Car, Wallet, Users, Contact, Upload } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select } from "@/components/ui/select";
 import { canManageFleet, useFleetAccess, type FleetOrgMembership } from "@/hooks/useOrgs";
 import { cn } from "@/lib/cn";
 
@@ -73,17 +74,18 @@ export function FleetLayout() {
           {access.fleetOrgs.length > 1 && (
             <label className="flex items-center gap-2">
               <span className="sr-only">{t("fleet.switchOrg")}</span>
-              <select
+              <Select
+                controlSize="sm"
+                wrapperClassName="w-44"
                 value={org.orgId}
                 onChange={(e) => access.setActiveOrgId(e.target.value)}
-                className="h-9 rounded-xl border border-border bg-surface px-2 text-[13px] dark:border-border-dark dark:bg-surface-elev-dark"
               >
                 {access.fleetOrgs.map((o) => (
                   <option key={o.orgId} value={o.orgId}>
                     {o.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
         </div>

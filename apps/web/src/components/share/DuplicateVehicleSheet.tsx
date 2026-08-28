@@ -88,7 +88,7 @@ export function DuplicateVehicleSheet({
         </div>
       ) : kind ? (
         <div className="flex flex-col gap-4">
-          <Field label={t("share.claimMessageLabel")} hint={t("bike.optional")}>
+          <Field label={t("share.claimMessageLabel")} optional>
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}

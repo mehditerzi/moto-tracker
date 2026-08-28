@@ -2,6 +2,7 @@ import * as React from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useFieldControl } from "@/components/ui/field";
+import { controlClasses, type ControlSize } from "@/components/ui/control";
 
 export interface ComboboxProps {
   value: string;
@@ -15,6 +16,8 @@ export interface ComboboxProps {
   allowCustom?: boolean;
   disabled?: boolean;
   id?: string;
+  /** Control scale — see ui/control.ts. */
+  controlSize?: ControlSize;
   inputClassName?: string;
   emptyText?: string;
   /** Auto-uppercase the typed/selected value (plates, codes). */
@@ -37,6 +40,7 @@ export function Combobox({
   allowCustom = true,
   disabled,
   id,
+  controlSize = "md",
   inputClassName,
   emptyText,
   uppercase,
@@ -177,16 +181,8 @@ export function Combobox({
             if (allowCustom) onChange(v); // free text commits live — never blocks a custom value
           }}
           onKeyDown={onKeyDown}
-          className={cn(
-            // 16px on phones so iOS doesn't zoom on focus — see ui/input.tsx.
-            "flex h-11 w-full rounded-xl border border-border bg-surface pl-3.5 pr-9 text-base leading-none text-text transition sm:text-[15px]",
-            "placeholder:text-muted dark:placeholder:text-muted-dark",
-            "hover:border-border-strong dark:hover:border-border-strong-dark",
-            "focus-visible:outline-none focus-visible:border-text/40 focus-visible:ring-2 focus-visible:ring-accent/40 dark:focus-visible:border-text-dark/40",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            "dark:border-border-dark dark:bg-surface-elev-dark dark:text-text-dark",
-            inputClassName,
-          )}
+          // One control recipe for input / select / combobox — see ui/control.ts.
+          className={cn(controlClasses(controlSize), "pr-9", inputClassName)}
         />
         <button
           type="button"

@@ -9,7 +9,11 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { DateInput } from "@/components/ui/date-input";
+import { MoneyInput, NumberInput } from "@/components/ui/number-input";
+import { Field, FormRow, FormSection } from "@/components/ui/field";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
 import {
@@ -129,87 +133,99 @@ export function MaintenanceFormPage({ mode }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <Field id="kind" label={t("items.type")}>
-              <select
-                id="kind"
-                {...form.register("kind")}
-                // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
-                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-base transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
-              >
-                {KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {t(`maintenance.kinds.${k}`)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {/* Only "Diğer" has anything to label. Shown for every kind it read
-                as a field you were supposed to fill in for engine oil too. */}
-            {kind === "custom" && (
-              <Field
-                label={t("maintenance.customLabel")}
-                error={form.formState.errors.customLabel?.message}
-              >
-                <Input {...form.register("customLabel")} autoCapitalize="sentences" />
+          {/* Three groups instead of one eight-field stack: what it is, what
+              was done, and how often it is due. The interval pair in particular
+              only makes sense read together, which the flat list never said. */}
+          <form onSubmit={onSubmit} className="flex flex-col gap-6">
+            <FormSection>
+              <Field label={t("items.type")}>
+                <Select {...form.register("kind")}>
+                  {KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {t(`maintenance.kinds.${k}`)}
+                    </option>
+                  ))}
+                </Select>
               </Field>
-            )}
-            <div className="grid grid-cols-2 gap-3">
+              {/* Only "Diğer" has anything to label. Shown for every kind it read
+                  as a field you were supposed to fill in for engine oil too. */}
+              {kind === "custom" && (
+                <Field
+                  label={t("maintenance.customLabel")}
+                  error={form.formState.errors.customLabel?.message}
+                >
+                  <Input
+                    {...form.register("customLabel")}
+                    autoCapitalize="sentences"
+                    enterKeyHint="next"
+                  />
+                </Field>
+              )}
+            </FormSection>
+
+            <FormSection title={t("maintenance.lastSection")}>
+              <FormRow>
+                <Field
+                  label={t("maintenance.date")}
+                  width="grow"
+                  error={form.formState.errors.lastDoneOn?.message}
+                >
+                  <DateInput {...form.register("lastDoneOn")} enterKeyHint="next" />
+                </Field>
+                <Field
+                  label={t("maintenance.km")}
+                  width="short"
+                  error={form.formState.errors.lastDoneKm?.message}
+                >
+                  <NumberInput suffix="km" {...form.register("lastDoneKm")} enterKeyHint="next" />
+                </Field>
+              </FormRow>
+              {/* Sits with "last done" rather than with the interval fields: it is
+                  what THAT job cost, and the fleet cost rollup buckets it by
+                  last_done_on. Optional — most people just log the service. */}
               <Field
-                label={t("maintenance.lastDoneOn")}
-                error={form.formState.errors.lastDoneOn?.message}
+                label={t("maintenance.cost")}
+                optional
+                width="money"
+                error={form.formState.errors.cost?.message}
               >
-                <Input type="date" {...form.register("lastDoneOn")} />
+                <MoneyInput {...form.register("cost")} enterKeyHint="next" />
               </Field>
-              <Field
-                label={t("maintenance.lastDoneKm")}
-                error={form.formState.errors.lastDoneKm?.message}
-              >
-                <Input type="number" inputMode="numeric" {...form.register("lastDoneKm")} />
-              </Field>
-            </div>
-            {/* Sits with "last done" rather than with the interval fields: it is
-                what THAT job cost, and the fleet cost rollup buckets it by
-                last_done_on. Optional — most people just log the service. */}
-            <Field
-              label={t("maintenance.cost")}
-              hint={t("bike.optional")}
-              error={form.formState.errors.cost?.message}
+            </FormSection>
+
+            <FormSection
+              title={t("maintenance.intervalSection")}
+              description={t("maintenance.intervalSectionSub")}
             >
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                placeholder="0"
-                {...form.register("cost")}
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
+              <FormRow>
+                <Field
+                  label={t("maintenance.months")}
+                  width="tiny"
+                  error={form.formState.errors.intervalMonths?.message}
+                >
+                  <NumberInput {...form.register("intervalMonths")} enterKeyHint="next" />
+                </Field>
+                <Field
+                  label={t("maintenance.km")}
+                  width="short"
+                  error={form.formState.errors.intervalKm?.message}
+                >
+                  <NumberInput suffix="km" {...form.register("intervalKm")} enterKeyHint="next" />
+                </Field>
+              </FormRow>
+            </FormSection>
+
+            <FormSection>
               <Field
-                label={t("maintenance.intervalMonths")}
-                error={form.formState.errors.intervalMonths?.message}
+                label={t("items.note")}
+                optional
+                error={form.formState.errors.notes?.message}
               >
-                <Input type="number" inputMode="numeric" {...form.register("intervalMonths")} />
+                <Textarea autoGrow showCount maxLength={2000} {...form.register("notes")} />
               </Field>
-              <Field
-                label={t("maintenance.intervalKm")}
-                error={form.formState.errors.intervalKm?.message}
-              >
-                <Input type="number" inputMode="numeric" {...form.register("intervalKm")} />
-              </Field>
-            </div>
-            <Field id="notes" label={t("items.note")} error={form.formState.errors.notes?.message}>
-              <textarea
-                id="notes"
-                rows={3}
-                aria-invalid={form.formState.errors.notes ? true : undefined}
-                aria-describedby={form.formState.errors.notes ? "notes-error" : undefined}
-                {...form.register("notes")}
-                className="rounded-xl border border-border bg-surface p-2 text-base transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
-              />
-            </Field>
-            <div className="mt-2 flex gap-2">
+            </FormSection>
+
+            <div className="flex gap-2">
               <Button asChild variant="ghost" className="flex-1">
                 <Link to="/dashboard">{t("common.cancel")}</Link>
               </Button>
