@@ -56,6 +56,11 @@ TÜM ARAÇLARINIZ TEK YERDE
 • Sade, hızlı ve gösterişsiz tasarım
 
 Garajım — dijital garajınız.
+
+Ek araçlar için otomatik yenilenen abonelikler (6 ay veya yıllık) sunulur. Ödeme, satın alma onaylandığında Apple Kimliği hesabınızdan tahsil edilir. Abonelik, dönem bitiminden en az 24 saat önce iptal edilmediği takdirde otomatik olarak yenilenir. Aboneliklerinizi App Store hesap ayarlarınızdan yönetebilir veya iptal edebilirsiniz.
+
+Kullanım Koşulları (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Gizlilik Politikası: https://mototracker.mehditerzi.com/privacy
 ```
 
 ---
@@ -97,6 +102,11 @@ FEATURES
 • Clean, fast, no-clutter design
 
 Garajım — your digital garage.
+
+Additional vehicles are offered via auto-renewable subscriptions (6-month or yearly). Payment is charged to your Apple ID account at confirmation of purchase. The subscription automatically renews unless it is cancelled at least 24 hours before the end of the current period. Manage or cancel your subscriptions in your App Store account settings.
+
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://mototracker.mehditerzi.com/privacy
 ```
 
 ---
