@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, LogOut, MapPin, Search as SearchIcon, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Copy,
+  LogOut,
+  MapPin,
+  RotateCw,
+  Search as SearchIcon,
+  Users,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +22,24 @@ import {
   useRideChannel,
   type RideMember,
 } from "@/hooks/useRide";
-import { loadMapKit, type MapKitMap, type MapKitNS, type MapKitSearchResult } from "@/lib/mapkit";
+import {
+  baseMapOptions,
+  casingForPolyline,
+  colorSchemeValue,
+  frameItems,
+  isPositionStale,
+  loadMapKit,
+  MARKER_INK,
+  minutesSince,
+  prefersDarkScheme,
+  ROUTE_WEIGHT,
+  routeStrokeStyles,
+  watchColorScheme,
+  type MapKitMap,
+  type MapKitNS,
+  type MapKitPolyline,
+  type MapKitSearchResult,
+} from "@/lib/mapkit";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
 import { track } from "@/lib/telemetry";
@@ -63,6 +88,52 @@ export function MapPage() {
   );
 }
 
+// ─── shared map surface ───────────────────────────────────────────────────────
+
+type MapState = "loading" | "ready" | "failed";
+
+/**
+ * The chrome every map on this page shares. MapKit can fail for reasons the
+ * user can do nothing about (the CDN script blocked, /api/mapkit-token
+ * answering 503 because MapKit is unconfigured) — this says so and offers a
+ * retry instead of leaving a blank grey rectangle that looks like a bug.
+ */
+function MapSurface({
+  innerRef,
+  state,
+  onRetry,
+  label,
+  className,
+}: {
+  innerRef: RefObject<HTMLDivElement>;
+  state: MapState;
+  onRetry: () => void;
+  label: string;
+  className: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl ring-1 ring-border dark:ring-border-dark ${className}`}
+    >
+      <div ref={innerRef} role="region" aria-label={label} className="h-full w-full" />
+      {state === "loading" && <Skeleton className="absolute inset-0 rounded-2xl" />}
+      {state === "failed" && (
+        <div
+          role="alert"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-elev p-6 text-center dark:bg-surface-elev-dark"
+        >
+          <AlertTriangle className="h-6 w-6 text-warning" strokeWidth={1.7} />
+          <p className="text-[13px] text-muted dark:text-muted-dark">{t("map.mapFailed")}</p>
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            <RotateCw className="h-4 w-4" /> {t("common.retry")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── route planner ────────────────────────────────────────────────────────────
 
 function fmtDuration(seconds: number, t: (k: string, o?: Record<string, unknown>) => string) {
@@ -71,39 +142,71 @@ function fmtDuration(seconds: number, t: (k: string, o?: Record<string, unknown>
   return h > 0 ? t("map.durationHm", { h, m }) : t("map.durationM", { m });
 }
 
+interface PlannerCtx {
+  mk: MapKitNS;
+  map: MapKitMap;
+  /** Casing + core, so both come off the map when a new route is planned. */
+  overlays: unknown[];
+  pin?: unknown;
+}
+
 function RoutePlanner() {
   const { t } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapObj = useRef<{ mk: MapKitNS; map: MapKitMap; overlay?: unknown; pin?: unknown } | null>(null);
+  const mapObj = useRef<PlannerCtx | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MapKitSearchResult[]>([]);
   const [info, setInfo] = useState<{ km: number; eta: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mapState, setMapState] = useState<MapState>("loading");
+  const [attempt, setAttempt] = useState(0);
 
   // Map boots once, centered on the user.
   useEffect(() => {
     let cancelled = false;
-    loadMapKit().then((mk) => {
-      if (cancelled || !mapRef.current) return;
-      const map = new mk.Map(mapRef.current, { showsMapTypeControl: false, isRotationEnabled: false });
-      mapObj.current = { mk, map };
-      navigator.geolocation?.getCurrentPosition((p) => {
-        if (cancelled) return;
-        map.setRegionAnimated(
-          new mk.CoordinateRegion(
-            new mk.Coordinate(p.coords.latitude, p.coords.longitude),
-            new mk.CoordinateSpan(0.08, 0.08),
-          ),
-          false,
-        );
+    setMapState("loading");
+    loadMapKit()
+      .then((mk) => {
+        if (cancelled || !mapRef.current) return;
+        const map = new mk.Map(mapRef.current, {
+          // Full-detail basemap here: picking a destination needs POIs and road
+          // labels, unlike the read-only trip preview.
+          ...baseMapOptions(mk, prefersDarkScheme(), false),
+          showsUserLocation: true,
+          tracksUserLocation: false,
+        });
+        mapObj.current = { mk, map, overlays: [] };
+        setMapState("ready");
+        navigator.geolocation?.getCurrentPosition((p) => {
+          if (cancelled) return;
+          map.setRegionAnimated(
+            new mk.CoordinateRegion(
+              new mk.Coordinate(p.coords.latitude, p.coords.longitude),
+              new mk.CoordinateSpan(0.08, 0.08),
+            ),
+            false,
+          );
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setMapState("failed");
       });
-    });
     return () => {
       cancelled = true;
       mapObj.current?.map.destroy();
       mapObj.current = null;
     };
-  }, []);
+  }, [attempt]);
+
+  // Follow the OS theme for as long as the map is mounted.
+  useEffect(
+    () =>
+      watchColorScheme((scheme) => {
+        const c = mapObj.current;
+        if (c) c.map.colorScheme = colorSchemeValue(c.mk, scheme === "dark");
+      }),
+    [],
+  );
 
   function search() {
     const ctx = mapObj.current;
@@ -113,7 +216,9 @@ function RoutePlanner() {
         pushToast({ variant: "danger", title: t("map.searchFailed") });
         return;
       }
-      setResults(data.places.slice(0, 6));
+      const places = data.places.slice(0, 6);
+      if (places.length === 0) pushToast({ title: t("map.searchEmpty") });
+      setResults(places);
     });
   }
 
@@ -134,23 +239,47 @@ function RoutePlanner() {
             pushToast({ variant: "danger", title: t("map.routeFailed") });
             return;
           }
-          if (ctx.overlay) ctx.map.removeOverlay(ctx.overlay);
+          // Clear the previous plan before drawing the new one.
+          for (const o of ctx.overlays) ctx.map.removeOverlay(o);
+          ctx.overlays = [];
           if (ctx.pin) ctx.map.removeAnnotation(ctx.pin);
-          ctx.overlay = route.polyline;
-          ctx.map.addOverlay(route.polyline);
-          ctx.pin = new ctx.mk.MarkerAnnotation(dest, { color: "#A8C235", title: place.name });
+
+          // MapKit hands back an unstyled overlay, which renders as a hairline
+          // that vanishes over a motorway or a park. Style the core, and draw a
+          // wider near-black casing underneath so the line owns its own edge.
+          const styles = routeStrokeStyles(ctx.mk, ROUTE_WEIGHT.planner);
+          const core: MapKitPolyline = route.polyline;
+          const casing = casingForPolyline(ctx.mk, core, ROUTE_WEIGHT.planner);
+          core.style = styles.core;
+          if (casing) {
+            ctx.map.addOverlay(casing); // insertion order = paint order
+            ctx.overlays.push(casing);
+          }
+          ctx.map.addOverlay(core);
+          ctx.overlays.push(core);
+
+          ctx.pin = new ctx.mk.MarkerAnnotation(dest, {
+            color: MARKER_INK.finish,
+            glyphColor: MARKER_INK.onAccent,
+            glyphText: "B",
+            title: place.name,
+            subtitle: t("map.destination"),
+            accessibilityLabel: `${t("map.destination")}: ${place.name ?? ""}`,
+          });
           ctx.map.addAnnotation(ctx.pin);
-          const midLat = (p.coords.latitude + place.coordinate.latitude) / 2;
-          const midLng = (p.coords.longitude + place.coordinate.longitude) / 2;
-          ctx.map.setRegionAnimated(
-            new ctx.mk.CoordinateRegion(
-              new ctx.mk.Coordinate(midLat, midLng),
-              new ctx.mk.CoordinateSpan(
-                Math.max(Math.abs(p.coords.latitude - place.coordinate.latitude) * 1.5, 0.02),
-                Math.max(Math.abs(p.coords.longitude - place.coordinate.longitude) * 1.5, 0.02),
-              ),
-            ),
-            true,
+
+          // Frame the real route geometry (not just the origin/destination
+          // pair, which underframes any route that detours), with 32px of
+          // inset so neither end sits under the frame's edge or the callout.
+          frameItems(
+            ctx.mk,
+            ctx.map,
+            [...ctx.overlays, ctx.pin],
+            [
+              [p.coords.latitude, p.coords.longitude],
+              [place.coordinate.latitude, place.coordinate.longitude],
+            ],
+            { padding: 32, animate: true },
           );
           setInfo({
             km: Math.round(route.distance / 100) / 10,
@@ -212,6 +341,7 @@ function RoutePlanner() {
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <div className="truncate text-[14px] font-semibold">{info.name}</div>
+              {/* The map's text equivalent, and the answer to "how far is it?" */}
               <div className="text-[13px] text-muted dark:text-muted-dark">
                 <span className="num">{info.km} km</span> · {info.eta}
               </div>
@@ -220,9 +350,17 @@ function RoutePlanner() {
         </Card>
       )}
 
-      <div className="h-[46vh] overflow-hidden rounded-2xl ring-1 ring-border dark:ring-border-dark">
-        <div ref={mapRef} className="h-full w-full" />
-      </div>
+      <MapSurface
+        innerRef={mapRef}
+        state={mapState}
+        onRetry={() => setAttempt((n) => n + 1)}
+        className="h-[46vh] min-h-[300px]"
+        label={
+          info
+            ? t("map.routeAlt", { name: info.name, km: info.km, eta: info.eta })
+            : t("map.mapAlt")
+        }
+      />
     </div>
   );
 }
@@ -296,46 +434,102 @@ function ActiveRide({
   onLeave: () => void;
   leaving: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { live, ended } = useRideChannel(groupId, {
     title: t("brand"),
     message: t("map.backgroundSharing"),
   });
   const mapRef = useRef<HTMLDivElement>(null);
   const ctx = useRef<{ mk: MapKitNS; map: MapKitMap; pins: Map<string, unknown> } | null>(null);
-  const centered = useRef(false);
+  /** Auto-framing stops the moment the rider takes control of the map. */
+  const userMoved = useRef(false);
+  const framing = useRef(false);
+  const lastFit = useRef(0);
+  const [mapState, setMapState] = useState<MapState>("loading");
+  const [attempt, setAttempt] = useState(0);
+  // Re-render on a timer so a rider who stops reporting goes stale on screen
+  // even while no roster update arrives.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    loadMapKit().then((mk) => {
-      if (cancelled || !mapRef.current) return;
-      const map = new mk.Map(mapRef.current, { showsMapTypeControl: false, isRotationEnabled: false });
-      ctx.current = { mk, map, pins: new Map() };
-    });
+    setMapState("loading");
+    loadMapKit()
+      .then((mk) => {
+        if (cancelled || !mapRef.current) return;
+        const map = new mk.Map(mapRef.current, {
+          // Muted: the riders are the content, the city is context.
+          ...baseMapOptions(mk, prefersDarkScheme(), true),
+          showsUserLocation: true,
+          tracksUserLocation: false,
+        });
+        // A pan or a pinch means "I'm looking at something" — stop yanking the
+        // region away on the next roster tick. Our own fits are suppressed.
+        const claim = () => {
+          if (!framing.current) userMoved.current = true;
+        };
+        map.addEventListener?.("scroll-start", claim);
+        map.addEventListener?.("zoom-start", claim);
+        ctx.current = { mk, map, pins: new Map() };
+        setMapState("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setMapState("failed");
+      });
     return () => {
       cancelled = true;
       ctx.current?.map.destroy();
       ctx.current = null;
+      userMoved.current = false;
     };
-  }, []);
+  }, [attempt]);
+
+  useEffect(
+    () =>
+      watchColorScheme((scheme) => {
+        const c = ctx.current;
+        if (c) c.map.colorScheme = colorSchemeValue(c.mk, scheme === "dark");
+      }),
+    [],
+  );
 
   // Sync member annotations with the latest roster.
   useEffect(() => {
     const c = ctx.current;
     if (!c) return;
+    const now = Date.now();
     const seen = new Set<string>();
+    const placed: unknown[] = [];
+    const points: [number, number][] = [];
     for (const m of live) {
       if (!m.pos) continue;
       seen.add(m.userId);
       const existing = c.pins.get(m.userId);
       if (existing) c.map.removeAnnotation(existing);
+      // A fix older than POSITION_STALE_MS is a guess: it goes grey and the
+      // callout says how old it is, so it can never be read as "here, now".
+      const stale = ended || isPositionStale(m.pos.t, now);
+      const status = stale ? staleLabel(m.pos.t, now, t) : t("map.live");
       const pin = new c.mk.MarkerAnnotation(new c.mk.Coordinate(m.pos.lat, m.pos.lng), {
         title: m.name,
-        color: "#A8C235",
-        glyphText: m.name.slice(0, 1).toUpperCase(),
+        subtitle: status,
+        color: stale ? MARKER_INK.riderStale : MARKER_INK.riderLive,
+        // Locale-aware: Turkish "i" upper-cases to "İ", not "I".
+        glyphText: m.name.slice(0, 1).toLocaleUpperCase(i18n.language),
+        accessibilityLabel: `${m.name} — ${status}`,
+        displayPriority: stale ? 250 : 750,
+        // The roster refreshes every few seconds; re-dropping every pin each
+        // time would make the map twitch.
+        animates: false,
       });
       c.pins.set(m.userId, pin);
       c.map.addAnnotation(pin);
+      placed.push(pin);
+      points.push([m.pos.lat, m.pos.lng]);
     }
     for (const [userId, pin] of c.pins) {
       if (!seen.has(userId)) {
@@ -343,19 +537,20 @@ function ActiveRide({
         c.pins.delete(userId);
       }
     }
-    // First position fixes the region.
-    const first = live.find((m) => m.pos);
-    if (first?.pos && !centered.current) {
-      centered.current = true;
-      c.map.setRegionAnimated(
-        new c.mk.CoordinateRegion(
-          new c.mk.Coordinate(first.pos.lat, first.pos.lng),
-          new c.mk.CoordinateSpan(0.05, 0.05),
-        ),
-        false,
-      );
+    // Keep the whole group in view until the rider takes over the map — one
+    // member's position is not a useful frame once a second rider joins.
+    // Throttled: the roster refreshes every few seconds and a map that re-fits
+    // that often is unusable.
+    const firstFit = lastFit.current === 0;
+    if (points.length > 0 && !userMoved.current && (firstFit || Date.now() - lastFit.current > 5000)) {
+      lastFit.current = Date.now();
+      framing.current = true;
+      frameItems(c.mk, c.map, placed, points, { padding: 40, animate: !firstFit });
+      setTimeout(() => {
+        framing.current = false;
+      }, 0);
     }
-  }, [live]);
+  }, [live, ended, mapState, tick, t, i18n.language]);
 
   async function shareCode() {
     const text = t("map.shareText", { code });
@@ -393,30 +588,55 @@ function ActiveRide({
         <p className="text-center text-[13px] text-muted dark:text-muted-dark">{t("map.rideEnded")}</p>
       )}
 
-      <div className="h-[52vh] overflow-hidden rounded-2xl ring-1 ring-border dark:ring-border-dark">
-        <div ref={mapRef} className="h-full w-full" />
-      </div>
+      <MapSurface
+        innerRef={mapRef}
+        state={mapState}
+        onRetry={() => setAttempt((n) => n + 1)}
+        className="h-[52vh] min-h-[320px]"
+        label={t("map.rideMapAlt", { count: live.filter((m) => m.pos).length })}
+      />
 
-      <MemberChips members={live} />
+      {/* The map's text equivalent: who is on it, and whether they're current. */}
+      <MemberChips members={live} ended={ended} />
     </div>
   );
 }
 
-function MemberChips({ members }: { members: RideMember[] }) {
+/**
+ * "last seen 3 min ago", or a plain "out of date" for the first minute — a fix
+ * 40s old is stale but "0 min ago" would read as a bug.
+ */
+function staleLabel(tsMs: number, now: number, t: (k: string, o?: Record<string, unknown>) => string) {
+  const mins = minutesSince(tsMs, now);
+  return mins < 1 ? t("map.lastSeenRecent") : t("map.lastSeen", { count: mins });
+}
+
+function MemberChips({ members, ended }: { members: RideMember[]; ended: boolean }) {
+  const { t } = useTranslation();
+  const now = Date.now();
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {members.map((m) => (
-        <span
-          key={m.userId}
-          className={`rounded-full px-3 py-1 text-[12px] ring-1 ${
-            m.pos
-              ? "bg-accent/10 text-accent-dim ring-accent/30"
-              : "bg-surface text-muted ring-border dark:bg-surface-elev-dark dark:text-muted-dark dark:ring-border-dark"
-          }`}
-        >
-          {m.name}
-        </span>
-      ))}
-    </div>
+    <ul className="flex flex-wrap gap-1.5">
+      {members.map((m) => {
+        const stale = !!m.pos && (ended || isPositionStale(m.pos.t, now));
+        const live = !!m.pos && !stale;
+        return (
+          <li
+            key={m.userId}
+            className={`rounded-full px-3 py-1 text-[12px] ring-1 ${
+              live
+                ? "bg-accent/10 text-accent-dim ring-accent/30"
+                : stale
+                  ? "bg-warning/10 text-warning ring-warning/30"
+                  : "bg-surface text-muted ring-border dark:bg-surface-elev-dark dark:text-muted-dark dark:ring-border-dark"
+            }`}
+          >
+            {/* Never state by colour alone — the status is spelled out. */}
+            {m.name}
+            {stale && <span className="ml-1 opacity-80">· {staleLabel(m.pos!.t, now, t)}</span>}
+            {!m.pos && <span className="ml-1 opacity-80">· {t("map.noFix")}</span>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

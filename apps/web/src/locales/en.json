@@ -32,7 +32,17 @@
     "rideEnded": "The ride has ended.",
     "shareText": "Join my Garajım group ride — code: {{code}}",
     "codeCopied": "Code copied.",
-    "backgroundSharing": "Group ride active — sharing your location"
+    "backgroundSharing": "Group ride active — sharing your location",
+    "mapFailed": "The map couldn't be loaded.",
+    "mapAlt": "Map. Search for a destination to plan a route.",
+    "rideMapAlt": "Map showing {{count}} rider(s) sharing their location.",
+    "routeAlt": "Map of the route to {{name}} — {{km}} km, {{eta}}.",
+    "searchEmpty": "No places matched that.",
+    "destination": "Destination",
+    "live": "Live now",
+    "lastSeen": "last seen {{count}} min ago",
+    "lastSeenRecent": "position is out of date",
+    "noFix": "no location yet"
   },
   "fuel": {
     "title": "Fuel",
@@ -69,6 +79,10 @@
   "trips": {
     "title": "Trips",
     "mapFailed": "The route map couldn't be loaded.",
+    "mapNoRoute": "This trip has no route to draw.",
+    "mapAlt": "Map of a {{km}} km route, start to finish.",
+    "routeStart": "Start",
+    "routeFinish": "Finish",
     "empty": "No trips yet",
     "emptySub": "With tracking on, drives of {{km}} km or more are logged automatically.",
     "unknownVehicle": "Vehicle",

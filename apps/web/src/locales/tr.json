@@ -32,7 +32,17 @@
     "rideEnded": "Sürüş sona erdi.",
     "shareText": "Garajım grup sürüşüme katıl — kod: {{code}}",
     "codeCopied": "Kod kopyalandı.",
-    "backgroundSharing": "Grup sürüşü aktif — konumun paylaşılıyor"
+    "backgroundSharing": "Grup sürüşü aktif — konumun paylaşılıyor",
+    "mapFailed": "Harita yüklenemedi.",
+    "mapAlt": "Harita. Rota planlamak için bir varış noktası ara.",
+    "rideMapAlt": "Konumunu paylaşan {{count}} sürücüyü gösteren harita.",
+    "routeAlt": "{{name}} rotasının haritası — {{km}} km, {{eta}}.",
+    "searchEmpty": "Eşleşen yer bulunamadı.",
+    "destination": "Varış",
+    "live": "Canlı",
+    "lastSeen": "son görülme {{count}} dk önce",
+    "lastSeenRecent": "konum güncel değil",
+    "noFix": "konum yok"
   },
   "fuel": {
     "title": "Yakıt",
@@ -69,6 +79,10 @@
   "trips": {
     "title": "Yolculuklar",
     "mapFailed": "Rota haritası yüklenemedi.",
+    "mapNoRoute": "Bu yolculuğun çizilecek bir rotası yok.",
+    "mapAlt": "Başlangıçtan bitişe {{km}} km'lik rotanın haritası.",
+    "routeStart": "Başlangıç",
+    "routeFinish": "Bitiş",
     "empty": "Henüz yolculuk yok",
     "emptySub": "Takip açıkken {{km}} km ve üzeri sürüşler otomatik kaydedilir.",
     "unknownVehicle": "Araç",
