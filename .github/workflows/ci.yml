@@ -1,0 +1,126 @@
+name: CI
+
+# Verification only. Nothing here deploys, publishes, or pushes an artifact
+# anywhere — the app is self-hosted and ships via `docker compose up -d --build`
+# on the box that runs it.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Typecheck → test → build, in the same order (and with the same commands)
+  # the Dockerfile uses, so a green run means the image has a fair chance too.
+  # --------------------------------------------------------------------------
+  verify:
+    name: typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the version from "packageManager": "pnpm@9.12.0" in package.json.
+      - uses: pnpm/action-setup@v4
+
+      # Must come after pnpm/action-setup — `cache: pnpm` asks pnpm where its
+      # store lives, so the binary has to exist first. Node version from .nvmrc.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # better-sqlite3 and sharp are native. Both publish prebuilt binaries for
+      # linux-x64, so this is normally instant — but if a prebuild is ever
+      # missing, the failure shows up here with a clear name instead of as a
+      # confusing "Cannot find module" 200 tests later.
+      - name: Verify native modules load
+        run: |
+          pnpm --filter @mototracker/api exec node -e "
+            const Database = require('better-sqlite3');
+            const db = new Database(':memory:');
+            db.exec('create table t(x)');
+            db.close();
+            const sharp = require('sharp');
+            console.log('better-sqlite3 ok · sharp/libvips', sharp.versions.vips);
+          "
+
+      # apps/web and apps/api both consume @mototracker/shared at runtime, so it
+      # has to be compiled before anything imports its dist.
+      - name: Build shared
+        run: pnpm --filter @mototracker/shared build
+
+      - name: Typecheck (api)
+        run: pnpm --filter @mototracker/api exec tsc -p tsconfig.json --noEmit
+
+      - name: Typecheck (web)
+        run: pnpm --filter @mototracker/web exec tsc -p tsconfig.json --noEmit
+
+      # `pnpm -r run test` in topological order: shared (no tests) → api
+      # (vitest + supertest, in-memory SQLite) → web (vitest).
+      # The api reads no .env: NODE_ENV=test makes src/config.ts fall back to
+      # fixed test values (DATABASE_PATH=:memory:, cron disabled).
+      - name: Test
+        run: pnpm -r run test
+
+      # NOT `pnpm build` (root) — that is `pnpm -r --parallel run build`, and
+      # apps/web's build script itself rebuilds @mototracker/shared, so the
+      # parallel form can have two tsc processes writing packages/shared/dist
+      # at once. Explicit order, same as apps/api/Dockerfile.
+      - name: Build api
+        run: pnpm --filter @mototracker/api build
+
+      - name: Build web
+        run: pnpm --filter @mototracker/web build
+
+  # --------------------------------------------------------------------------
+  # The image is the deployment unit. A Dockerfile that no longer builds is
+  # invisible to the test job, so build it here — and never push it.
+  # --------------------------------------------------------------------------
+  docker:
+    name: docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build apps/api/Dockerfile
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false            # verification only — no registry, no login
+          load: false            # don't spend time exporting to the daemon
+          platforms: linux/amd64 # the deploy target; skip arm64 to stay fast
+          # Layer cache lives in the GitHub Actions cache, so repeat runs skip
+          # apt + pnpm install unless those layers actually changed.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # --------------------------------------------------------------------------
+  # The operational scripts are not covered by any test — lint them instead.
+  # shellcheck is preinstalled on ubuntu-latest runners.
+  # --------------------------------------------------------------------------
+  scripts:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck scripts/*.sh
+        run: shellcheck scripts/*.sh
