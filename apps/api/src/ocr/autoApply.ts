@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import { newId } from "../lib/ulid.js";
 import type { ParsedOcr } from "./parser.js";
 import { inferVehicleType } from "./catalog.js";
+import { bikeFacts, permits } from "../lib/orgAccess.js";
 
 export interface AutoApplyInput {
   db: Database.Database;
@@ -51,13 +52,50 @@ interface BikePick {
 }
 
 /**
+ * Does this plate already name a vehicle in an organization the user is an
+ * active member of? Plates are unique to a real vehicle, so the answer decides
+ * whether "create a vehicle from this ruhsat" would in fact be "duplicate a
+ * company vehicle into a private garage".
+ *
+ * Deliberately scoped to the user's OWN orgs rather than every org in the
+ * database: it must not become an oracle for whether a stranger's plate is on
+ * the platform. A driver's unassigned vehicle is included on purpose — they
+ * must not be able to make a personal copy of a fleet vehicle they merely
+ * photographed.
+ */
+function plateBelongsToUsersOrg(
+  db: Database.Database,
+  userId: string,
+  normalizedPlate: string,
+): boolean {
+  const rows = db
+    .prepare(
+      `SELECT b.plate FROM bike b
+         JOIN org_member m ON m.org_id = b.org_id AND m.user_id = ? AND m.status = 'active'
+        WHERE b.org_id IS NOT NULL AND b.plate IS NOT NULL`,
+    )
+    .all(userId) as { plate: string }[];
+  return rows.some((r) => normalizePlate(r.plate) === normalizedPlate);
+}
+
+/**
  * Decide which bike this scan applies to. Strategy:
- *   1. Honour the explicit bikeIdHint (set when the user uploaded from a
- *      bike-specific context).
- *   2. Match by normalized plate.
- *   3. If the user has exactly one non-archived bike, use it.
+ *   1. Honour the explicit bikeIdHint — the vehicle the document was uploaded
+ *      against — whenever the uploader may WRITE it. On an org vehicle that is
+ *      decided by membership (lib/orgAccess.ts), NOT by `bike.user_id`: the
+ *      custodian of a company van is whoever registered it, and a colleague
+ *      scanning its ruhsat is the normal case.
+ *   2. Match by normalized plate — PERSONAL vehicles only.
+ *   3. If the user has exactly one non-archived PERSONAL bike, use it.
  *   4. If allowCreate (typically ruhsat scans) and we have any identifying
- *      info, create a new bike.
+ *      info, create a new PERSONAL bike.
+ *
+ * Steps 2–4 are deliberately confined to `org_id IS NULL`. A scan carries no
+ * org context of its own — only the hinted vehicle does — so guessing into a
+ * fleet would let any member's stray photo mutate company records, and
+ * guessing OUT of one (the old behaviour) silently copied company data into a
+ * private garage. When a hint exists we therefore never fall through to a
+ * guess: the uploader already said which vehicle this is about.
  */
 function pickOrCreateBike(
   db: Database.Database,
@@ -67,15 +105,24 @@ function pickOrCreateBike(
   allowCreate: boolean,
 ): BikePick | null {
   if (bikeIdHint) {
-    const r = db
-      .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ? AND archived = 0")
-      .get(bikeIdHint, userId) as { id: string } | undefined;
-    if (r) return { bikeId: r.id, action: "matched" };
+    const facts = bikeFacts(userId, bikeIdHint, db);
+    if (facts) {
+      // The hint names a real vehicle. Either we may write it — then it is the
+      // answer — or we may not, and this scan applies to nothing at all. Never
+      // fall through: a document attached to a company van must not end up
+      // creating or patching a vehicle in the uploader's own garage.
+      if (!facts.archived && permits(facts, userId, "write")) {
+        return { bikeId: facts.bikeId, action: "matched" };
+      }
+      return null;
+    }
+    // The hinted vehicle no longer exists (deleted between upload and scan);
+    // fall through to the personal-garage heuristics below.
   }
 
   const np = normalizePlate(parsed.plate);
   const allBikes = db
-    .prepare("SELECT id, plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE user_id = ? AND archived = 0")
+    .prepare("SELECT id, plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE user_id = ? AND org_id IS NULL AND archived = 0")
     .all(userId) as BikeRow[];
 
   if (np) {
@@ -93,6 +140,14 @@ function pickOrCreateBike(
   if (allowCreate) {
     const hasIdentifyingInfo = !!(parsed.plate || parsed.make || parsed.model || parsed.year);
     if (!hasIdentifyingInfo) return null;
+
+    // A plate that already belongs to a vehicle in one of the uploader's own
+    // organizations is a company vehicle, whatever this photo was attached to.
+    // Minting a personal duplicate of it would copy the company's registration
+    // details into a private garage the org cannot see or delete — and burn a
+    // slot of the member's personal quota doing it. Do nothing instead; the
+    // review screen still lets them attach the scan to the right vehicle.
+    if (np && plateBelongsToUsersOrg(db, userId, np)) return null;
 
     const id = newId();
     const nickname =
@@ -131,17 +186,21 @@ function pickOrCreateBike(
  * Patch only the bike fields that are currently null/empty. Never overwrites
  * an existing value — users should edit those manually.
  *
+ * No ownership predicate here on purpose: the caller has already authorised
+ * `write` on this vehicle through orgAccess, and re-checking with
+ * `user_id = ?` would silently skip every org vehicle whose custodian is
+ * somebody other than the person holding the camera.
+ *
  * Returns true if at least one field was actually updated.
  */
 function patchBikeBlanks(
   db: Database.Database,
   bikeId: string,
-  userId: string,
   parsed: ParsedOcr,
 ): boolean {
   const row = db
-    .prepare("SELECT plate, make, model, year, first_registration_date, color, chassis_no, engine_no, cylinder_cc, fuel_type FROM bike WHERE id = ? AND user_id = ?")
-    .get(bikeId, userId) as
+    .prepare("SELECT plate, make, model, year, first_registration_date, color, chassis_no, engine_no, cylinder_cc, fuel_type FROM bike WHERE id = ?")
+    .get(bikeId) as
     | { plate: string | null; make: string | null; model: string | null; year: number | null; first_registration_date: string | null; color: string | null; chassis_no: string | null; engine_no: string | null; cylinder_cc: number | null; fuel_type: string | null }
     | undefined;
   if (!row) return false;
@@ -169,8 +228,8 @@ function patchBikeBlanks(
   }
   if (sets.length === 0) return false;
   sets.push("updated_at = datetime('now')");
-  values.push(bikeId, userId);
-  db.prepare(`UPDATE bike SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`).run(...values);
+  values.push(bikeId);
+  db.prepare(`UPDATE bike SET ${sets.join(", ")} WHERE id = ?`).run(...values);
   return true;
 }
 
@@ -194,7 +253,7 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
     bikeAction = bike.action;
     // For matched (pre-existing) bikes, fill in any blanks we now know.
     if (bike.action === "matched" && parsed.confidence >= threshold) {
-      if (patchBikeBlanks(db, bike.bikeId, userId, parsed)) bikeAction = "updated";
+      if (patchBikeBlanks(db, bike.bikeId, parsed)) bikeAction = "updated";
     }
   }
 
