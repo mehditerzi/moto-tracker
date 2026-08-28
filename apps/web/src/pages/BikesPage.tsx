@@ -12,6 +12,9 @@ import { PaywallSheet } from "@/components/PaywallSheet";
 import { useBikes } from "@/hooks/useBikes";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { VehicleAvatar } from "@/components/VehicleAvatar";
+import { ClaimInbox } from "@/components/share/ClaimInbox";
+import { ShareInviteAccept } from "@/components/share/ShareInviteAccept";
+import { SharedVehicleBadge } from "@/components/share/SharedVehicleBadge";
 
 /**
  * At-cap upsell: shown above the vehicle list whenever the garage is full so
@@ -77,6 +80,10 @@ export function BikesPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mx-auto flex max-w-md flex-col items-center gap-6 py-16 text-center"
       >
+        {/* Mounted even here: somebody whose first act is following a share link
+            arrives at an EMPTY garage, and without this there is nowhere to
+            accept the invitation from. */}
+        <ShareInviteAccept />
         <div className="relative grid h-24 w-24 place-items-center rounded-3xl bg-surface ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark">
           <span aria-hidden className="absolute inset-0 rounded-3xl bg-accent/5" />
           <BikeIcon className="relative h-11 w-11 text-muted dark:text-muted-dark" strokeWidth={1.6} />
@@ -113,6 +120,11 @@ export function BikesPage() {
       </header>
 
       <GarageFullBanner />
+      <ShareInviteAccept />
+      {/* Somebody asking about one of these vehicles, or waiting on an answer
+          about one of theirs. Above the list because a claim on a real asset
+          must not be something you scroll past. */}
+      <ClaimInbox />
 
       <div className="grid gap-2.5">
         {data.map((b, i) => (
@@ -146,6 +158,7 @@ export function BikesPage() {
                         {b.plate}
                       </div>
                     )}
+                    <SharedVehicleBadge bike={b} />
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted dark:text-muted-dark" />

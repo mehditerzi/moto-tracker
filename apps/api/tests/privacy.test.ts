@@ -69,4 +69,52 @@ describe("/privacy", () => {
       expect(text).not.toMatch(/contact sales|upgrade to fleet|pricing|per vehicle\/month/i);
     });
   });
+
+  /**
+   * Sharing and handover put two more kinds of disclosure in the product, and
+   * both of them are promises the code has to keep: what a person you share
+   * with can see, and exactly what does and does not move when a vehicle
+   * changes hands. The corresponding behaviour is asserted in
+   * vehicleShares.test.ts and vehicleHandover.test.ts; these tests assert that
+   * the policy still SAYS it.
+   */
+  describe("sharing and handover disclosures", () => {
+    it("states what each sharing level can see, and what a guest cannot", async () => {
+      const text = await policy();
+      expect(text).toContain('id="sharing"');
+      expect(text).toMatch(/guest/i);
+      expect(text).toMatch(/member/i);
+      // The guest boundary, in the policy's own words.
+      expect(text).toMatch(/cannot<\/strong> see your trips/i);
+      // And the member disclosure, which is the one people need to read twice.
+      expect(text).toMatch(/plus the trips[\s\S]{0,60}recorded on those vehicles/i);
+    });
+
+    it("explains the duplicate check without promising to identify the holder", async () => {
+      const text = await policy();
+      expect(text).toMatch(/already tracked/i);
+      expect(text).toMatch(/nothing else<\/strong>/i);
+      // And says plainly why a plate is not used as the key.
+      expect(text).toMatch(/not<\/strong> match on plate numbers/i);
+    });
+
+    it("lists exactly what a handover transfers and what it does not", async () => {
+      const text = await policy();
+      expect(text).toContain('id="handover"');
+      expect(text).toMatch(/Transfers to the new owner/i);
+      expect(text).toMatch(/Stays with the previous owner/i);
+      // The four that must never move.
+      for (const kept of [/GPS trips/i, /fuel purchases/i, /every document they scanned/i, /photos they took/i]) {
+        expect(text).toMatch(kept);
+      }
+      // The reason, stated rather than implied.
+      expect(text).toMatch(/kimlik number/i);
+    });
+
+    it("says there is no automatic transfer", async () => {
+      const text = await policy();
+      expect(text).toMatch(/current holder agrees/i);
+      expect(text).toMatch(/no automatic transfer/i);
+    });
+  });
 });

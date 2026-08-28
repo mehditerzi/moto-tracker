@@ -12,11 +12,33 @@ import { z } from "zod";
  * Chosen once per organization and effectively permanent — it decides which half
  * of the product the org sees.
  *
- * 'rental' — they rent vehicles OUT to customers (contracts, handover/return km).
- * 'fleet'  — own-fleet operator; vehicles are assigned to employee drivers.
+ * 'rental'   — they rent vehicles OUT to customers (contracts, handover/return km).
+ * 'fleet'    — own-fleet operator; vehicles are assigned to employee drivers.
+ * 'personal' — a PERSONAL GARAGE GROUP: a household, a couple, a rider and their
+ *              mechanic. Same tables, same permission module, but it is a
+ *              consumer feature and NOT the fleet product: no triage board, no
+ *              cost rollups, no CSV import, no contracts, no assignments. See
+ *              `apps/api/src/lib/orgAccess.ts` for the permission branch and
+ *              `apps/api/src/routes/vehicleShares.ts` for the only routes that
+ *              can reach one.
+ *
+ * The split matters commercially as well as technically: fleet organizations are
+ * provisioned by the operator and never advertised in-app (docs/fleet-design.md
+ * §1, App Review 3.1.1), whereas a personal group is created by the user with a
+ * button. Nothing may convert between the two — see `orgSettingsUpdateSchema`,
+ * which cannot write this value, and `requireOrgRole`, which refuses to let any
+ * fleet route see a personal group at all.
  */
-export const orgModeSchema = z.enum(["rental", "fleet"]);
+export const orgModeSchema = z.enum(["rental", "fleet", "personal"]);
 export type OrgMode = z.infer<typeof orgModeSchema>;
+
+/**
+ * The two modes that a BUSINESS organization may hold. Deliberately not
+ * `orgModeSchema`: this is the vocabulary of the operator-provisioned fleet
+ * product, and 'personal' must be unreachable from it in either direction.
+ */
+export const orgBusinessModeSchema = z.enum(["rental", "fleet"]);
+export type OrgBusinessMode = z.infer<typeof orgBusinessModeSchema>;
 
 /**
  * Membership roles, in descending order of power.

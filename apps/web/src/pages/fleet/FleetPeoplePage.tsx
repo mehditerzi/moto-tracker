@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Copy, Mail, Trash2, UserMinus } from "lucide-react";
-import type { OrgRole } from "@mototracker/shared";
+import type { OrgBusinessMode, OrgRole } from "@mototracker/shared";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -93,7 +93,14 @@ function MemberList({
 }: {
   orgId: string;
   callerRole: OrgRole;
-  mode: "fleet" | "rental";
+  /**
+   * The two BUSINESS modes only. `OrgMode` gained a third value ('personal',
+   * the consumer garage group) and this component renders assignment/contract
+   * vocabulary that a household has none of. Keeping the prop narrow means the
+   * compiler — not a comment — enforces that a personal group can never reach a
+   * fleet screen; `useFleetAccess` filters it out well before this point.
+   */
+  mode: OrgBusinessMode;
   members: NonNullable<ReturnType<typeof useFleetMembers>["data"]>;
 }) {
   const { t } = useTranslation();

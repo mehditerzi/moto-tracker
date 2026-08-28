@@ -12,7 +12,20 @@ import { config } from "../config.js";
 import { bikeCreateSchema, bikeUpdateSchema } from "@mototracker/shared";
 import { inferVehicleType } from "../ocr/catalog.js";
 import { canAddOrgVehicle, canAddVehicle } from "../lib/entitlement.js";
-import { authorizeBike, bikeScope, roleInOrg, type BikeAccessFacts } from "../lib/orgAccess.js";
+import {
+  authorizeBike,
+  orgMode,
+  readableBikeScope,
+  roleInOrg,
+  type BikeAccessFacts,
+} from "../lib/orgAccess.js";
+import {
+  bikeIsReachable,
+  findIdentityMatch,
+  mintClaimToken,
+  registerIdentities,
+} from "../lib/vehicleIdentity.js";
+import { vehicleCreateLimiter } from "../lib/shareLimits.js";
 import { ApiCodeError } from "../middleware/errorHandler.js";
 
 const photoUpload = multer({
@@ -82,18 +95,32 @@ function rowToBike(r: BikeRow) {
   };
 }
 
+/**
+ * Every `authorizeBike` call in this file deals with the VEHICLE'S OWN RECORD —
+ * its attributes and its photo — which is precisely the facts layer a share
+ * conveys. Declaring it here means a personal-group GUEST (a mechanic) can open
+ * the vehicle and see its plate and photo, while the same default keeps them out
+ * of the document wallet, the trip list and the fuel log without those routes
+ * having to know that sharing exists (lib/orgAccess.ts).
+ */
+const VEHICLE_FACT = { vehicleFact: true } as const;
+
 bikesRouter.use(requireUser);
 
-// The caller's own garage plus every org vehicle they may read — one scope,
-// computed in lib/orgAccess.ts, never re-derived here. A driver sees only the
-// vehicles currently assigned to them, so this endpoint cannot be used to
-// enumerate a fleet.
+// The caller's own garage, every org vehicle they may read, and every vehicle
+// in a garage group they belong to — one scope, computed in lib/orgAccess.ts,
+// never re-derived here. A driver sees only the vehicles currently assigned to
+// them, so this endpoint cannot be used to enumerate a fleet.
+//
+// `readableBikeScope`, not `bikeScope`: this list is about VEHICLES, so a
+// personal-group guest (a mechanic) belongs on it. The narrower `bikeScope` is
+// what keeps that same guest out of the trip, fuel and document lists.
 bikesRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const includeArchived = req.query.archived === "true";
     const db = getDb();
-    const scope = bikeScope(req.user!.id, db);
+    const scope = readableBikeScope(req.user!.id, db);
     const rows = db
       .prepare(
         `SELECT * FROM bike
@@ -114,32 +141,93 @@ const bikeOrgSchema = z.object({ orgId: z.string().min(1).optional() });
 
 bikesRouter.post(
   "/",
+  vehicleCreateLimiter,
   asyncHandler(async (req, res) => {
     const body = bikeCreateSchema.parse(req.body);
     const { orgId } = bikeOrgSchema.parse(req.body);
     const db = getDb();
 
     if (orgId) {
-      // Adding a vehicle grows the org's bill, so it is an owner/manager act —
-      // staff run the fleet, they don't size it. A non-member gets 404: the
-      // existence of an organization is not public information.
       const role = roleInOrg(req.user!.id, orgId, db);
       if (role === null) {
         res.status(404).json({ error: "not_found" });
         return;
       }
-      if (role !== "owner" && role !== "manager") {
-        res.status(403).json({ error: "forbidden" });
-        return;
-      }
-      if (!canAddOrgVehicle(orgId, db)) {
-        res.status(403).json({ error: "vehicle_limit_reached" });
-        return;
+      if (orgMode(orgId, db) === "personal") {
+        // ── a personal garage GROUP ──────────────────────────────────────────
+        //
+        // Two differences from a fleet, both deliberate.
+        //
+        // WHO MAY ADD: an owner or a member, but never a guest. A mechanic with
+        // access to your bike has no business putting new cars in your garage.
+        //
+        // WHO PAYS: the person adding it, against their OWN entitlement — never
+        // `organization.max_vehicles`, which for a personal group is 0 and means
+        // nothing, because nobody bought it. This is the line that stops garage
+        // groups being a source of free vehicles: `bike.user_id` stays the
+        // adder, `countActiveBikes` counts personal-group vehicles for their
+        // custodian, and so a group of eight people still pays for every car in
+        // it exactly once.
+        if (role === "driver") {
+          res.status(403).json({ error: "forbidden" });
+          return;
+        }
+        if (!canAddVehicle(req.user!.id, db)) {
+          res.status(403).json({ error: "vehicle_limit_reached" });
+          return;
+        }
+      } else {
+        // Adding a vehicle grows the org's bill, so it is an owner/manager act —
+        // staff run the fleet, they don't size it. A non-member gets 404: the
+        // existence of an organization is not public information.
+        if (role !== "owner" && role !== "manager") {
+          res.status(403).json({ error: "forbidden" });
+          return;
+        }
+        if (!canAddOrgVehicle(orgId, db)) {
+          res.status(403).json({ error: "vehicle_limit_reached" });
+          return;
+        }
       }
     } else if (!canAddVehicle(req.user!.id, db)) {
       // First vehicle is free; each additional one needs an active subscription.
       // Enforced here (not just in the UI) so the API is the source of truth.
       res.status(403).json({ error: "vehicle_limit_reached" });
+      return;
+    }
+
+    // ── is this vehicle already in the system? ───────────────────────────────
+    //
+    // Checked AFTER the entitlement gate on purpose: a user who cannot add a
+    // vehicle at all must not be able to use this endpoint as a lookup service.
+    //
+    // The answer is deliberately almost empty. It says THAT the vehicle is
+    // tracked and nothing else — not by whom, not its nickname, not its id, not
+    // even whether the holder is a person or a company. What the caller gets
+    // instead is an opaque token that lets them knock (routes/vehicleShares.ts).
+    //
+    // Note which identifiers can trigger this: chassis and engine only. A plate
+    // is not an identity — Turkish plates are re-issued and change on a
+    // provincial transfer — and it is the one identifier a stranger can read off
+    // a bumper, so matching on it would turn this endpoint into a plate-to-user
+    // oracle. See lib/vehicleIdentity.ts.
+    const match = findIdentityMatch(db, {
+      chassisNo: body.chassisNo,
+      engineNo: body.engineNo,
+    });
+    if (match) {
+      if (bikeIsReachable(db, req.user!.id, match.bikeId)) {
+        // It is already in a garage this caller can see. There is nobody to ask,
+        // so say so plainly and point at the record they already have.
+        res.status(409).json({ error: "vehicle_already_in_garage", bikeId: match.bikeId });
+        return;
+      }
+      const { token } = mintClaimToken(db, match, req.user!.id);
+      res.status(409).json({
+        error: "vehicle_already_registered",
+        matchedOn: match.kind,
+        claimToken: token,
+      });
       return;
     }
 
@@ -167,6 +255,10 @@ bikesRouter.post(
       body.fuelType ?? null,
       body.firstRegistrationDate ?? null,
     );
+    // Claim the identity. The unique index on the chassis key is the real
+    // guarantee — the check above can lose a race with a simultaneous add, and
+    // this INSERT is where that race is actually decided.
+    registerIdentities(db, id, { chassisNo: body.chassisNo, engineNo: body.engineNo });
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(id) as BikeRow;
     res.status(201).json(rowToBike(row));
   }),
@@ -175,7 +267,7 @@ bikesRouter.post(
 bikesRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    if (!authorizeBike(req, res, req.params.id!, "read")) return;
+    if (!authorizeBike(req, res, req.params.id!, "read", VEHICLE_FACT)) return;
     const row = getDb().prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
     res.json(rowToBike(row));
   }),
@@ -188,7 +280,7 @@ bikesRouter.patch(
     const db = getDb();
     // "manage", not "write": a driver may log a fill-up on the van they are
     // holding, but must not rename or re-plate it.
-    if (!authorizeBike(req, res, req.params.id!, "manage")) return;
+    if (!authorizeBike(req, res, req.params.id!, "manage", VEHICLE_FACT)) return;
     const fieldMap: Record<string, string> = {
       vehicleType: "vehicle_type",
       nickname: "nickname",
@@ -212,6 +304,42 @@ bikesRouter.patch(
         values.push((body as Record<string, unknown>)[key] as string | number | null);
       }
     }
+
+    // ── editing an identity is still a claim on it ──────────────────────────
+    //
+    // Without this check, the duplicate rule would be one PATCH away from being
+    // off: add an empty vehicle, then edit somebody else's VIN onto it. So the
+    // same question is asked here as at creation, excluding this vehicle (a
+    // record is never a duplicate of itself).
+    //
+    // The refusal is the same 409 with the same opaque token, so the edit screen
+    // can offer the same "request access / I bought this" conversation. It does
+    // not reveal the other record either.
+    const touchesIdentity = "chassisNo" in body || "engineNo" in body;
+    if (touchesIdentity) {
+      const current = db
+        .prepare("SELECT chassis_no, engine_no FROM bike WHERE id = ?")
+        .get(req.params.id) as { chassis_no: string | null; engine_no: string | null };
+      const next = {
+        chassisNo: "chassisNo" in body ? (body.chassisNo ?? null) : current.chassis_no,
+        engineNo: "engineNo" in body ? (body.engineNo ?? null) : current.engine_no,
+      };
+      const match = findIdentityMatch(db, next, req.params.id!);
+      if (match) {
+        if (bikeIsReachable(db, req.user!.id, match.bikeId)) {
+          res.status(409).json({ error: "vehicle_already_in_garage", bikeId: match.bikeId });
+          return;
+        }
+        const { token } = mintClaimToken(db, match, req.user!.id);
+        res.status(409).json({
+          error: "vehicle_already_registered",
+          matchedOn: match.kind,
+          claimToken: token,
+        });
+        return;
+      }
+    }
+
     if (sets.length) {
       sets.push("updated_at = datetime('now')");
       values.push(req.params.id);
@@ -219,6 +347,13 @@ bikesRouter.patch(
       db.prepare(`UPDATE bike SET ${sets.join(", ")} WHERE id = ?`).run(...values);
     }
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
+    if (touchesIdentity) {
+      // Refresh the registry from the row that was actually written. Identities
+      // are added and replaced, never dropped: clearing the chassis field must
+      // not release the VIN to whoever types it next, or the uniqueness rule
+      // would survive only as long as nobody edited anything.
+      registerIdentities(db, row.id, { chassisNo: row.chassis_no, engineNo: row.engine_no });
+    }
     res.json(rowToBike(row));
   }),
 );
@@ -271,7 +406,7 @@ bikesRouter.post(
       return;
     }
     const db = getDb();
-    const facts = authorizeBike(req, res, req.params.id!, "manage");
+    const facts = authorizeBike(req, res, req.params.id!, "manage", VEHICLE_FACT);
     if (!facts) return;
     const dir = photoDirFor(facts, req.user!.id);
     await fs.mkdir(dir, { recursive: true });
@@ -321,7 +456,7 @@ bikesRouter.post(
 bikesRouter.get(
   "/:id/photo",
   asyncHandler(async (req, res) => {
-    if (!authorizeBike(req, res, req.params.id!, "read")) return;
+    if (!authorizeBike(req, res, req.params.id!, "read", VEHICLE_FACT)) return;
     const photoUrl = photoUrlOf(req.params.id!);
     if (!photoUrl) {
       res.status(404).json({ error: "not_found" });
@@ -346,7 +481,7 @@ bikesRouter.get(
 bikesRouter.delete(
   "/:id/photo",
   asyncHandler(async (req, res) => {
-    if (!authorizeBike(req, res, req.params.id!, "manage")) return;
+    if (!authorizeBike(req, res, req.params.id!, "manage", VEHICLE_FACT)) return;
     const photoUrl = photoUrlOf(req.params.id!);
     getDb()
       .prepare("UPDATE bike SET photo_url = NULL, updated_at = datetime('now') WHERE id = ?")
@@ -365,7 +500,7 @@ bikesRouter.delete(
 bikesRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
-    if (!authorizeBike(req, res, req.params.id!, "delete")) return;
+    if (!authorizeBike(req, res, req.params.id!, "delete", VEHICLE_FACT)) return;
     getDb()
       .prepare("UPDATE bike SET archived = 1, updated_at = datetime('now') WHERE id = ?")
       .run(req.params.id);

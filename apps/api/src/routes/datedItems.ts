@@ -42,6 +42,16 @@ export function rowToDatedItem(r: DatedItemRow) {
   };
 }
 
+/**
+ * These records ARE facts about the vehicle — a renewal deadline, a service
+ * interval — not facts about the person who typed them. That distinction is the
+ * whole sharing model: it is what a personal-group GUEST (a mechanic, an
+ * inspection agency) is allowed to see and edit, whereas trips, fuel spending
+ * and scanned documents stay with their author. The flag defaults to false in
+ * `lib/orgAccess.ts`, so a record type is private until a route says otherwise.
+ */
+const VEHICLE_FACT = { vehicleFact: true } as const;
+
 export const bikesNestedDatedRouter: Router = Router({ mergeParams: true });
 bikesNestedDatedRouter.use(requireUser);
 
@@ -127,7 +137,7 @@ datedItemsRouter.get(
       res.status(404).json({ error: "not_found" });
       return;
     }
-    if (!authorizeRecord(req, res, recordOf(row), "read")) return;
+    if (!authorizeRecord(req, res, recordOf(row), "read", VEHICLE_FACT)) return;
     res.json(rowToDatedItem(row));
   }),
 );
@@ -142,7 +152,7 @@ datedItemsRouter.patch(
       res.status(404).json({ error: "not_found" });
       return;
     }
-    if (!authorizeRecord(req, res, recordOf(existing), "write", { db })) return;
+    if (!authorizeRecord(req, res, recordOf(existing), "write", { db, ...VEHICLE_FACT })) return;
     const fieldMap: Record<string, string> = {
       type: "type",
       expiresOn: "expires_on",
@@ -180,7 +190,7 @@ datedItemsRouter.delete(
     }
     // Deleting a RECORD is a day-to-day act ("write"), unlike deleting the
     // vehicle it belongs to.
-    if (!authorizeRecord(req, res, recordOf(existing), "write", { db })) return;
+    if (!authorizeRecord(req, res, recordOf(existing), "write", { db, ...VEHICLE_FACT })) return;
     db.prepare("DELETE FROM dated_item WHERE id = ?").run(req.params.id);
     res.status(204).end();
   }),
