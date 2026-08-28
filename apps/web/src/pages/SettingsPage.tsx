@@ -26,6 +26,7 @@ import {
   type PushDiag,
 } from "@/lib/nativePush";
 import { useEntitlement } from "@/hooks/useEntitlement";
+import { useMe } from "@/hooks/useMe";
 import { PaywallSheet } from "@/components/PaywallSheet";
 
 /**
@@ -320,14 +321,23 @@ export function SettingsPage() {
   );
 }
 
+/** Must match DELETE_CONFIRM_PHRASE in apps/api/src/routes/me.ts. */
+const DELETE_CONFIRM_PHRASE = "DELETE";
+
 function DeleteAccountCard() {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const navigate = useNavigate();
-  const [askPassword, setAskPassword] = useState(false);
-  const [password, setPassword] = useState("");
+  const me = useMe();
+  const [gateOpen, setGateOpen] = useState(false);
+  const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Magic-link / Google / Apple accounts have no password to re-enter, so they
+  // confirm by typing the phrase instead. `hasPassword` comes from GET /api/me;
+  // default to the password gate while it loads (the safer of the two).
+  const hasPassword = me.data?.user.hasPassword !== false;
 
   const start = async () => {
     const ok = await confirm({
@@ -337,25 +347,38 @@ function DeleteAccountCard() {
       destructive: true,
     });
     if (!ok) return;
-    setPassword("");
+    setValue("");
     setError(null);
-    setAskPassword(true);
+    setGateOpen(true);
   };
 
+  // The phrase must match exactly — the server rejects anything else.
+  const ready = hasPassword ? value.length > 0 : value === DELETE_CONFIRM_PHRASE;
+
   const submit = async () => {
-    if (!password || busy) return;
+    if (!ready || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await api("/api/me", { method: "DELETE", json: { password } });
+      await api("/api/me", {
+        method: "DELETE",
+        json: hasPassword ? { password: value } : { confirm: DELETE_CONFIRM_PHRASE },
+      });
       // Server already destroyed the session via cascade; just clear the client.
       clearBearerToken();
       queryClient.clear();
       pushToast({ variant: "success", title: t("settings.deleteAccountSuccess") });
       navigate("/welcome", { replace: true });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
+      const status = e instanceof ApiError ? e.status : 0;
+      if (status === 401 && hasPassword) {
         setError(t("settings.deleteAccountWrongPassword"));
+      } else if (status === 400 || status === 401) {
+        setError(
+          hasPassword
+            ? t("settings.deleteAccountWrongPassword")
+            : t("settings.deleteAccountWrongConfirmation", { phrase: DELETE_CONFIRM_PHRASE }),
+        );
       } else {
         pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
       }
@@ -378,19 +401,30 @@ function DeleteAccountCard() {
           <Trash2 className="h-4 w-4" /> {t("settings.deleteAccount")}
         </Button>
 
-        {askPassword && (
+        {gateOpen && (
           <div className="mt-1 flex flex-col gap-2 rounded-xl border border-danger/30 p-3">
-            <label htmlFor="delete-password" className="text-[13px] font-medium">
-              {t("settings.deleteAccountPasswordMessage")}
+            <label htmlFor="delete-confirm" className="text-[13px] font-medium">
+              {hasPassword
+                ? t("settings.deleteAccountPasswordMessage")
+                : t("settings.deleteAccountConfirmPhraseMessage", {
+                    phrase: DELETE_CONFIRM_PHRASE,
+                  })}
             </label>
             <Input
-              id="delete-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              placeholder={t("settings.deleteAccountPasswordPlaceholder")}
+              id="delete-confirm"
+              type={hasPassword ? "password" : "text"}
+              autoComplete={hasPassword ? "current-password" : "off"}
+              autoCapitalize={hasPassword ? undefined : "characters"}
+              autoCorrect={hasPassword ? undefined : "off"}
+              spellCheck={hasPassword ? undefined : false}
+              value={value}
+              placeholder={
+                hasPassword
+                  ? t("settings.deleteAccountPasswordPlaceholder")
+                  : DELETE_CONFIRM_PHRASE
+              }
               onChange={(e) => {
-                setPassword(e.target.value);
+                setValue(e.target.value);
                 if (error) setError(null);
               }}
               onKeyDown={(e) => {
@@ -401,7 +435,7 @@ function DeleteAccountCard() {
             <div className="flex gap-2">
               <Button
                 onClick={submit}
-                disabled={!password || busy}
+                disabled={!ready || busy}
                 className="flex-1 bg-danger text-white hover:bg-danger/90"
               >
                 {t("settings.deleteAccountSubmit")}
@@ -409,8 +443,8 @@ function DeleteAccountCard() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setAskPassword(false);
-                  setPassword("");
+                  setGateOpen(false);
+                  setValue("");
                   setError(null);
                 }}
                 disabled={busy}

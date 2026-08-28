@@ -17,6 +17,19 @@ interface ProfileRow {
   created_at: string;
 }
 
+/**
+ * True when the user signed up with an email + password. Magic-link, Google and
+ * Sign in with Apple users have no `credential` account row, so there is no
+ * password to re-enter — they get the typed-confirmation gate instead.
+ */
+function hasPasswordAccount(userId: string): boolean {
+  return (
+    getDb()
+      .prepare("SELECT 1 FROM account WHERE userId = ? AND providerId = 'credential'")
+      .get(userId) !== undefined
+  );
+}
+
 function getOrCreateProfile(userId: string): ProfileRow {
   const db = getDb();
   const existing = db
@@ -43,6 +56,9 @@ meRouter.get(
         email: req.user!.email,
         name: req.user!.name,
         image: null,
+        // Lets the client pick the right account-deletion gate (password
+        // re-entry vs. typed confirmation) without a second round-trip.
+        hasPassword: hasPasswordAccount(req.user!.id),
       },
       profile: {
         userId: profile.user_id,
@@ -89,20 +105,51 @@ meRouter.patch(
   }),
 );
 
-const deleteSchema = z.object({ password: z.string().min(1) });
+/** Typed confirmation phrase for accounts that have no password to re-enter. */
+const DELETE_CONFIRM_PHRASE = "DELETE";
+
+// Either gate, never both: password holders re-enter their password, everyone
+// else types the confirmation phrase. Which one applies is decided server-side
+// from the account rows, so a client can't pick the weaker one.
+const deleteSchema = z.union([
+  z.object({ password: z.string().min(1) }),
+  z.object({ confirm: z.literal(DELETE_CONFIRM_PHRASE) }),
+]);
 
 // Permanent account deletion (App Store Guideline 5.1.1(v)). The user is
-// already authenticated; re-entering the password is the confirmation gate.
+// already authenticated; the gate below is the confirmation step.
 meRouter.delete(
   "/",
   asyncHandler(async (req, res) => {
-    const { password } = deleteSchema.parse(req.body);
+    const hasPassword = hasPasswordAccount(req.user!.id);
+    const parsed = deleteSchema.safeParse(req.body);
+    // A malformed body is reported as "the gate you owe me is missing", which is
+    // the only actionable thing the client can do about it.
+    if (!parsed.success) {
+      res.status(400).json({ error: hasPassword ? "password_required" : "confirmation_required" });
+      return;
+    }
+    const body = parsed.data;
 
-    // Verify the password via better-auth — it throws on bad credentials.
-    try {
-      await getAuth().api.signInEmail({ body: { email: req.user!.email, password } });
-    } catch {
-      res.status(401).json({ error: "invalid_password" });
+    if (hasPassword) {
+      if (!("password" in body)) {
+        // Password holders can't downgrade themselves to the typed phrase.
+        res.status(400).json({ error: "password_required" });
+        return;
+      }
+      // Verify the password via better-auth — it throws on bad credentials.
+      try {
+        await getAuth().api.signInEmail({
+          body: { email: req.user!.email, password: body.password },
+        });
+      } catch {
+        res.status(401).json({ error: "invalid_password" });
+        return;
+      }
+    } else if (!("confirm" in body)) {
+      // Passwordless (magic link / Google / Apple): signInEmail would always
+      // throw "Credential account not found", so the phrase is the only gate.
+      res.status(400).json({ error: "confirmation_required" });
       return;
     }
 
