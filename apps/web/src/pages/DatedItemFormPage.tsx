@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
+import { MoneyInput } from "@/components/ui/number-input";
 import { Field } from "@/components/ui/field";
 import { PROVIDER_OPTIONS } from "@/lib/vehicleOptions";
 import { pushToast } from "@/hooks/useToast";
@@ -69,7 +70,9 @@ export function DatedItemFormPage({ mode }: Props) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!expiresOn || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) {
-      setDateError("YYYY-AA-GG");
+      // Was the literal string "YYYY-AA-GG": a format spec, not a message, and
+      // in Turkish regardless of the interface language.
+      setDateError(t("items.dateInvalid"));
       return;
     }
     setDateError("");
@@ -147,41 +150,30 @@ export function DatedItemFormPage({ mode }: Props) {
               </div>
             )}
 
-            {/* Date picker */}
-            <div className="flex flex-col items-center gap-2 py-2">
-              <label className="label-micro text-muted dark:text-muted-dark" htmlFor="expiresOn">
-                {t("items.expiresOn")}
-              </label>
-              <input
-                id="expiresOn"
-                type="date"
+            {/* The one thing this screen exists to capture, so it gets the hero
+                treatment — now the shared `DateInput variant="hero"` rather than
+                a local copy, with its error routed through <Field> like every
+                other control instead of a hand-rolled paragraph. */}
+            <Field
+              label={t("items.expiresOn")}
+              labelClassName="label-micro text-muted dark:text-muted-dark"
+              error={dateError}
+              className="items-center text-center"
+            >
+              <DateInput
+                variant="hero"
                 value={expiresOn}
                 onChange={(e) => { setExpiresOn(e.target.value); setDateError(""); }}
                 required
-                aria-invalid={dateError ? true : undefined}
-                aria-describedby={dateError ? "expiresOn-error" : undefined}
-                className={`w-full rounded-2xl border bg-surface px-4 py-4 text-center text-[22px] font-semibold tracking-tight transition
-                  focus:outline-none focus:ring-2 focus:ring-accent/50
-                  dark:bg-surface-dark dark:text-text-dark
-                  ${dateError
-                    ? "border-danger text-danger dark:border-danger"
-                    : "border-border dark:border-border-dark text-text"
-                  }`}
               />
-              {dateError && (
-                <p id="expiresOn-error" role="alert" className="text-xs text-danger">
-                  {dateError}
-                </p>
-              )}
-            </div>
+            </Field>
 
             {/* Provider — only for insurance; muayene and mtv have no provider.
                 Both fields carry the same "optional" hint the vehicle form uses,
                 so the expiry date reads as the only thing actually required. */}
             {type !== "muayene" && type !== "mtv" && (
-              <Field id="provider" label={t("items.provider")} hint={t("bike.optional")}>
+              <Field label={t("items.provider")} optional>
                 <Combobox
-                  id="provider"
                   value={provider}
                   onChange={setProvider}
                   options={PROVIDER_OPTIONS}
@@ -190,15 +182,11 @@ export function DatedItemFormPage({ mode }: Props) {
               </Field>
             )}
 
-            <Field id="cost" label={t("items.cost")} hint={t("bike.optional")}>
-              <Input
-                id="cost"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
+            <Field label={t("items.cost")} optional width="money">
+              <MoneyInput
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                placeholder="0"
+                enterKeyHint="done"
               />
             </Field>
 

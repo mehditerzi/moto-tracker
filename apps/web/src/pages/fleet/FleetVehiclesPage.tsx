@@ -4,6 +4,8 @@ import { ChevronRight, Search, FileClock, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { FleetInventoryRow, FleetInventorySort, FleetStatus } from "@mototracker/shared";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
@@ -95,59 +97,57 @@ export function FleetVehiclesPage() {
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted dark:text-muted-dark"
             aria-hidden
           />
+          {/* Same scale as the two filters beside it — a 44px search box next to
+              two 36px dropdowns was the toolbar version of the uneven rows. */}
           <Input
             type="search"
+            controlSize="sm"
             value={rawQuery}
             onChange={(e) => setRawQuery(e.target.value)}
             placeholder={t("fleet.vehicles.searchPlaceholder")}
             aria-label={t("fleet.vehicles.search")}
+            enterKeyHint="search"
             className="pl-9"
           />
         </div>
 
-        <label className="flex items-center gap-2">
-          <span className="sr-only">{t("fleet.vehicles.filterStatus")}</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as FleetStatus | "")}
-            className="h-11 rounded-xl border border-border bg-surface px-2.5 text-[13px] dark:border-border-dark dark:bg-surface-elev-dark"
-          >
-            <option value="">{t("fleet.vehicles.anyStatus")}</option>
-            {(["expired", "danger", "soon", "ok", "unset"] as const).map((s) => (
-              <option key={s} value={s}>
-                {t(`fleet.status.${s}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          controlSize="sm"
+          wrapperClassName="w-40"
+          aria-label={t("fleet.vehicles.filterStatus")}
+          value={status}
+          onChange={(e) => setStatus(e.target.value as FleetStatus | "")}
+        >
+          <option value="">{t("fleet.vehicles.anyStatus")}</option>
+          {(["expired", "danger", "soon", "ok", "unset"] as const).map((s) => (
+            <option key={s} value={s}>
+              {t(`fleet.status.${s}`)}
+            </option>
+          ))}
+        </Select>
 
-        <label className="flex items-center gap-2">
-          <span className="sr-only">{t("fleet.vehicles.filterHolder")}</span>
-          <select
-            value={holder}
-            onChange={(e) => setHolder(e.target.value)}
-            className="h-11 max-w-[200px] rounded-xl border border-border bg-surface px-2.5 text-[13px] dark:border-border-dark dark:bg-surface-elev-dark"
-          >
-            <option value="">{t("fleet.vehicles.anyHolder")}</option>
-            <option value="assigned">{t(`fleet.vehicles.inUse.${org.mode}`)}</option>
-            <option value="idle">{t("fleet.holder.idle")}</option>
-            {holderOptions.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          controlSize="sm"
+          wrapperClassName="w-48"
+          aria-label={t("fleet.vehicles.filterHolder")}
+          value={holder}
+          onChange={(e) => setHolder(e.target.value)}
+        >
+          <option value="">{t("fleet.vehicles.anyHolder")}</option>
+          <option value="assigned">{t(`fleet.vehicles.inUse.${org.mode}`)}</option>
+          <option value="idle">{t("fleet.holder.idle")}</option>
+          {holderOptions.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </Select>
 
-        <label className="flex min-h-[44px] items-center gap-2 text-[13px] text-muted dark:text-muted-dark">
-          <input
-            type="checkbox"
-            checked={includeArchived}
-            onChange={(e) => setIncludeArchived(e.target.checked)}
-            className="h-4 w-4 rounded border-border accent-accent dark:border-border-dark"
-          />
-          {t("fleet.vehicles.includeArchived")}
-        </label>
+        <Checkbox
+          checked={includeArchived}
+          onChange={(e) => setIncludeArchived(e.target.checked)}
+          label={t("fleet.vehicles.includeArchived")}
+        />
       </div>
 
       {q.isPending ? (

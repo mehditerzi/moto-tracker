@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HiddenFileInput } from "@/components/ui/file-input";
 import { useCreateBatch, useOpenBatches, useUploadDocument } from "@/hooks/useDocuments";
 import { useBike } from "@/hooks/useBikes";
 import { pushToast } from "@/hooks/useToast";
@@ -292,30 +293,21 @@ function SingleCapture() {
                     {t("capture.enterManually")}
                   </Button>
                 )}
-                <input
+                <HiddenFileInput
                   ref={cameraInput}
-                  type="file"
                   accept="image/*"
                   capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleFile(f);
-                  }}
+                  onPick={([f]) => void handleFile(f!)}
                 />
-                <input
+                <HiddenFileInput
                   ref={galleryInput}
-                  type="file"
                   accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
+                  onPick={([f]) => {
                     // Downscale gallery picks to the same 2400px edge cap used by
                     // the in-app camera, so large HEIC/JPEG files don't upload raw.
-                    downscaleImageFile(f, MAX_GALLERY_EDGE)
+                    downscaleImageFile(f!, MAX_GALLERY_EDGE)
                       .then((scaled) => void handleFile(scaled))
-                      .catch(() => void handleFile(f));
+                      .catch(() => void handleFile(f!));
                   }}
                 />
               </motion.div>

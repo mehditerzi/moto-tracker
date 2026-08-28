@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronRight, PhoneCall } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { FleetTriageRow } from "@mototracker/shared";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select } from "@/components/ui/select";
 import { ErrorState } from "@/components/ErrorState";
 import { useFleetContext } from "@/components/fleet/FleetLayout";
 import { useFleetTriage } from "@/hooks/useFleetData";
@@ -191,17 +192,18 @@ function HorizonPicker({ value, onChange }: { value: number; onChange: (v: numbe
   return (
     <label className="flex items-center gap-2">
       <span className="sr-only">{t("fleet.board.horizon")}</span>
-      <select
+      <Select
+        controlSize="sm"
+        wrapperClassName="w-36"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-8 rounded-lg border border-border bg-surface px-2 text-[12px] dark:border-border-dark dark:bg-surface-elev-dark"
       >
         {[7, 30, 60, 90].map((d) => (
           <option key={d} value={d}>
             {t("fleet.board.horizonDays", { count: d })}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

@@ -33,6 +33,7 @@ import { useConfirm } from "@/components/ConfirmSheet";
 import { ErrorState } from "@/components/ErrorState";
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { VehicleAvatar } from "@/components/VehicleAvatar";
+import { HiddenFileInput } from "@/components/ui/file-input";
 import { DuplicateVehicleSheet } from "@/components/share/DuplicateVehicleSheet";
 import { VehicleShareSection } from "@/components/share/VehicleShareSection";
 import { asDuplicateVehicle, asOwnDuplicate } from "@/hooks/useVehicleShares";
@@ -371,7 +372,9 @@ export function BikeFormPage() {
                       form.setValue("make", "");
                       form.setValue("model", "");
                     }}
-                    className={`rounded-xl py-2 text-[13px] font-medium transition ${
+                    // min-h-11: `py-2` around a 13px line came to 35px, under
+                    // the 44px target every other control on this form meets.
+                    className={`flex min-h-[44px] items-center justify-center rounded-xl px-2 text-[13px] font-medium transition ${
                       vehicleType === vt
                         ? "bg-surface shadow-card text-text dark:bg-surface-dark dark:text-text-dark"
                         : "text-muted dark:text-muted-dark"
@@ -399,7 +402,18 @@ export function BikeFormPage() {
                 className="uppercase tracking-wider font-mono"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            {/* ONE COLUMN ON A PHONE. `grid-cols-2` with no breakpoint gave
+                each field 118px at 320px and 155px on an iPhone 15 — and a
+                Combobox spends 50px of that on padding and its chevron, so a
+                selected "Mercedes-Benz" (118px of text in a 66px box) was
+                unreadable. The label row fares no better: `Field` puts the
+                label and its "optional" hint on one line, and "İSTEĞE BAĞLI"
+                alone is 71px, so one cell's label wrapped while its neighbour's
+                did not and the two inputs ended up at different heights — the
+                uneven placement this screen was reported for. The pair is
+                restored at `sm`, where the column is 194px and everything fits
+                on one line in both languages. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label={t("bike.make")} hint={t("bike.optional")}>
                 <Controller
                   control={form.control}
@@ -436,7 +450,13 @@ export function BikeFormPage() {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* Year and km are short enough to sit two-up — 2023 and 12000 fit
+                anywhere. Their LABELS are not: "Şu anki km" is 73px and
+                "Current km" 76px, and with the 71px "optional" hint beside them
+                neither fits a 118px cell, while "Yıl" / "Year" does. So one
+                label wrapped and the other didn't, and the two inputs sat 17px
+                apart. Same treatment as the pair above, for the same reason. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label={t("bike.year")} hint={t("bike.optional")}>
                 <Controller
                   control={form.control}
@@ -486,51 +506,63 @@ export function BikeFormPage() {
                   )}
                 />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t("bike.fuelType")} hint={t("bike.optional")}>
-                  <Controller
-                    control={form.control}
-                    name="fuelType"
-                    render={({ field }) => (
-                      <Combobox
-                        value={(field.value as string) ?? ""}
-                        onChange={field.onChange}
-                        options={FUEL_OPTIONS}
-                        placeholder="Benzin"
-                      />
-                    )}
-                  />
-                </Field>
-                <Field
-                  label={t("bike.firstRegistrationDate")}
-                  hint={t("bike.optional")}
-                  error={form.formState.errors.firstRegistrationDate?.message}
-                >
-                  <Input type="date" {...form.register("firstRegistrationDate")} />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t("bike.chassisNo")} hint={t("bike.optional")}>
-                  <Input
-                    {...form.register("chassisNo")}
-                    placeholder="VF3..."
-                    autoCapitalize="characters"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    className="uppercase font-mono tracking-wide"
-                  />
-                </Field>
-                <Field label={t("bike.engineNo")} hint={t("bike.optional")}>
-                  <Input
-                    {...form.register("engineNo")}
-                    placeholder="ZD4..."
-                    autoCapitalize="characters"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    className="uppercase font-mono tracking-wide"
-                  />
-                </Field>
-              </div>
+              <Field label={t("bike.fuelType")} hint={t("bike.optional")}>
+                <Controller
+                  control={form.control}
+                  name="fuelType"
+                  render={({ field }) => (
+                    <Combobox
+                      value={(field.value as string) ?? ""}
+                      onChange={field.onChange}
+                      options={FUEL_OPTIONS}
+                      placeholder="Benzin"
+                    />
+                  )}
+                />
+              </Field>
+              {/* Full width at every size, not half of a two-up row. The panel
+                  is already inset 14px either side, so a half-column here is
+                  104px at 320px — and `input[type=date]` is the one control
+                  that cannot cope with that: WebKit lays out its own
+                  gg.aa.yyyy segments and clips them rather than scrolling.
+                  "İlk tescil tarihi" (95px) plus the "optional" hint (71px)
+                  does not fit that column either. */}
+              <Field
+                label={t("bike.firstRegistrationDate")}
+                hint={t("bike.optional")}
+                error={form.formState.errors.firstRegistrationDate?.message}
+              >
+                <Input type="date" {...form.register("firstRegistrationDate")} />
+              </Field>
+              {/* Chassis and engine numbers are ~17 characters of Geist Mono.
+                  That is 170px of text; a half-column inside this panel gives
+                  the input a 76px content box at 320px and still only 150px at
+                  `sm`, so you could see about eight characters of a VIN and had
+                  to scroll the field to check the rest against the ruhsat in
+                  your hand. Full width gives 190px at 320px — the whole number,
+                  on the narrowest phone we support. These stay one-up at every
+                  size for that reason; the labels ("Motor blok numarası",
+                  138px) would not have fitted a half-column either. */}
+              <Field label={t("bike.chassisNo")} hint={t("bike.optional")}>
+                <Input
+                  {...form.register("chassisNo")}
+                  placeholder="VF3..."
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="uppercase font-mono tracking-wide"
+                />
+              </Field>
+              <Field label={t("bike.engineNo")} hint={t("bike.optional")}>
+                <Input
+                  {...form.register("engineNo")}
+                  placeholder="ZD4..."
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="uppercase font-mono tracking-wide"
+                />
+              </Field>
               <Field label={t("bike.cylinderCc")} hint={t("bike.optional")}>
                 <Input
                   type="number"
@@ -617,7 +649,16 @@ function FormSkeleton() {
           <Skeleton className="h-6 w-32" />
         </CardHeader>
         <CardContent>
+          {/* The real form's shape, row for row: the type toggle, nickname,
+              plate, then the two pairs that are stacked on a phone and two-up
+              from `sm`, then the collapsed ruhsat disclosure. It has to break
+              at the same width the form does, or the skeleton itself is the
+              layout jump. */}
           <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-12 rounded-2xl" />
+            </div>
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-4 w-20" />
               <Skeleton className="h-11" />
@@ -626,7 +667,7 @@ function FormSkeleton() {
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-11" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Skeleton className="h-4 w-12" />
                 <Skeleton className="h-11" />
@@ -636,7 +677,7 @@ function FormSkeleton() {
                 <Skeleton className="h-11" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Skeleton className="h-4 w-10" />
                 <Skeleton className="h-11" />
@@ -646,24 +687,7 @@ function FormSkeleton() {
                 <Skeleton className="h-11" />
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-14" />
-              <Skeleton className="h-11" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-11" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-11" />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-11" />
-            </div>
+            <Skeleton className="h-14 rounded-2xl" />
             <div className="mt-2 flex gap-2">
               <Skeleton className="h-11 flex-1" />
               <Skeleton className="h-11 flex-1" />
@@ -707,11 +731,16 @@ function DetailsDisclosure({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl px-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+        className="flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl px-3.5 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
-        <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[14px] font-medium">{summary}</span>
-          <span className="truncate text-[12px] text-muted dark:text-muted-dark">{hint}</span>
+          {/* Was `truncate`. The English hint ("Colour, fuel, chassis and
+              engine no") is 192px and the row gives it 192px at 320px, so it
+              lost its last word to an ellipsis on the narrowest phone. It is a
+              hint — let it take a second line; `min-h` is a floor, not a
+              ceiling, and `py-3` keeps the row breathing when it does. */}
+          <span className="text-[12px] leading-snug text-muted dark:text-muted-dark">{hint}</span>
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted transition-transform dark:text-muted-dark ${
@@ -721,11 +750,21 @@ function DetailsDisclosure({
       </button>
       {/* The layout classes are applied only while open: a `flex` utility would
           out-specify preflight's `[hidden] { display: none }` and leave the
-          collapsed panel visible. */}
+          collapsed panel visible.
+
+          `border-t` because the two states have to read differently. Closed,
+          this is a single pill and the border around it is its outline. Open,
+          the same border becomes the outline of a group, and without a rule
+          under the header the summary floated 4px above the first label with
+          nothing to say it was a heading. */}
       <div
         id={panelId}
         hidden={!open}
-        className={open ? "flex flex-col gap-3 px-3.5 pb-3.5 pt-1" : undefined}
+        className={
+          open
+            ? "flex flex-col gap-3 border-t border-border p-3.5 dark:border-border-dark"
+            : undefined
+        }
       >
         {children}
       </div>
@@ -739,17 +778,33 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 /**
  * The vehicle's picture, and the three things you can do to it.
  *
- * Every state is the SAME tile: the identity tint underneath, the photo (or a
- * local preview of the one being uploaded) on top. So the box never changes
- * size, an upload shows the new photo the instant it is chosen rather than
- * after the round trip, and a failure falls back to what was there before with
- * the error stated in place and a retry — not a toast that scrolls away and
- * leaves you looking at an unexplained old photo.
+ * NO PHOTO MEANS NO TILE. The tile is rendered only once there is something in
+ * it — a stored photo, or the local preview of one being uploaded. It used to
+ * be unconditional so that adding or removing a photo could not resize the
+ * box, but on a vehicle that has never been photographed that guarantee was
+ * bought with a 140px-tall tinted rectangle sitting above the whole form
+ * announcing its own emptiness. What is left in that case is the control row
+ * on its own: two buttons, 44px, and nothing else.
+ *
+ * Where a tile IS shown, every state is still the same tile — the identity
+ * tint underneath, the photo (or the preview) on top. An upload shows the new
+ * photo the instant it is chosen rather than after the round trip; a failure
+ * falls back to what was there before with the error stated in place and a
+ * retry, not a toast that scrolls away and leaves you looking at an
+ * unexplained old photo. The tile's appearance when the first photo is picked
+ * is not a reflow of the box, it is the box arriving with its content.
  *
  * Two entry points on a phone: "take a photo" (`capture` opens the camera
  * directly) and "choose one" (the library). One combined `accept="image/*"`
  * input would make iOS put up an action sheet the user then has to answer —
  * naming both up front is the same reachability for one tap less.
+ *
+ * The camera is an icon button and the library is the labelled one. Two
+ * labelled-plus-iconed buttons sharing a row did not fit: at 320px each got a
+ * 64px text box for "Galeriden seç" (84px) or "Choose photo" (86px), and both
+ * were still truncated at 393px. A camera glyph with an `aria-label` says the
+ * same thing in 44px and leaves the row's whole remainder to the label that
+ * actually needs the words.
  */
 function VehiclePhotoSection({
   bikeId,
@@ -804,49 +859,56 @@ function VehiclePhotoSection({
     }
   };
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    // Cleared before the await: without it, picking the same file twice in a
-    // row fires no change event and the retry silently does nothing.
-    e.target.value = "";
+  // HiddenFileInput clears `value` itself, so re-picking the same photo after a
+  // failure still fires.
+  const onPick = (files: File[]) => {
+    const f = files[0];
     if (f) void send(f);
   };
 
   const busy = upload.isPending || remove.isPending;
 
+  // Something to show: the stored photo, or the one being uploaded right now.
+  // The preview keeps the tile up during the very first upload, so the picture
+  // appears the moment it is chosen instead of after the round trip.
+  const hasTile = hasPhoto || Boolean(preview);
+
   return (
     <div className="mb-4 flex flex-col gap-2">
-      <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border-dark">
-        <VehicleAvatar
-          vehicle={bike ?? { id: bikeId }}
-          previewSrc={preview}
-          emphasis
-          label={t("bike.photoOf", { name: bike?.nickname ?? "" })}
-          className="aspect-[16/9] w-full"
-        />
-        {upload.isPending && (
-          <span
-            className="absolute inset-0 grid place-items-center bg-black/35 text-[13px] font-medium text-white"
-            role="status"
-          >
-            {t("common.loading")}
-          </span>
-        )}
-      </div>
+      {hasTile && (
+        <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border-dark">
+          <VehicleAvatar
+            vehicle={bike ?? { id: bikeId }}
+            previewSrc={preview}
+            emphasis
+            label={t("bike.photoOf", { name: bike?.nickname ?? "" })}
+            className="aspect-[16/9] w-full"
+          />
+          {upload.isPending && (
+            <span
+              className="absolute inset-0 grid place-items-center bg-black/35 text-[13px] font-medium text-white"
+              role="status"
+            >
+              {t("common.loading")}
+            </span>
+          )}
+        </div>
+      )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2">
         {/* Default size, not `sm`: these are the photo affordances now, and
             `sm` is 36px — under the 44px touch target the rest of the app
             holds itself to. */}
         <Button
           type="button"
+          size="icon"
           variant="outline"
-          className="min-w-0 flex-1 text-[13px]"
+          className="h-11 w-11 shrink-0"
           onClick={() => cameraRef.current?.click()}
           disabled={busy}
+          aria-label={t("bike.takePhoto")}
         >
-          <Camera className="h-4 w-4 shrink-0" />
-          <span className="truncate">{t("bike.takePhoto")}</span>
+          <Camera className="h-4 w-4" />
         </Button>
         <Button
           type="button"
@@ -857,7 +919,7 @@ function VehiclePhotoSection({
         >
           <ImageIcon className="h-4 w-4 shrink-0" />
           <span className="truncate">
-            {hasPhoto ? t("bike.changePhoto") : t("bike.choosePhoto")}
+            {hasPhoto ? t("bike.changePhoto") : t("bike.addPhoto")}
           </span>
         </Button>
         {hasPhoto && (
@@ -895,16 +957,15 @@ function VehiclePhotoSection({
 
       {/* `capture` is what makes the first button open the camera rather than
           the picker. Kept on a separate input because the attribute cannot be
-          toggled reliably across WebViews once the element exists. */}
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onFile}
-      />
-      <input ref={libraryRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+          toggled reliably across WebViews once the element exists.
+
+          HiddenFileInput rather than `className="hidden"`: it renders sr-only
+          instead of display:none, because a programmatic .click() on a
+          display:none file input has historically been ignored in WKWebView —
+          which is precisely what the Capacitor wrap runs in, and both of these
+          are opened by .click() from the buttons above. */}
+      <HiddenFileInput ref={cameraRef} accept="image/*" capture="environment" onPick={onPick} />
+      <HiddenFileInput ref={libraryRef} accept="image/*" onPick={onPick} />
     </div>
   );
 }

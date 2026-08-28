@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select } from "@/components/ui/select";
 import { ErrorState } from "@/components/ErrorState";
 import { useConfirm } from "@/components/ConfirmSheet";
 import { pushToast } from "@/hooks/useToast";
@@ -140,18 +141,19 @@ function MemberList({
   const roleSelect = (m: (typeof members)[number]) => (
     <label>
       <span className="sr-only">{t("fleet.people.role")}</span>
-      <select
+      <Select
+        controlSize="sm"
+        wrapperClassName="w-36"
         value={m.role}
         disabled={!mayTouch(m.role) || isLastOwner(m.role) || setRole.isPending}
         onChange={(e) => onRole(m.userId, e.target.value as OrgRole)}
-        className="h-9 rounded-xl border border-border bg-surface px-2 text-[13px] disabled:opacity-50 dark:border-border-dark dark:bg-surface-elev-dark"
       >
         {ROLES.map((r) => (
           <option key={r} value={r} disabled={!mayTouch(r)}>
             {t(`fleet.roles.${r}`)}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 
@@ -231,7 +233,7 @@ function MemberList({
                     <p className="num mt-1 text-[12px]">{m.assignments.map((a) => a.plate ?? a.nickname).join(", ")}</p>
                   )}
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex shrink-0 flex-col items-end gap-x-3 gap-y-4">
                   {roleSelect(m)}
                   {!m.isSelf && mayTouch(m.role) && !isLastOwner(m.role) && (
                     <Button
@@ -283,33 +285,33 @@ function InviteSection({ orgId, callerRole }: { orgId: string; callerRole: OrgRo
       <SectionHeading title={t("fleet.people.invite")} />
       <form
         onSubmit={submit}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface/70 p-4 dark:border-border-dark dark:bg-surface-dark/60"
+        className="flex flex-wrap items-end gap-x-3 gap-y-4 rounded-2xl border border-border bg-surface/70 p-4 dark:border-border-dark dark:bg-surface-dark/60"
       >
         <div className="min-w-[220px] flex-1">
           <Field label={t("fleet.people.email")} error={error}>
             <Input
               type="email"
+              inputMode="email"
               autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="send"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="ali@ornek.com"
             />
           </Field>
         </div>
-        <div className="w-40">
-          <Field label={t("fleet.people.role")} id="invite-role">
-            <select
-              id="invite-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as OrgRole)}
-              className="h-11 w-full rounded-xl border border-border bg-surface px-2.5 text-[15px] dark:border-border-dark dark:bg-surface-elev-dark"
-            >
+        <div className="w-44">
+          <Field label={t("fleet.people.role")}>
+            <Select value={role} onChange={(e) => setRole(e.target.value as OrgRole)}>
               {ROLES.filter((r) => isOwner(callerRole) || r !== "owner").map((r) => (
                 <option key={r} value={r}>
                   {t(`fleet.roles.${r}`)}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
         <Button type="submit" variant="accent" disabled={create.isPending}>

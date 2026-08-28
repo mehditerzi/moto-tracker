@@ -4,6 +4,7 @@ import { TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { FleetCostVehicle } from "@mototracker/shared";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select } from "@/components/ui/select";
 import { ErrorState } from "@/components/ErrorState";
 import { useFleetContext } from "@/components/fleet/FleetLayout";
 import { useFleetCosts } from "@/hooks/useFleetData";
@@ -86,17 +87,18 @@ export function FleetCostsPage() {
         <SectionHeading title={t("fleet.costs.window", { from, to })}>
           <label className="flex items-center gap-2">
             <span className="sr-only">{t("fleet.costs.range")}</span>
-            <select
+            <Select
+              controlSize="sm"
+              wrapperClassName="w-40"
               value={months}
               onChange={(e) => setMonths(Number(e.target.value))}
-              className="h-8 rounded-lg border border-border bg-surface px-2 text-[12px] dark:border-border-dark dark:bg-surface-elev-dark"
             >
               {[3, 6, 12, 24].map((m) => (
                 <option key={m} value={m}>
                   {t("fleet.costs.lastMonths", { count: m })}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         </SectionHeading>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
