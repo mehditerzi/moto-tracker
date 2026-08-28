@@ -7,7 +7,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Build the root view controller in code rather than from Main.storyboard.
+        //
+        // The storyboard referenced MainViewController by name, and UIKit could
+        // not resolve it — "Unknown class MainViewController in Interface Builder
+        // file." — leaving no root view controller and a black screen. An
+        // Interface Builder class reference is resolved by STRING at runtime, so
+        // if the class is not in the binary the app fails silently and late.
+        //
+        // Constructing it here makes the reference a COMPILE-TIME one: if
+        // MainViewController.swift is ever missing from the target, this line
+        // fails the build and names it, instead of shipping an app that launches
+        // to nothing. CAPBridgeViewController declares no custom initialiser and
+        // builds its own view in loadView(), so it is safe to create directly —
+        // no nib, no coder.
+        //
+        // UIMainStoryboardFile is removed from Info.plist to match; Main.storyboard
+        // is left in place but is no longer the entry point. LaunchScreen.storyboard
+        // is unaffected — it is referenced separately by UILaunchStoryboardName.
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = MainViewController()
+        window.makeKeyAndVisible()
+        self.window = window
         return true
     }
 
