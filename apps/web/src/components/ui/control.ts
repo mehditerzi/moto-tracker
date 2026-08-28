@@ -72,6 +72,18 @@ export const FIELD_WIDTH = {
   number: "w-[9.5rem] shrink-0",
   /** currency symbol + 7 digits. */
   money: "w-[10.5rem] shrink-0",
+  /**
+   * `money`, but shaped to *share* a phone row with a fixed-width field.
+   *
+   * `grow`'s 9rem floor is 16px too wide for that: on a 375px phone a card's
+   * inner width is 301px, and 144 + 12 (FormRow gap) + 152 (`number`) = 308,
+   * so the row wrapped and left a 152px field marooned on a line of its own.
+   * The 8rem floor here still clears "Tutar" + the optional hint (117px) and
+   * still holds 8 digits, and it settles at `money`'s content width from `sm:`
+   * up so a desk row is not one 500px-wide currency field. Same shape as
+   * `date` for the same reason.
+   */
+  moneyGrow: "w-full min-w-[8rem] flex-1 sm:w-[10.5rem] sm:flex-none",
   /** A native date control renders "GG.AA.YYYY" plus a picker glyph. */
   date: "w-full min-w-[10.5rem] flex-1 sm:w-[11.5rem] sm:flex-none",
 } as const;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, Link2, LogOut, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,16 @@ export function VehicleShareSection({ bike }: { bike: Bike }) {
   const me = useMe();
   const confirm = useConfirm();
   const groups = useShareGroups();
-  const group = groups.data?.find((g) => g.id === bike.orgId) ?? null;
+  // A vehicle may now be in SEVERAL groups (029), most of which are private
+  // collections. This section is about PEOPLE, so it looks only at the groups
+  // that actually have somebody else in them — `memberCount > 1`. A car filed
+  // under "Ducatiler" alone is not shared with anyone and must not say it is.
+  const inGroups = (groups.data ?? []).filter((g) => bike.groupIds.includes(g.id));
+  const sharedGroups = inGroups.filter((g) => g.memberCount > 1);
+  // The group the member list, "stop sharing" and "leave" act on. Where there
+  // are several, the first is the one whose members are listed — and the count
+  // line names how many collections are involved so the rest is not hidden.
+  const group = sharedGroups[0] ?? null;
   const members = useGroupMembers(group?.id);
   const share = useShareVehicle(bike.id);
   const removeVehicle = useRemoveVehicleFromGroup();
@@ -54,12 +64,13 @@ export function VehicleShareSection({ bike }: { bike: Bike }) {
   // I can stop looking at it, but I cannot give it away or invite others.
   const isMine = !!myId && bike.userId === myId;
 
-  // A BUSINESS fleet's vehicle: `orgId` is set but it is not one of the caller's
-  // personal groups. Render nothing at all — a company van is governed by its
-  // organization, and an affordance here would contradict that permission model
-  // AND reveal fleet's existence to a consumer (docs/fleet-design.md §1). Held
-  // until the groups have loaded so a slow request cannot flash the wrong UI.
-  if (bike.orgId && !groups.isPending && !group) return null;
+  // A BUSINESS fleet's vehicle. Since 029 `orgId` means exactly that and
+  // nothing else, so this is now a single unambiguous test rather than an
+  // inference from a failed group lookup. Render nothing at all — a company van
+  // is governed by its organization, and an affordance here would contradict
+  // that permission model AND reveal fleet's existence to a consumer
+  // (docs/fleet-design.md §1).
+  if (bike.orgId) return null;
 
   const inviteLink = invite
     ? `${window.location.origin}/bikes?shareInvite=${encodeURIComponent(invite.token)}`
@@ -67,7 +78,14 @@ export function VehicleShareSection({ bike }: { bike: Bike }) {
 
   const onInvite = async () => {
     try {
-      const res = await share.mutateAsync({ email: email.trim(), role });
+      // Target the group whose members are on screen, so "invite" always means
+      // "into THIS garage". Without it the server would have to guess among the
+      // vehicle's groups, and it refuses to — it would make a new one instead.
+      const res = await share.mutateAsync({
+        email: email.trim(),
+        role,
+        ...(group ? { groupId: group.id } : {}),
+      });
       setInvite(res);
       setEmail("");
     } catch (e) {
@@ -155,6 +173,26 @@ export function VehicleShareSection({ bike }: { bike: Bike }) {
               ? t("share.sharedWithCount", { count: Math.max((members.data?.length ?? 1) - 1, 0) })
               : t("share.notShared")}
           </p>
+          {/* The vehicle's COLLECTIONS, which are a different question from who
+              can see it — and the entry point to the screen where they are
+              made. Listed by name because that is the whole value of having
+              named them. */}
+          {inGroups.length > 0 && (
+            <p className="mt-1 text-[12px] text-muted dark:text-muted-dark">
+              {t("groups.inGroups")}{" "}
+              <span className="text-text dark:text-text-dark">
+                {inGroups.map((g) => g.name).join(" · ")}
+              </span>
+            </p>
+          )}
+          {isMine && (
+            <Link
+              to="/groups"
+              className="mt-1 inline-block text-[12px] font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              {t("groups.manage")}
+            </Link>
+          )}
         </div>
         {isMine && (
           <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>

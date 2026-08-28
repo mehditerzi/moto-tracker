@@ -107,12 +107,36 @@ export function shareRoleForOrgRole(role: z.infer<typeof orgRoleSchema>): ShareR
   return "member";
 }
 
+/**
+ * A GROUP: a named collection of vehicles — "Ducatis", "Arabalarım", "Aile
+ * Garajı" — that may also be shared with people.
+ *
+ * ONE VEHICLE MAY BE IN SEVERAL GROUPS. That is the shape of the thing, not an
+ * incidental detail: the four examples the feature was asked for ("my cars", "my
+ * bikes", "Ducatis", "BMWs") are two overlapping axes, and a Ducati Monster
+ * belongs in "my bikes" and in "Ducatis" at once. Membership therefore lives in
+ * a join table (`bike_group`, migration 029) rather than in a column on the
+ * vehicle.
+ *
+ * Organising and sharing are ONE concept rather than two, under a single rule:
+ * **a group's members see the group's vehicles.** A group nobody else is in is a
+ * folder; invite somebody and the same folder is a shared garage. Nothing has to
+ * be migrated to go from one to the other, and visibility is the union over a
+ * vehicle's groups — monotonic, so filing a car in one more group can only ever
+ * widen who sees it.
+ */
 export const shareGroupSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(80),
   /** The CALLER's role in it. The client mirrors permissions from this. */
   role: shareRoleSchema,
   vehicleCount: z.number().int().nonnegative(),
+  /**
+   * Active members, INCLUDING the caller — so 1 means "nobody else", which is
+   * how the UI tells a private collection from a shared garage. It is the
+   * difference between a folder and a disclosure, so it is never inferred from
+   * the vehicle count or from whether an invite happens to be pending.
+   */
   memberCount: z.number().int().nonnegative(),
   createdAt: z.string(),
 });
@@ -157,8 +181,32 @@ export const vehicleShareCreateSchema = z.object({
   role: shareInviteRoleSchema,
   /** Optional name for the group this creates; defaults to the vehicle's. */
   groupName: z.string().min(1).max(80).optional(),
+  /**
+   * WHICH group to invite into. Needed since a vehicle may be in several: the
+   * server can only infer the target when the vehicle is in exactly one group
+   * the caller owns, and it refuses to guess among more (it makes a fresh
+   * one-vehicle group instead). Screens that already know which group the user
+   * is looking at send it; the one-tap share on a vehicle screen does not.
+   */
+  groupId: z.string().min(1).optional(),
 });
 export type VehicleShareCreateInput = z.infer<typeof vehicleShareCreateSchema>;
+
+/**
+ * Set the COMPLETE list of groups one vehicle belongs to.
+ *
+ * A whole-set PUT rather than add/remove calls, because that is the gesture the
+ * interface makes — a user ticks and unticks a list and taps done. A client-side
+ * diff of several requests can half-apply; one idempotent write cannot, and a
+ * retry after a dropped connection is free.
+ *
+ * Capped at MAX_SHARE_GROUPS: a vehicle cannot be in more groups than a person
+ * is allowed to have.
+ */
+export const vehicleGroupsSetSchema = z.object({
+  groupIds: z.array(z.string().min(1)).max(10),
+});
+export type VehicleGroupsSetInput = z.infer<typeof vehicleGroupsSetSchema>;
 
 /** The invite token is a bearer capability, so it is returned exactly once. */
 export const shareInviteSchema = z.object({

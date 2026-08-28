@@ -180,12 +180,19 @@ export function handoverVehicle(input: HandoverInput): HandoverResult {
 
     // ── 4. move the vehicle ─────────────────────────────────────────────────
     //
-    // `org_id = NULL` is not incidental: a sold car leaves the seller's garage
-    // group. Anything else would leave the seller's family reading the buyer's
-    // odometer. The buyer can share it again on their own terms.
+    // A sold car leaves EVERY garage group it was filed in, and that is not
+    // incidental: anything else would leave the seller's family — or their
+    // mechanic — reading the buyer's odometer. The buyer can file it wherever
+    // they like on their own terms.
+    //
+    // Both lines are needed since 029 split the two ideas apart: `org_id = NULL`
+    // releases a BUSINESS tenancy, the DELETE releases the personal groups. The
+    // trigger `trg_bike_org_clears_groups` only fires in the other direction (a
+    // vehicle becoming a company's), so it cannot cover this.
     //
     // The photo is dropped from the live row for the same reason a photo does
     // not transfer at all: it is the seller's picture, often of their driveway.
+    db.prepare("DELETE FROM bike_group WHERE bike_id = ?").run(bikeId);
     db.prepare(
       `UPDATE bike
           SET user_id = ?, org_id = NULL, photo_url = NULL, updated_at = datetime('now')

@@ -136,7 +136,10 @@ export function AppShell() {
           <Outlet />
         </main>
       ) : (
-        <main className={`mx-auto ${container} px-4 pl-safe pr-safe pb-28 pt-6 sm:pb-16 sm:pt-8`}>
+        // Bottom padding is derived from the tab bar's real height
+        // (`--tabbar-clear` in styles.css) rather than a hard-coded `pb-28`,
+        // which over-reserved by ~19px and had no way of tracking the bar.
+        <main className={`mx-auto ${container} px-4 pl-safe pr-safe pb-[var(--tabbar-clear)] pt-6 sm:pb-16 sm:pt-8`}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
@@ -217,9 +220,15 @@ function MobileNav({
   ];
 
   return (
+    // The background is flush to the screen edge (`bottom-0` + viewport-fit=cover
+    // + Capacitor `contentInset: "never"`), and `--tabbar-pb` — NOT `pb-safe` —
+    // supplies the home-indicator clearance. `pb-safe` reserves the full 34px
+    // inset under the touch rows, which is the empty band that reads as a gap
+    // between the bar and the bottom of the screen. See styles.css.
+    // If `pt-1.5` or `min-h-[52px]` below change, update `--tabbar-h` too.
     <nav
       aria-label={t("nav.primary")}
-      className={`fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-bg/90 px-safe pb-safe backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/90 ${
+      className={`fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-bg/90 px-safe pb-[var(--tabbar-pb)] backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/90 ${
         alwaysVisible ? "" : "sm:hidden"
       }`}
     >

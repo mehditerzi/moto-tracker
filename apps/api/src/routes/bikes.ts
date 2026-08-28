@@ -14,6 +14,7 @@ import { inferVehicleType } from "../ocr/catalog.js";
 import { canAddOrgVehicle, canAddVehicle } from "../lib/entitlement.js";
 import {
   authorizeBike,
+  groupIdsForBikes,
   orgMode,
   readableBikeScope,
   roleInOrg,
@@ -66,13 +67,17 @@ interface BikeRow {
   updated_at: string;
 }
 
-function rowToBike(r: BikeRow) {
+function rowToBike(r: BikeRow, groupIds: string[] = []) {
   return {
     id: r.id,
     // For an org vehicle this is the CUSTODIAN (who registered it), not who may
     // see it — access comes from orgId + membership. See lib/orgAccess.ts.
     userId: r.user_id,
     orgId: r.org_id,
+    // The garage groups this vehicle is filed in, restricted to groups the
+    // caller belongs to (lib/orgAccess.ts → groupIdsForBikes). Always present so
+    // the client never has to distinguish "no groups" from "not told".
+    groupIds,
     vehicleType: r.vehicle_type,
     nickname: r.nickname,
     plate: r.plate,
@@ -105,6 +110,12 @@ function rowToBike(r: BikeRow) {
  */
 const VEHICLE_FACT = { vehicleFact: true } as const;
 
+/** The caller's groups for ONE vehicle — the single-row form of the batched
+ *  lookup the list uses. */
+function groupsOf(userId: string, bikeId: string, db: Parameters<typeof groupIdsForBikes>[2]) {
+  return groupIdsForBikes(userId, [bikeId], db).get(bikeId) ?? [];
+}
+
 bikesRouter.use(requireUser);
 
 // The caller's own garage, every org vehicle they may read, and every vehicle
@@ -128,7 +139,11 @@ bikesRouter.get(
           ORDER BY created_at DESC`,
       )
       .all(...scope.params) as BikeRow[];
-    res.json(rows.map(rowToBike));
+    // One query for the whole list, not one per row: the garage screen sections
+    // and filters by group, so this would otherwise be an N+1 that grows with
+    // the size of the garage.
+    const groups = groupIdsForBikes(req.user!.id, rows.map((r) => r.id), db);
+    res.json(rows.map((r) => rowToBike(r, groups.get(r.id) ?? [])));
   }),
 );
 
@@ -146,6 +161,12 @@ bikesRouter.post(
     const body = bikeCreateSchema.parse(req.body);
     const { orgId } = bikeOrgSchema.parse(req.body);
     const db = getDb();
+
+    // A personal garage GROUP is not a tenancy, so `orgId` naming one does NOT
+    // become `bike.org_id`. The vehicle is created as an ordinary personal
+    // vehicle and then filed in the group (029) — which is why grouping cannot
+    // mint free capacity: there is no org for the bill to fall to.
+    let personalGroupId: string | null = null;
 
     if (orgId) {
       const role = roleInOrg(req.user!.id, orgId, db);
@@ -176,6 +197,7 @@ bikesRouter.post(
           res.status(403).json({ error: "vehicle_limit_reached" });
           return;
         }
+        personalGroupId = orgId;
       } else {
         // Adding a vehicle grows the org's bill, so it is an owner/manager act —
         // staff run the fleet, they don't size it. A non-member gets 404: the
@@ -238,7 +260,8 @@ bikesRouter.post(
     ).run(
       id,
       req.user!.id,
-      orgId ?? null,
+      // A garage group never lands here — see `personalGroupId` above.
+      personalGroupId ? null : (orgId ?? null),
       // Respect an explicit choice; otherwise infer car/motorcycle from the
       // make/model (covers the review screen's "create bike", which omits it).
       body.vehicleType ?? inferVehicleType(body.make ?? null, body.model ?? null) ?? "motorcycle",
@@ -259,8 +282,13 @@ bikesRouter.post(
     // guarantee — the check above can lose a race with a simultaneous add, and
     // this INSERT is where that race is actually decided.
     registerIdentities(db, id, { chassisNo: body.chassisNo, engineNo: body.engineNo });
+    if (personalGroupId) {
+      db.prepare(
+        "INSERT OR IGNORE INTO bike_group (bike_id, org_id, added_by) VALUES (?, ?, ?)",
+      ).run(id, personalGroupId, req.user!.id);
+    }
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(id) as BikeRow;
-    res.status(201).json(rowToBike(row));
+    res.status(201).json(rowToBike(row, groupsOf(req.user!.id, id, db)));
   }),
 );
 
@@ -268,8 +296,9 @@ bikesRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
     if (!authorizeBike(req, res, req.params.id!, "read", VEHICLE_FACT)) return;
-    const row = getDb().prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
-    res.json(rowToBike(row));
+    const db = getDb();
+    const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
+    res.json(rowToBike(row, groupsOf(req.user!.id, row.id, db)));
   }),
 );
 
@@ -354,7 +383,7 @@ bikesRouter.patch(
       // would survive only as long as nobody edited anything.
       registerIdentities(db, row.id, { chassisNo: row.chassis_no, engineNo: row.engine_no });
     }
-    res.json(rowToBike(row));
+    res.json(rowToBike(row, groupsOf(req.user!.id, row.id, db)));
   }),
 );
 
@@ -449,7 +478,7 @@ bikesRouter.post(
     db.prepare("UPDATE bike SET photo_url = ?, updated_at = datetime('now') WHERE id = ?")
       .run(outPath, req.params.id);
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
-    res.status(201).json(rowToBike(row));
+    res.status(201).json(rowToBike(row, groupsOf(req.user!.id, row.id, db)));
   }),
 );
 

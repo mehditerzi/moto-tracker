@@ -349,6 +349,7 @@ export function bikeIsReachable(db: DB, userId: string, bikeId: string): boolean
     | { ok: number }
     | undefined;
   if (row) return true;
+  // Reachable through a BUSINESS organization the caller is a member of…
   const org = db
     .prepare(
       `SELECT 1 AS ok FROM bike b
@@ -356,5 +357,17 @@ export function bikeIsReachable(db: DB, userId: string, bikeId: string): boolean
         WHERE b.id = ?`,
     )
     .get(userId, bikeId) as { ok: number } | undefined;
-  return !!org;
+  if (org) return true;
+  // …or through a garage GROUP they are in. Since 029 a grouped vehicle keeps
+  // `bike.org_id IS NULL`, so the join above no longer finds it — and without
+  // this second lookup, re-scanning the ruhsat of a car your wife shared with
+  // you would open a "request access" conversation with your own household.
+  const group = db
+    .prepare(
+      `SELECT 1 AS ok FROM bike_group bg
+         JOIN org_member m ON m.org_id = bg.org_id AND m.user_id = ? AND m.status = 'active'
+        WHERE bg.bike_id = ?`,
+    )
+    .get(userId, bikeId) as { ok: number } | undefined;
+  return !!group;
 }

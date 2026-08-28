@@ -66,13 +66,19 @@ interface EntitlementRow {
  *   company van must not consume the personal garage the member paid for. Does
  *   not count.
  *
- *   A PERSONAL GROUP's vehicle — counts against its CUSTODIAN, exactly as if it
- *   had never been shared. This is the anti-farming rule and it is the reason
- *   the join below exists at all. Without it, moving a vehicle into a garage
- *   group would set `org_id` and quietly drop it off everybody's ceiling: a free
- *   user could make a group, put ten cars in it, and pay for none of them. A
- *   personal group has no operator and no fleet contract, so there is no other
- *   ceiling for it to fall to.
+ *   A vehicle in a PERSONAL GARAGE GROUP — counts against its CUSTODIAN, exactly
+ *   as if it had never been grouped or shared. This is the anti-farming rule:
+ *   without it a free user could make a group, put ten cars in it and pay for
+ *   none of them, because a personal group has no operator and no fleet contract
+ *   and so there is no other ceiling for the vehicle to fall to.
+ *
+ *   Since migration 029 that rule is STRUCTURAL rather than remembered. Group
+ *   membership lives in `bike_group` and a grouped vehicle keeps
+ *   `bike.org_id IS NULL`, so it is caught by the first clause below and is
+ *   counted by construction — however many groups it joins. The `is_personal`
+ *   half of the predicate is now belt-and-braces: it costs one indexed lookup
+ *   and it means a row mis-filed by some future bug is counted rather than free,
+ *   which is the safe direction to fail in.
  *
  * The pleasant consequence for the honest case: a couple sharing one car burn
  * ONE slot between them (the custodian's), not one each. Membership grants no

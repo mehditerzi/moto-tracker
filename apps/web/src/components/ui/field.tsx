@@ -95,7 +95,14 @@ export function Field({
   return (
     <FieldContext.Provider value={ctx}>
       <div className={cn("flex min-w-0 flex-col gap-1.5", FIELD_WIDTH[width], className)}>
-        <div className="flex items-baseline justify-between gap-2">
+        {/* `flex-wrap` is a safety net, not a layout: when the label and the
+            annotation fit — which is the case every time a field is given a
+            width that clears its Turkish label — this renders identically. When
+            they do not, the annotation drops to a second line instead of
+            overflowing the column, because a one-word label like "Kilometre"
+            cannot shrink to min-content and the `shrink-0` annotation would
+            otherwise spill over whatever sits to the right of the field. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
           <Label htmlFor={controlId} className={cn("text-pretty", labelClassName)}>
             {label}
           </Label>

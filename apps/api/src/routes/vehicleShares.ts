@@ -18,6 +18,7 @@ import {
   shareGroupUpdateSchema,
   shareInviteCreateSchema,
   shareRoleForOrgRole,
+  vehicleGroupsSetSchema,
   vehicleShareCreateSchema,
   type ClaimKind,
   type ClaimStatus,
@@ -32,6 +33,7 @@ import {
 import {
   approversOfBike,
   canDecideClaims,
+  groupIdsForBikes,
   requirePersonalGroupRole,
   userOrgs,
 } from "../lib/orgAccess.js";
@@ -116,7 +118,9 @@ function groupSummary(orgId: string, role: OrgRole): ShareGroup {
     .get(orgId) as GroupRow;
   const counts = db
     .prepare(
-      `SELECT (SELECT COUNT(*) FROM bike WHERE org_id = ? AND archived = 0) AS vehicles,
+      `SELECT (SELECT COUNT(*) FROM bike_group bg
+                 JOIN bike b ON b.id = bg.bike_id AND b.archived = 0
+                WHERE bg.org_id = ?) AS vehicles,
               (SELECT COUNT(*) FROM org_member WHERE org_id = ? AND status = 'active') AS members`,
     )
     .get(orgId, orgId) as { vehicles: number; members: number };
@@ -128,6 +132,21 @@ function groupSummary(orgId: string, role: OrgRole): ShareGroup {
     memberCount: counts.members,
     createdAt: org.created_at,
   };
+}
+
+/** Vehicle ids in a group, newest first. Archived rows are left out: an archived
+ *  vehicle is out of the garage, so it is out of every collection of it too. */
+function groupVehicleIds(orgId: string): string[] {
+  return (
+    getDb()
+      .prepare(
+        `SELECT bg.bike_id FROM bike_group bg
+           JOIN bike b ON b.id = bg.bike_id AND b.archived = 0
+          WHERE bg.org_id = ?
+          ORDER BY bg.added_at DESC`,
+      )
+      .all(orgId) as { bike_id: string }[]
+  ).map((r) => r.bike_id);
 }
 
 /** Active owners of a group. The number the last-owner guard protects. */
@@ -213,25 +232,21 @@ vehicleSharesRouter.patch(
 );
 
 /**
- * Delete a group. Every vehicle goes HOME to its custodian rather than being
- * deleted — the group was a lens on other people's cars, not a container that
- * owns them. Doing it any other way would mean the group's owner could destroy a
- * member's vehicle and its whole history by leaving.
+ * Delete a group. Every vehicle stays exactly where it was — in its custodian's
+ * garage — and simply loses this label. A group is a way of looking at vehicles,
+ * never a container that owns them; doing it any other way would mean the
+ * group's owner could destroy a member's vehicle and its whole history by
+ * tidying up their folders.
+ *
+ * Nothing here has to move a vehicle any more: since 029 a grouped vehicle never
+ * left home in the first place. `ON DELETE CASCADE` from `organization(id)`
+ * clears `bike_group` along with `org_member` and `org_invite`.
  */
 vehicleSharesRouter.delete(
   "/groups/:groupId",
   requirePersonalGroupRole("owner"),
   asyncHandler(async (req, res) => {
-    const db = getDb();
-    const orgId = req.orgMembership!.orgId;
-    const remove = db.transaction(() => {
-      db.prepare("UPDATE bike SET org_id = NULL, updated_at = datetime('now') WHERE org_id = ?").run(
-        orgId,
-      );
-      // CASCADE from organization(id) clears org_member and org_invite.
-      db.prepare("DELETE FROM organization WHERE id = ?").run(orgId);
-    });
-    remove();
+    getDb().prepare("DELETE FROM organization WHERE id = ?").run(req.orgMembership!.orgId);
     res.status(204).end();
   }),
 );
@@ -310,8 +325,12 @@ vehicleSharesRouter.delete(
         orgId,
         targetId,
       );
+      // Their cars leave the group with them. The vehicles themselves are
+      // untouched — they were never anywhere but their custodian's garage.
       db.prepare(
-        "UPDATE bike SET org_id = NULL, updated_at = datetime('now') WHERE org_id = ? AND user_id = ?",
+        `DELETE FROM bike_group
+           WHERE org_id = ?
+             AND bike_id IN (SELECT id FROM bike WHERE user_id = ?)`,
       ).run(orgId, targetId);
       // A pending invite for someone just removed must not let them back in.
       db.prepare(
@@ -454,7 +473,11 @@ vehicleSharesRouter.get(
       return;
     }
     const { n } = db
-      .prepare("SELECT COUNT(*) AS n FROM bike WHERE org_id = ? AND archived = 0")
+      .prepare(
+        `SELECT COUNT(*) AS n FROM bike_group bg
+           JOIN bike b ON b.id = bg.bike_id AND b.archived = 0
+          WHERE bg.org_id = ?`,
+      )
       .get(invite.org_id) as { n: number };
     const member = db
       .prepare(
@@ -523,13 +546,31 @@ vehicleSharesRouter.post(
 
 // ─── vehicles in a group ──────────────────────────────────────────────────────
 
+/** The vehicles in a group, as ids. The caller already has the full records from
+ *  `GET /api/bikes` — every vehicle in a group they belong to is in their scope
+ *  — so sending ids keeps this a cheap membership question rather than a second,
+ *  divergent projection of a vehicle. */
+vehicleSharesRouter.get(
+  "/groups/:groupId/vehicles",
+  requirePersonalGroupRole(),
+  asyncHandler(async (req, res) => {
+    res.json({ bikeIds: groupVehicleIds(req.orgMembership!.orgId) });
+  }),
+);
+
 /**
  * Put one of MY vehicles into a group.
  *
  * Custodian-only, and that is the important line: a member cannot drag somebody
  * else's car into a garage, and — because `bike.user_id` is left alone — the
- * vehicle keeps costing its custodian a slot. Sharing changes who can see a
- * vehicle; it never changes who pays for it (lib/entitlement.ts).
+ * vehicle keeps costing its custodian a slot. A group changes who can see a
+ * vehicle; it never changes who pays for it (lib/entitlement.ts). Since 029 that
+ * is structural rather than careful: the vehicle does not move at all, so there
+ * is no ceiling for it to fall off.
+ *
+ * Idempotent. Adding a vehicle that is already here is success, not a conflict —
+ * the client's natural gesture is "make this true", and a 409 would turn a
+ * double-tap into an error the user has to interpret.
  */
 vehicleSharesRouter.post(
   "/groups/:groupId/vehicles",
@@ -542,16 +583,17 @@ vehicleSharesRouter.post(
       .prepare("SELECT id, user_id, org_id FROM bike WHERE id = ?")
       .get(body.bikeId) as { id: string; user_id: string; org_id: string | null } | undefined;
     // Only a vehicle that is currently PERSONAL and yours. A company van cannot
-    // be moved into a family garage: it would take the org's records with it and
-    // hand them to people the org never approved.
+    // be filed in a family garage: it would take the org's records with it and
+    // show them to people the org never approved. (The schema refuses it too —
+    // trg_bike_group_personal_bike_ins — but a 404 is a better answer than a
+    // constraint violation.)
     if (!bike || bike.user_id !== req.user!.id || bike.org_id !== null) {
       res.status(404).json({ error: "bike_not_found" });
       return;
     }
-    db.prepare("UPDATE bike SET org_id = ?, updated_at = datetime('now') WHERE id = ?").run(
-      orgId,
-      bike.id,
-    );
+    db.prepare(
+      "INSERT OR IGNORE INTO bike_group (bike_id, org_id, added_by) VALUES (?, ?, ?)",
+    ).run(bike.id, orgId, req.user!.id);
     res.status(204).end();
   }),
 );
@@ -564,8 +606,12 @@ vehicleSharesRouter.delete(
     const db = getDb();
     const orgId = req.orgMembership!.orgId;
     const bike = db
-      .prepare("SELECT id, user_id FROM bike WHERE id = ? AND org_id = ?")
-      .get(req.params.bikeId, orgId) as { id: string; user_id: string } | undefined;
+      .prepare(
+        `SELECT b.id, b.user_id FROM bike b
+           JOIN bike_group bg ON bg.bike_id = b.id AND bg.org_id = ?
+          WHERE b.id = ?`,
+      )
+      .get(orgId, req.params.bikeId) as { id: string; user_id: string } | undefined;
     if (!bike) {
       res.status(404).json({ error: "bike_not_found" });
       return;
@@ -574,10 +620,80 @@ vehicleSharesRouter.delete(
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    db.prepare("UPDATE bike SET org_id = NULL, updated_at = datetime('now') WHERE id = ?").run(
-      bike.id,
-    );
+    db.prepare("DELETE FROM bike_group WHERE bike_id = ? AND org_id = ?").run(bike.id, orgId);
     res.status(204).end();
+  }),
+);
+
+/**
+ * Set the complete list of groups ONE OF MY VEHICLES belongs to.
+ *
+ * This is the write the interface actually makes: the user opens a car, ticks
+ * "Ducatis" and "Motorlarım", unticks "Satılık", and taps done. Expressing that
+ * as a diff of POSTs and DELETEs from the client means a half-applied state
+ * whenever one of them fails; expressing it as one idempotent PUT means the
+ * server holds the transaction and a retry is free.
+ *
+ * CUSTODIAN ONLY, and only over groups the caller is an owner or member of.
+ * Both halves matter: you may not file somebody else's car anywhere, and you may
+ * not file your own car into a group you merely have guest access to — a
+ * mechanic must not be able to drop your bike into their own shop's garage and
+ * pick up everyone else in it.
+ *
+ * Groups the caller cannot see are LEFT ALONE rather than deleted. A car may sit
+ * in a group of its own custodian's that this request knows nothing about
+ * (`groupIdsForBikes` hides other people's group names for good reason), and a
+ * PUT that silently removed what it could not see would be a data-loss bug
+ * driven by a permission boundary.
+ */
+vehicleSharesRouter.put(
+  "/vehicles/:bikeId/groups",
+  asyncHandler(async (req, res) => {
+    const body = vehicleGroupsSetSchema.parse(req.body);
+    const db = getDb();
+    const bikeId = req.params.bikeId!;
+    const bike = db
+      .prepare("SELECT id, user_id, org_id FROM bike WHERE id = ?")
+      .get(bikeId) as { id: string; user_id: string; org_id: string | null } | undefined;
+    if (!bike || bike.user_id !== req.user!.id || bike.org_id !== null) {
+      res.status(404).json({ error: "bike_not_found" });
+      return;
+    }
+    // The groups this caller may file into: personal, and not as a guest.
+    const filable = new Set(
+      userOrgs(req.user!.id, db)
+        .filter((o) => o.mode === "personal" && o.role !== "driver")
+        .map((o) => o.orgId),
+    );
+    const wanted = [...new Set(body.groupIds)];
+    const unknown = wanted.find((id) => !filable.has(id));
+    if (unknown !== undefined) {
+      // 404, not 403: a group id the caller has no membership in is not a thing
+      // they are being refused, it is a thing that does not exist for them.
+      res.status(404).json({ error: "share_group_not_found" });
+      return;
+    }
+    const write = db.transaction(() => {
+      const current = (
+        db.prepare("SELECT org_id FROM bike_group WHERE bike_id = ?").all(bikeId) as {
+          org_id: string;
+        }[]
+      ).map((r) => r.org_id);
+      const wantedSet = new Set(wanted);
+      for (const orgId of current) {
+        // Only ever unfile from a group this caller can see. See the note above.
+        if (filable.has(orgId) && !wantedSet.has(orgId)) {
+          db.prepare("DELETE FROM bike_group WHERE bike_id = ? AND org_id = ?").run(bikeId, orgId);
+        }
+      }
+      for (const orgId of wanted) {
+        db.prepare(
+          "INSERT OR IGNORE INTO bike_group (bike_id, org_id, added_by) VALUES (?, ?, ?)",
+        ).run(bikeId, orgId, req.user!.id);
+      }
+    });
+    write();
+    res.json({ groupIds: groupIdsForBikes(req.user!.id, [bikeId], db).get(bikeId) ?? [] });
   }),
 );
 
@@ -601,25 +717,52 @@ vehicleSharesRouter.post(
       res.status(404).json({ error: "bike_not_found" });
       return;
     }
-    const mine = userOrgs(req.user!.id, db).filter(
-      (o) => o.mode === "personal" && o.role === "owner",
-    );
-    // Already in a group? Then this is an invitation to THAT group, not a second
-    // one — a vehicle lives in one garage, and silently creating a rival group
-    // would leave the user with two lists that disagree.
-    const existingGroupId =
-      bike.org_id && mine.some((o) => o.orgId === bike.org_id) ? bike.org_id : null;
-    if (!existingGroupId && bike.org_id !== null) {
+    if (bike.org_id !== null) {
       // A business fleet's vehicle. Not shareable this way.
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    if (!existingGroupId && mine.length >= MAX_SHARE_GROUPS) {
+    const mine = userOrgs(req.user!.id, db).filter(
+      (o) => o.mode === "personal" && o.role === "owner",
+    );
+
+    // WHICH GROUP DOES THIS INVITATION GO TO?
+    //
+    // A vehicle may now be in several groups (029), so "the vehicle's group" is
+    // no longer a well-defined thing and the caller has to be able to say. The
+    // resolution order is the one that keeps every existing client working
+    // without asking it to learn anything:
+    //
+    //   1. an explicit `groupId`, if the caller owns it — the group screen sends
+    //      this, because there the user has literally just pointed at a group;
+    //   2. otherwise, if the vehicle is in EXACTLY ONE group the caller owns,
+    //      that one — the old behaviour, and the only unambiguous inference;
+    //   3. otherwise a fresh one-vehicle group named after the vehicle — which
+    //      is what the one-tap share on the vehicle screen has always done.
+    //
+    // Case 2 is deliberately narrow. Guessing among several groups would attach
+    // a person to a collection they were never shown, and "shared with the wrong
+    // people" is the one mistake this feature must not make quietly.
+    const ownedGroupIds = new Set(mine.map((o) => o.orgId));
+    const inGroups = groupIdsForBikes(req.user!.id, [bike.id], db).get(bike.id) ?? [];
+    const ownedContaining = inGroups.filter((id) => ownedGroupIds.has(id));
+
+    let groupId: string | null = null;
+    if (body.groupId) {
+      if (!ownedGroupIds.has(body.groupId)) {
+        res.status(404).json({ error: "share_group_not_found" });
+        return;
+      }
+      groupId = body.groupId;
+    } else if (ownedContaining.length === 1) {
+      groupId = ownedContaining[0]!;
+    }
+
+    if (!groupId && mine.length >= MAX_SHARE_GROUPS) {
       res.status(403).json({ error: "share_group_limit_reached" });
       return;
     }
 
-    let groupId = existingGroupId;
     const run = db.transaction(() => {
       if (!groupId) {
         groupId = newId();
@@ -630,11 +773,11 @@ vehicleSharesRouter.post(
           groupId,
           req.user!.id,
         );
-        db.prepare("UPDATE bike SET org_id = ?, updated_at = datetime('now') WHERE id = ?").run(
-          groupId,
-          bike.id,
-        );
       }
+      // Idempotent: the vehicle is already here in cases 1 and 2.
+      db.prepare(
+        "INSERT OR IGNORE INTO bike_group (bike_id, org_id, added_by) VALUES (?, ?, ?)",
+      ).run(bike.id, groupId, req.user!.id);
     });
     run();
 
@@ -896,12 +1039,28 @@ vehicleSharesRouter.post(
     // A business fleet's vehicle is never shared into a consumer group: that
     // would put an outsider inside an organization's tenancy. A fleet that wants
     // to hand a vehicle over does it by approving a PURCHASE claim.
-    if (bike.org_id !== null && !isPersonalOrg(bike.org_id)) {
+    if (bike.org_id !== null) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
 
-    let groupId = bike.org_id;
+    // Which group does the requester join? The same resolution as the one-tap
+    // share, minus the explicit choice — the approver is answering a knock, not
+    // filing a car. Exactly one group belonging to the CUSTODIAN means that
+    // group; anything else gets a fresh one-vehicle group, so approving "let me
+    // see this car" never quietly hands a stranger the rest of a collection.
+    const custodianGroups = (
+      db
+        .prepare(
+          `SELECT bg.org_id FROM bike_group bg
+             JOIN org_member m
+               ON m.org_id = bg.org_id AND m.user_id = ? AND m.status = 'active' AND m.role = 'owner'
+            WHERE bg.bike_id = ?`,
+        )
+        .all(bike.user_id, bike.id) as { org_id: string }[]
+    ).map((r) => r.org_id);
+
+    let groupId: string | null = custodianGroups.length === 1 ? custodianGroups[0]! : null;
     const role = orgRoleForShareRole(body.role);
     const approve = db.transaction(() => {
       if (!groupId) {
@@ -913,10 +1072,9 @@ vehicleSharesRouter.post(
           groupId,
           bike.user_id,
         );
-        db.prepare("UPDATE bike SET org_id = ?, updated_at = datetime('now') WHERE id = ?").run(
-          groupId,
-          bike.id,
-        );
+        db.prepare(
+          "INSERT OR IGNORE INTO bike_group (bike_id, org_id, added_by) VALUES (?, ?, ?)",
+        ).run(bike.id, groupId, bike.user_id);
       }
       db.prepare(
         `INSERT INTO org_member (org_id, user_id, role) VALUES (?, ?, ?)
@@ -931,13 +1089,6 @@ vehicleSharesRouter.post(
     res.json({ id: claim.id, status: "approved", groupId });
   }),
 );
-
-function isPersonalOrg(orgId: string): boolean {
-  const row = getDb()
-    .prepare("SELECT is_personal FROM organization WHERE id = ?")
-    .get(orgId) as { is_personal: number } | undefined;
-  return row?.is_personal === 1;
-}
 
 vehicleSharesRouter.post(
   "/claims/:id/decline",

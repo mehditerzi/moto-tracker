@@ -65,6 +65,15 @@ export function useCreateShareGroup() {
   });
 }
 
+export function useRenameShareGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, name }: { groupId: string; name: string }) =>
+      api<ShareGroup>(`/api/vehicle-shares/groups/${groupId}`, { method: "PATCH", json: { name } }),
+    onSuccess: () => invalidateGarage(qc),
+  });
+}
+
 export function useDeleteShareGroup() {
   const qc = useQueryClient();
   return useMutation({
@@ -108,6 +117,28 @@ export function useRemoveVehicleFromGroup() {
 }
 
 /**
+ * Set the COMPLETE list of groups one vehicle is filed in.
+ *
+ * One idempotent write rather than a client-side diff of adds and removes: the
+ * gesture is "tick these, untick those, done", and a diff that half-applies
+ * leaves the user looking at a garage that disagrees with itself.
+ */
+export function useSetVehicleGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bikeId, groupIds }: { bikeId: string; groupIds: string[] }) =>
+      api<{ groupIds: string[] }>(`/api/vehicle-shares/vehicles/${bikeId}/groups`, {
+        method: "PUT",
+        json: { groupIds },
+      }),
+    onSuccess: (_r, v) => {
+      invalidateGarage(qc);
+      qc.invalidateQueries({ queryKey: ["bikes", v.bikeId] });
+    },
+  });
+}
+
+/**
  * The invitation token comes back exactly once, in the response to creating it,
  * and is never in a list — so the caller must show or copy it immediately. Both
  * mutations below return it for that reason.
@@ -142,14 +173,30 @@ export function useInviteToGroup() {
   });
 }
 
-/** One-tap single-vehicle share — a group of one, created for you. */
+/**
+ * One-tap single-vehicle share.
+ *
+ * `groupId` says WHICH group to invite into — needed since a vehicle may be in
+ * several. Omit it and the server infers the target only when the vehicle is in
+ * exactly one group the caller owns; faced with a choice it makes a fresh
+ * one-vehicle group rather than guess, because attaching somebody to a
+ * collection they were never shown is the one mistake this must not make.
+ */
 export function useShareVehicle(bikeId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, role }: { email: string; role: ShareInviteRole }) =>
+    mutationFn: ({
+      email,
+      role,
+      groupId,
+    }: {
+      email: string;
+      role: ShareInviteRole;
+      groupId?: string;
+    }) =>
       api<ShareInviteResult>(`/api/vehicle-shares/vehicles/${bikeId}/share`, {
         method: "POST",
-        json: { email, role },
+        json: { email, role, ...(groupId ? { groupId } : {}) },
       }),
     onSuccess: () => invalidateGarage(qc),
   });
