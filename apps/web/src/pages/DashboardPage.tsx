@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Plus, Pencil, Bike as BikeIcon, Settings2, Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -137,67 +137,69 @@ export function DashboardPage() {
         orgNameFor={(id) => orgVehicles.get(id)?.orgName ?? null}
       />
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={active.bike.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.22 }}
-          className="flex flex-col gap-5"
-        >
-          {active.bike.photoUrl && (
-            <div className="overflow-hidden rounded-2xl border border-border dark:border-border-dark">
-              <img
-                src={`${env.VITE_API_URL}${active.bike.photoUrl}`}
-                alt={active.bike.nickname}
-                className="block h-40 w-full object-cover"
-              />
-            </div>
-          )}
+      {/* Was wrapped in `<AnimatePresence mode="wait">`. "wait" holds the new
+          vehicle back until the old one has finished its 0.22s exit, so every
+          tap on the switcher spent a fifth of a second on an empty column
+          before anything appeared — on the app's front door, on the interaction
+          people repeat most. The entrance stays; only the enforced wait goes. */}
+      <motion.div
+        key={active.bike.id}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22 }}
+        className="flex flex-col gap-5"
+      >
+        {active.bike.photoUrl && (
+          <div className="overflow-hidden rounded-2xl border border-border dark:border-border-dark">
+            <img
+              src={`${env.VITE_API_URL}${active.bike.photoUrl}`}
+              alt={active.bike.nickname}
+              className="block h-40 w-full object-cover"
+            />
+          </div>
+        )}
 
-          <header className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="label-micro flex items-center gap-1.5 text-muted dark:text-muted-dark">
-                  <ActiveIcon className="h-3.5 w-3.5" strokeWidth={1.8} />
-                  {t("dashboard.active")}
-                </div>
-                {/* Persistent, non-dismissible: a driver must never be unsure
-                    which garage they are in. */}
-                {activeOrg && <OrgVehicleBadge orgName={activeOrg.orgName} />}
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="label-micro flex items-center gap-1.5 text-muted dark:text-muted-dark">
+                <ActiveIcon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                {t("dashboard.active")}
               </div>
-              <h1 className="mt-1.5 truncate text-[32px] font-semibold leading-none tracking-tight">
-                {active.bike.nickname}
-              </h1>
-              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted dark:text-muted-dark">
-                <span className="truncate">
-                  {[active.bike.make, active.bike.model, active.bike.year].filter(Boolean).join(" · ") || "—"}
-                </span>
-                {active.bike.plate && (
-                  <span className="num text-xs uppercase tracking-wider">{active.bike.plate}</span>
-                )}
-              </div>
-              <QuickKmUpdate bikeId={active.bike.id} currentKm={active.bike.currentKm} />
+              {/* Persistent, non-dismissible: a driver must never be unsure
+                  which garage they are in. */}
+              {activeOrg && <OrgVehicleBadge orgName={activeOrg.orgName} />}
             </div>
-            <Button asChild variant="outline" size="icon" aria-label={t("dashboard.edit")}>
-              <Link to={`/bikes/${active.bike.id}/edit`}><Pencil className="h-4 w-4" /></Link>
-            </Button>
-          </header>
+            <h1 className="mt-1.5 truncate text-[32px] font-semibold leading-none tracking-tight">
+              {active.bike.nickname}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted dark:text-muted-dark">
+              <span className="truncate">
+                {[active.bike.make, active.bike.model, active.bike.year].filter(Boolean).join(" · ") || "—"}
+              </span>
+              {active.bike.plate && (
+                <span className="num text-xs uppercase tracking-wider">{active.bike.plate}</span>
+              )}
+            </div>
+            <QuickKmUpdate bikeId={active.bike.id} currentKm={active.bike.currentKm} />
+          </div>
+          <Button asChild variant="outline" size="icon" aria-label={t("dashboard.edit")}>
+            <Link to={`/bikes/${active.bike.id}/edit`}><Pencil className="h-4 w-4" /></Link>
+          </Button>
+        </header>
 
-          {activeOrg && <OrgVehicleNotice orgName={activeOrg.orgName} />}
+        {activeOrg && <OrgVehicleNotice orgName={activeOrg.orgName} />}
 
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label={t("dashboard.active")}>
-            {TYPE_ORDER.map((type, i) => (
-              <StatusChip key={type} type={type} bikeId={active.bike.id} item={active.items[type]} index={i} />
-            ))}
-          </section>
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label={t("dashboard.active")}>
+          {TYPE_ORDER.map((type, i) => (
+            <StatusChip key={type} type={type} bikeId={active.bike.id} item={active.items[type]} index={i} />
+          ))}
+        </section>
 
-          <MaintenancePanel bikeId={active.bike.id} />
+        <MaintenancePanel bikeId={active.bike.id} />
 
-          <OfficialServicesCard />
-        </motion.div>
-      </AnimatePresence>
+        <OfficialServicesCard />
+      </motion.div>
 
       <div className="mb-safe mt-4 flex items-center justify-center">
         <Button asChild size="sm" variant="ghost" className="text-muted dark:text-muted-dark">
@@ -315,20 +317,27 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
   // "cancel" committed the very edit it was meant to discard. Cancelling now
   // restores the stored value first and suppresses the blur save.
   const cancelledRef = useRef(false);
+  // `update.isPending` alone could not stop a double submit: Enter and the blur
+  // it causes both run in the same tick, so the second call still reads the
+  // render's stale `false` and fires a second PATCH. A ref flips synchronously.
+  const savingRef = useRef(false);
 
   const save = async () => {
     if (cancelledRef.current) {
       cancelledRef.current = false;
       return;
     }
-    if (update.isPending) return;
+    if (savingRef.current || update.isPending) return;
     const n = parseInt(value, 10);
     if (!isNaN(n) && n >= 0 && n !== currentKm) {
+      savingRef.current = true;
       try {
         await update.mutateAsync({ currentKm: n } as any);
         pushToast({ variant: "success", title: t("bike.updated") });
       } catch (e) {
         pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
+      } finally {
+        savingRef.current = false;
       }
     }
     setEditing(false);

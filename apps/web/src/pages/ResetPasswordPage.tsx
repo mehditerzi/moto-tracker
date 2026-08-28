@@ -1,5 +1,5 @@
 import { useState, forwardRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -25,10 +25,21 @@ export function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // An expired or mangled link. This used to be one grey sentence: no way on to
+  // anything, and — alone among this screen's branches — no safe-area padding,
+  // so on a notched phone it could sit under the status bar.
   if (!token) {
     return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
-        <p className="text-center text-muted dark:text-muted-dark">{t("auth.resetInvalidLink")}</p>
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 pb-safe pl-safe pr-safe pt-safe text-center">
+        <p className="text-pretty text-[15px] text-muted dark:text-muted-dark">
+          {t("auth.resetInvalidLink")}
+        </p>
+        <Button asChild variant="accent">
+          <Link to="/forgot-password">{t("auth.forgotSend")}</Link>
+        </Button>
+        <Button asChild variant="ghost" className="text-muted dark:text-muted-dark">
+          <Link to="/sign-in">{t("auth.backToSignIn")}</Link>
+        </Button>
       </div>
     );
   }
@@ -39,11 +50,17 @@ export function ResetPasswordPage() {
     if (password !== confirm) { setError(t("auth.passwordMismatch")); return; }
     setBusy(true);
     setError("");
-    const res = await authClient.resetPassword({ newPassword: password, token });
-    setBusy(false);
-    if (res.error) { setError(res.error.message ?? t("auth.resetFailed")); return; }
-    pushToast({ variant: "success", title: t("auth.resetSuccess") });
-    navigate("/sign-in");
+    try {
+      const res = await authClient.resetPassword({ newPassword: password, token });
+      if (res.error) { setError(res.error.message ?? t("auth.resetFailed")); return; }
+      pushToast({ variant: "success", title: t("auth.resetSuccess") });
+      navigate("/sign-in");
+    } catch {
+      // A rejected call used to leave `busy` true — a permanently disabled Save.
+      setError(t("auth.resetFailed"));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

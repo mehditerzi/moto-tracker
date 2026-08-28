@@ -57,19 +57,43 @@ export function Combobox({
 
   const norm = React.useCallback((s: string) => (uppercase ? s.toUpperCase() : s), [uppercase]);
 
+  /**
+   * Both option sources are read through refs, and neither is a dependency of
+   * the resolver effect below.
+   *
+   * Call sites pass them inline — `fetchOptions={(q) => fetchMakes(q, type)}`,
+   * `options={yearOptions()}` — so both get a new identity on every render of
+   * the *parent*. As dependencies that was two separate bugs: the async source
+   * restarted its 180 ms debounce and bumped `reqId` (discarding a response
+   * already in flight) on every unrelated parent re-render, and the static
+   * source ran `setItems(newArray)` on every render, which re-rendered the
+   * parent, which built another array — an unbounded render loop for as long
+   * as the list was open. The effect only ever needs to re-run when the list
+   * opens or the query changes; a caller swapping its option source while the
+   * list is open is not a thing that happens.
+   */
+  const fetchRef = React.useRef(fetchOptions);
+  const staticRef = React.useRef(staticOptions);
+  React.useEffect(() => {
+    fetchRef.current = fetchOptions;
+    staticRef.current = staticOptions;
+  });
+
   // Resolve options for the current query (debounced for the async source).
   React.useEffect(() => {
     if (!open) return;
-    if (staticOptions) {
+    const statics = staticRef.current;
+    if (statics) {
       const q = query.trim().toLowerCase();
-      setItems(q ? staticOptions.filter((o) => o.toLowerCase().includes(q)) : staticOptions);
+      setItems(q ? statics.filter((o) => o.toLowerCase().includes(q)) : statics);
       return;
     }
-    if (!fetchOptions) return;
+    const fetcher = fetchRef.current;
+    if (!fetcher) return;
     const myId = ++reqId.current;
     setLoading(true);
     const handle = setTimeout(() => {
-      fetchOptions(query.trim())
+      fetcher(query.trim())
         .then((res) => {
           if (myId === reqId.current) setItems(res);
         })
@@ -81,7 +105,7 @@ export function Combobox({
         });
     }, 180);
     return () => clearTimeout(handle);
-  }, [open, query, fetchOptions, staticOptions]);
+  }, [open, query]);
 
   // Close on outside pointer.
   React.useEffect(() => {

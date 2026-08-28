@@ -185,19 +185,31 @@ function SignInForm() {
   });
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema) });
 
+  // A rejected call (offline, DNS, a throw inside the auth client) used to skip
+  // every `setBusy(false)` below, leaving the button disabled for good with
+  // nothing on screen to explain it — a reload was the only way out.
   const onSubmit = form.handleSubmit(async (v) => {
     setBusy(true);
-    const res = await signIn.email({ email: v.email, password: v.password });
-    if (res.error) {
+    try {
+      const res = await signIn.email({ email: v.email, password: v.password });
+      if (res.error) {
+        setBusy(false);
+        pushToast({
+          variant: "danger",
+          title: t("auth.signInFailed"),
+          description: authErrorMessage(res.error, t),
+        });
+        return;
+      }
+      window.location.assign("/dashboard");
+    } catch {
       setBusy(false);
       pushToast({
         variant: "danger",
         title: t("auth.signInFailed"),
-        description: authErrorMessage(res.error, t),
+        description: t("errors.generic"),
       });
-      return;
     }
-    window.location.assign("/dashboard");
   });
 
   /**
@@ -210,20 +222,30 @@ function SignInForm() {
   const onMagicLink = async () => {
     if (!(await form.trigger("email"))) return;
     setMagicBusy(true);
-    const res = await signIn.magicLink({
-      email: form.getValues("email"),
-      callbackURL: `${window.location.origin}/dashboard`,
-    });
-    setMagicBusy(false);
-    if (res.error) {
+    try {
+      const res = await signIn.magicLink({
+        email: form.getValues("email"),
+        callbackURL: `${window.location.origin}/dashboard`,
+      });
+      if (res.error) {
+        pushToast({
+          variant: "danger",
+          title: t("auth.magicFailed"),
+          description: authErrorMessage(res.error, t),
+        });
+        return;
+      }
+      navigate("/magic-link-sent");
+    } catch {
       pushToast({
         variant: "danger",
         title: t("auth.magicFailed"),
-        description: authErrorMessage(res.error, t),
+        description: t("errors.generic"),
       });
-      return;
+    } finally {
+      // Also gates the submit button above — leaking `true` disabled both.
+      setMagicBusy(false);
     }
-    navigate("/magic-link-sent");
   };
 
   return (
@@ -298,17 +320,26 @@ function SignUpForm() {
 
   const onSubmit = form.handleSubmit(async (v) => {
     setBusy(true);
-    const res = await signUp.email({ email: v.email, password: v.password, name: v.name });
-    if (res.error) {
+    try {
+      const res = await signUp.email({ email: v.email, password: v.password, name: v.name });
+      if (res.error) {
+        setBusy(false);
+        pushToast({
+          variant: "danger",
+          title: t("auth.signUpFailed"),
+          description: authErrorMessage(res.error, t),
+        });
+        return;
+      }
+      window.location.assign("/dashboard");
+    } catch {
       setBusy(false);
       pushToast({
         variant: "danger",
         title: t("auth.signUpFailed"),
-        description: authErrorMessage(res.error, t),
+        description: t("errors.generic"),
       });
-      return;
     }
-    window.location.assign("/dashboard");
   });
 
   return (

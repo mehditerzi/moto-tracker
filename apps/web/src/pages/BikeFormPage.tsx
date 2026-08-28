@@ -36,6 +36,13 @@ import type { OrgMembership } from "@/hooks/useOrgs";
 import { deniedRedirect, useVehicleTarget } from "@/pages/fleet/vehicleTarget";
 import { ensureFleetLocale } from "@/lib/fleetLocale";
 
+/**
+ * Built once, not per render: an inline `options={yearOptions()}` handed the
+ * Combobox a brand-new array on every render of this (large) form.
+ * The list only changes at new year, which no session outlives.
+ */
+const YEAR_OPTIONS = yearOptions();
+
 /** The ruhsat-only fields hidden behind the "registration details" disclosure. */
 const DETAIL_FIELDS = [
   "color",
@@ -142,8 +149,20 @@ export function BikeFormPage() {
       return v !== null && v !== undefined && v !== "";
     });
 
+  /**
+   * Hydrate the form from the record EXACTLY ONCE per vehicle.
+   *
+   * This effect used to run on every identity change of `bike.data`, which is
+   * every successful refetch of `["bikes", id]` — and the photo mutations
+   * invalidate precisely that key. So uploading or removing a photo halfway
+   * through an edit refetched the vehicle and `form.reset()` silently threw
+   * away everything the user had typed. `refetchOnWindowFocus` (global) makes
+   * the same thing possible any time the record actually changed server-side.
+   */
+  const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (isEdit && bike.data) {
+    if (isEdit && bike.data && hydratedFor.current !== bike.data.id) {
+      hydratedFor.current = bike.data.id;
       form.reset({
         vehicleType: bike.data.vehicleType ?? "motorcycle",
         nickname: bike.data.nickname,
@@ -399,7 +418,7 @@ export function BikeFormPage() {
                     <Combobox
                       value={field.value != null ? String(field.value) : ""}
                       onChange={(v) => field.onChange(v === "" ? "" : Number(v))}
-                      options={yearOptions()}
+                      options={YEAR_OPTIONS}
                       allowCustom={false}
                       placeholder="2023"
                     />

@@ -123,7 +123,9 @@ export function BikesPage() {
             key={b.id}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.04, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+            // Capped so a large garage doesn't animate in for seconds — see the
+            // same cap on the trips list.
+            transition={{ delay: Math.min(i, 8) * 0.04, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <Link to={`/bikes/${b.id}/edit`} className="block">
               <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-text/20 hover:shadow-card dark:hover:border-text-dark/20">

@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
+import { ApiError } from "@/lib/api";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
 import { useDocument } from "@/hooks/useDocuments";
 import { useBike, useBikes, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
@@ -81,8 +84,26 @@ export function DocumentReviewPage() {
   }, [doc.data?.ocrStatus, doc.data?.ocrExtracted]);
 
   if (!id) return null;
-  if (doc.isLoading || !doc.data)
-    return <p className="text-center text-muted dark:text-muted-dark">{t("common.loading")}</p>;
+  // A skeleton in the shape of the card below, not a line of centred text that
+  // the real screen then shoves off the top of the viewport.
+  if (doc.isLoading) return <ReviewSkeleton />;
+  // `!doc.data` used to be folded into the loading branch, so a failed fetch —
+  // a 404 from a stale link, or two network failures with `retry: 1` — rendered
+  // "Yükleniyor…" forever: no error, no retry, no way off the screen.
+  if (doc.isError || !doc.data) {
+    const gone = doc.error instanceof ApiError && doc.error.status === 404;
+    return (
+      <ErrorState
+        onRetry={gone ? undefined : () => void doc.refetch()}
+        title={gone ? t("common.notFound") : undefined}
+        description={gone ? t("errors.not_found") : undefined}
+      >
+        <Button asChild variant={gone ? "accent" : "ghost"} className={gone ? "" : "text-muted dark:text-muted-dark"}>
+          <Link to="/dashboard">{t("common.back")}</Link>
+        </Button>
+      </ErrorState>
+    );
+  }
 
   const d = doc.data;
   const fileUrl = `${env.VITE_API_URL}/api/documents/${d.id}/file`;
@@ -102,7 +123,11 @@ export function DocumentReviewPage() {
             <CardTitle>{t("review.reading")}</CardTitle>
             <CardDescription>{t("review.readingSub")}</CardDescription>
           </CardHeader>
-          <CardContent><ScanFrame src={fileUrl} active /></CardContent>
+          {/* The sweep stops once we admit the job is queued rather than
+              running (phase 2). `active` was hard-coded, so a document stuck
+              behind other work repainted a full-width gradient at 60fps for
+              minutes on end, for no information the copy below doesn't give. */}
+          <CardContent><ScanFrame src={fileUrl} active={waitPhase < 2} /></CardContent>
         </Card>
 
         <div className="mt-4 flex flex-col gap-3">
@@ -253,6 +278,22 @@ export function DocumentReviewPage() {
   );
 }
 
+/** The review screen's shape while the document is still being fetched. */
+function ReviewSkeleton() {
+  return (
+    <div className="mx-auto flex max-w-md flex-col gap-3" aria-hidden>
+      <Skeleton className="h-44 rounded-2xl" />
+      <div className="flex flex-col gap-3 rounded-2xl border border-border p-5 dark:border-border-dark">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-11 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 // ─── types ────────────────────────────────────────────────────────────────────
 
 interface ExtractedBikeFields {
@@ -277,6 +318,24 @@ const FIELD_KEYS: FieldKey[] = ["plate", "make", "model", "year", "firstRegistra
 
 /** Below this OCR confidence, nudge the user to double-check every value. */
 const LOW_CONFIDENCE = 0.7;
+
+/**
+ * Turkish writes decimals with a comma, and the iOS decimal keypad follows the
+ * device locale — so the key next to "0" on a Turkish phone types ",".
+ * `<input type="number">` reports `value === ""` for anything it cannot parse,
+ * so "12,5" litres arrived here as an empty string: the digits appeared to
+ * vanish and the save button stayed disabled with nothing explaining why. The
+ * amount fields are therefore plain text with a decimal keypad, normalised on
+ * read.
+ */
+function parseDecimal(s: string): number {
+  return parseFloat(s.replace(",", "."));
+}
+
+/** Keeps a decimal text field to digits and separators as it is typed. */
+function decimalOnly(s: string): string {
+  return s.replace(/[^\d.,]/g, "");
+}
 
 function bikeToFields(bike: Bike): ExtractedBikeFields {
   return {
@@ -714,41 +773,50 @@ function CompareFieldRow({
             <span className="font-medium">{existingValue}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onAcceptChange(true)}
-            className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm transition ${
+          {/* The "use the scanned value" row. The edit field and the pencil are
+              SIBLINGS of the select button, not children of it: a <button> may
+              not contain another button or a text input (HTML content model —
+              no interactive descendants), which made this row unreachable by
+              keyboard and ambiguous to a screen reader. Nothing here needed
+              stopPropagation once the nesting was gone. */}
+          <div
+            className={`flex items-center justify-between gap-1.5 rounded-lg pr-2.5 text-sm transition ${
               accepted ? "bg-accent/10 ring-1 ring-accent/50 dark:bg-accent/15" : "opacity-40"
             }`}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted dark:text-muted-dark">
-              {t("review.fromOcr")}
-            </span>
-            <div className="flex items-center gap-1.5">
-              {editing && accepted ? (
-                <Input
-                  value={currentValue}
-                  onChange={(e) => { e.stopPropagation(); onValueChange(e.target.value); }}
-                  onBlur={() => setEditing(false)}
-                  onClick={(e) => e.stopPropagation()}
-                  autoFocus
-                  className="h-7 w-28 text-right text-base sm:text-sm"
-                />
-              ) : (
-                <span className="font-medium">{currentValue}</span>
+            <button
+              type="button"
+              onClick={() => onAcceptChange(true)}
+              aria-pressed={accepted}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted dark:text-muted-dark">
+                {t("review.fromOcr")}
+              </span>
+              {!(editing && accepted) && (
+                <span className="truncate font-medium">{currentValue}</span>
               )}
-              {accepted && (
-                <button
-                  type="button"
-                  aria-label={t("items.edit")}
-                  onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-                  className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center"
-                >
-                  <Pencil className="h-3 w-3 text-accent" />
-                </button>
-              )}
-            </div>
-          </button>
+            </button>
+            {editing && accepted && (
+              <Input
+                value={currentValue}
+                onChange={(e) => onValueChange(e.target.value)}
+                onBlur={() => setEditing(false)}
+                autoFocus
+                className="h-7 w-28 shrink-0 text-right text-base sm:text-sm"
+              />
+            )}
+            {accepted && (
+              <button
+                type="button"
+                aria-label={t("items.edit")}
+                onClick={() => setEditing(true)}
+                className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center"
+              >
+                <Pencil className="h-3 w-3 text-accent" />
+              </button>
+            )}
+          </div>
         </div>
       )}
     </li>
@@ -813,14 +881,15 @@ function FuelReceiptReviewForm({
   }
 
   const save = async () => {
-    const litersN = parseFloat(liters);
+    const litersN = parseDecimal(liters);
+    const costN = cost ? parseDecimal(cost) : null;
     if (!selBike || !filledOn || !(litersN > 0)) return;
     try {
       await create.mutateAsync({
         bikeId: selBike,
         filledOn,
         liters: litersN,
-        totalCost: cost ? parseFloat(cost) : null,
+        totalCost: costN != null && !isNaN(costN) ? costN : null,
         odometerKm: odo ? parseInt(odo, 10) : null,
         isFull,
         sourceDocumentId: documentId,
@@ -875,11 +944,25 @@ function FuelReceiptReviewForm({
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.liters")}</span>
-            <Input type="number" inputMode="decimal" step="0.01" value={liters} onChange={(e) => setLiters(e.target.value)} />
+            <Input
+              type="text"
+              inputMode="decimal"
+              enterKeyHint="next"
+              autoComplete="off"
+              value={liters}
+              onChange={(e) => setLiters(decimalOnly(e.target.value))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.cost")}</span>
-            <Input type="number" inputMode="decimal" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
+            <Input
+              type="text"
+              inputMode="decimal"
+              enterKeyHint="next"
+              autoComplete="off"
+              value={cost}
+              onChange={(e) => setCost(decimalOnly(e.target.value))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="label-micro text-muted dark:text-muted-dark">{t("fuel.odometer")}</span>
@@ -913,7 +996,7 @@ function FuelReceiptReviewForm({
             onClick={() => void save()}
             variant="accent"
             className="flex-1"
-            disabled={create.isPending || !selBike || !filledOn || !(parseFloat(liters) > 0)}
+            disabled={create.isPending || !selBike || !filledOn || !(parseDecimal(liters) > 0)}
           >
             <Plus className="mr-1 h-4 w-4" /> {t("fuel.add")}
           </Button>
