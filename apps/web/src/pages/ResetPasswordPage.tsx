@@ -11,6 +11,8 @@ import { BrandMark } from "@/components/BrandMark";
 import { authClient } from "@/lib/authClient";
 import { pushToast } from "@/hooks/useToast";
 
+const ERROR_ID = "reset-error";
+
 export function ResetPasswordPage() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -62,6 +64,9 @@ export function ResetPasswordPage() {
             <CardDescription>{t("auth.resetSub")}</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Validation here is about the pair of fields (too short / mismatch),
+                so the one message is described by both inputs rather than sitting
+                under either of them. */}
             <form onSubmit={onSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="pw" className="label-micro text-muted dark:text-muted-dark">
@@ -74,6 +79,8 @@ export function ResetPasswordPage() {
                   onToggle={() => setShowPw((v) => !v)}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? ERROR_ID : undefined}
                 />
               </div>
 
@@ -87,10 +94,16 @@ export function ResetPasswordPage() {
                   autoComplete="new-password"
                   value={confirm}
                   onChange={(e) => { setConfirm(e.target.value); setError(""); }}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? ERROR_ID : undefined}
                 />
               </div>
 
-              {error && <p className="text-xs text-danger">{error}</p>}
+              {error && (
+                <p id={ERROR_ID} role="alert" className="text-xs text-danger">
+                  {error}
+                </p>
+              )}
 
               <Button type="submit" variant="accent" size="lg" disabled={busy} className="shadow-ignite">
                 {t("auth.resetSave")}

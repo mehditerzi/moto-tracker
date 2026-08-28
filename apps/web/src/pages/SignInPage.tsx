@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, type FieldProps } from "@/components/ui/field";
 import { BrandMark } from "@/components/BrandMark";
 import { signIn } from "@/lib/authClient";
 import { pushToast } from "@/hooks/useToast";
@@ -132,24 +132,8 @@ export function SignInPage() {
   );
 }
 
-function FieldGroup({
-  id,
-  label,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="label-micro text-muted dark:text-muted-dark">
-        {label}
-      </Label>
-      {children}
-      {error && <p className="text-xs text-danger">{error}</p>}
-    </div>
-  );
+/** The shared Field in this screen's micro-caps label treatment; the aria
+ *  wiring for the error message comes from the shared one. */
+function FieldGroup(props: Omit<FieldProps, "labelClassName">) {
+  return <Field {...props} labelClassName="label-micro text-muted dark:text-muted-dark" />;
 }

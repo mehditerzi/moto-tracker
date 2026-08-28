@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddVehicleButton } from "@/components/AddVehicleButton";
+import { ErrorState } from "@/components/ErrorState";
+import { useConfirm } from "@/components/ConfirmSheet";
 import { useBikes } from "@/hooks/useBikes";
 import { useFuelLogs, useCreateFuelLog, useDeleteFuelLog } from "@/hooks/useFuelLogs";
 import { useDatedItemsForBike } from "@/hooks/useDatedItems";
@@ -35,9 +38,32 @@ export function FuelPage() {
   const fuelTotal = (logs.data ?? []).reduce((s, l) => s + (l.totalCost ?? 0), 0);
   const premiumTotal = (items.data ?? []).reduce((s, i) => s + (i.cost ?? 0), 0);
 
+  if (bikes.isError) return <ErrorState onRetry={() => void bikes.refetch()} />;
+
+  // "Add a vehicle first" used to be a bare sentence with nothing to tap — the
+  // one screen in the app where the instruction and the action were separated.
   if (!bikes.isLoading && (!bikes.data || bikes.data.length === 0)) {
     return (
-      <div className="py-16 text-center text-muted dark:text-muted-dark">{t("fuel.noVehicle")}</div>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mx-auto flex max-w-md flex-col items-center gap-5 py-16 text-center"
+      >
+        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-surface ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark">
+          <Fuel className="h-9 w-9 text-muted dark:text-muted-dark" strokeWidth={1.5} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-balance text-[22px] font-semibold tracking-tight">
+            {t("fuel.noVehicle")}
+          </h1>
+          <p className="text-pretty text-[14px] text-muted dark:text-muted-dark">
+            {t("fuel.noVehicleSub")}
+          </p>
+        </div>
+        <AddVehicleButton variant="accent" size="lg">
+          <Plus className="h-4 w-4" /> {t("dashboard.addBike")}
+        </AddVehicleButton>
+      </motion.div>
     );
   }
 
@@ -57,7 +83,9 @@ export function FuelPage() {
               setBikeId(e.target.value);
               storeActiveBikeId(e.target.value);
             }}
-            className="h-10 rounded-xl border border-border bg-surface px-3 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+            // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
+            className="h-10 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
+            aria-label={t("review.vehicle")}
           >
             {bikes.data.map((b) => (
               <option key={b.id} value={b.id}>
@@ -82,8 +110,15 @@ export function FuelPage() {
           <Skeleton className="h-14 rounded-xl" />
           <Skeleton className="h-14 rounded-xl" />
         </div>
+      ) : logs.isError ? (
+        <ErrorState onRetry={() => void logs.refetch()} />
       ) : (logs.data?.length ?? 0) === 0 ? (
-        <p className="py-8 text-center text-sm text-muted dark:text-muted-dark">{t("fuel.empty")}</p>
+        <div className="flex flex-col items-center gap-1 py-8 text-center">
+          <p className="text-sm font-medium">{t("fuel.empty")}</p>
+          <p className="max-w-[34ch] text-[13px] text-muted dark:text-muted-dark">
+            {t("fuel.emptySub")}
+          </p>
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           {logs.data!.map((l) => (
@@ -161,10 +196,21 @@ function CostsCard({ fuelTotal, premiumTotal }: { fuelTotal: number; premiumTota
   );
 }
 
+/** Today in the device's own timezone. `toISOString()` is UTC, which puts users
+ *  east of Greenwich on tomorrow's date for part of every evening. */
+function todayISO(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function AddFuelForm({ bikeId }: { bikeId: string }) {
   const { t } = useTranslation();
   const create = useCreateFuelLog();
-  const [filledOn, setFilledOn] = useState("");
+  // People log a fill-up while standing at the pump, so today is right almost
+  // every time — defaulting it removes a required date-picker interaction from
+  // the app's most repeated form.
+  const [filledOn, setFilledOn] = useState(todayISO);
   const [liters, setLiters] = useState("");
   const [totalCost, setTotalCost] = useState("");
   const [odo, setOdo] = useState("");
@@ -184,7 +230,7 @@ function AddFuelForm({ bikeId }: { bikeId: string }) {
         isFull,
       });
       track("fuel_logged", { hasCost: !!totalCost, hasOdo: !!odo, isFull });
-      setFilledOn("");
+      setFilledOn(todayISO());
       setLiters("");
       setTotalCost("");
       setOdo("");
@@ -265,7 +311,22 @@ function FuelRow({
   id: string;
 }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const del = useDeleteFuelLog();
+
+  // This was the one destructive action in the app with no confirmation and no
+  // undo: a mis-tap silently destroyed a fill-up, and with it the economy figure
+  // that depends on the gap between two odometer readings.
+  const onDelete = async () => {
+    if (!(await confirm({ title: t("fuel.deleteConfirm"), confirmLabel: t("items.delete"), destructive: true })))
+      return;
+    try {
+      await del.mutateAsync(id);
+    } catch (e) {
+      pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
       <Card className="flex items-center justify-between gap-3 p-3">
@@ -304,7 +365,7 @@ function FuelRow({
           variant="ghost"
           aria-label={t("items.delete")}
           className="h-9 w-9 text-muted hover:text-danger"
-          onClick={() => del.mutate(id)}
+          onClick={() => void onDelete()}
           disabled={del.isPending}
         >
           <Trash2 className="h-4 w-4" />

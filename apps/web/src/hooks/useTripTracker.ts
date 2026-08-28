@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { MIN_TRIP_KM } from "@mototracker/shared";
@@ -23,11 +23,22 @@ export function useTripTracker(): void {
   const qc = useQueryClient();
   const { t } = useTranslation();
 
+  // `t` gets a new identity on every i18next `languageChanged`. Depending on it
+  // below tore down the GPS watch and started a fresh one mid-drive, losing the
+  // in-progress trip, so read it through a ref instead. The background
+  // notification strings are only read when tracking (re)starts — that's fine:
+  // a language switch shows up the next time tracking is turned on, and the
+  // toast below always resolves against the current language.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
   useEffect(() => {
     if (!enabled) return;
     const handle = startTripTracking({
-      backgroundTitle: t("trips.bgTitle"),
-      backgroundMessage: t("trips.bgMessage"),
+      backgroundTitle: tRef.current("trips.bgTitle"),
+      backgroundMessage: tRef.current("trips.bgMessage"),
       onTrip: (trip: CompletedTrip) => {
         // The ≥15 km rule is also enforced server-side; filter here too so we
         // don't POST short hops that would just be rejected.
@@ -41,7 +52,7 @@ export function useTripTracker(): void {
             track("trip_logged", { km: trip.distanceKm, points: trip.pointCount });
             pushToast({
               variant: "success",
-              title: t("trips.logged", { km: Math.round(trip.distanceKm) }),
+              title: tRef.current("trips.logged", { km: Math.round(trip.distanceKm) }),
             });
           } catch {
             /* best-effort telemetry/logging — never interrupt the drive */
@@ -50,5 +61,5 @@ export function useTripTracker(): void {
       },
     });
     return () => handle.stop();
-  }, [enabled, qc, t]);
+  }, [enabled, qc]);
 }

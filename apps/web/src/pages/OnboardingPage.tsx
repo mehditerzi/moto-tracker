@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { ScanLine, Bell, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,49 @@ const SLIDES: { key: string; Icon: LucideIcon | null }[] = [
   { key: "garage", Icon: null },
 ];
 
+const SEEN_KEY = "garajim.onboardingSeen";
+
+function hasSeenOnboarding(): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) === "1";
+  } catch {
+    // Private mode / storage disabled — show the carousel rather than skip it.
+    return false;
+  }
+}
+
+function markOnboardingSeen(): void {
+  try {
+    localStorage.setItem(SEEN_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 export function OnboardingPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  // Read once, at mount: finishing sets the flag, and re-reading it mid-render
+  // would redirect the very user who is still on the last slide.
+  const [seen] = useState(hasSeenOnboarding);
   const last = index >= SLIDES.length - 1;
 
-  function finish() {
-    navigate("/sign-in", { replace: true });
+  /**
+   * Every signed-out route lands on /welcome, so an expired session, a sign-out
+   * or a reinstall-restore all used to re-run the three-slide carousel before
+   * the user could reach the sign-in form. Once it has been seen we go straight
+   * to auth.
+   */
+  if (seen) return <Navigate to="/sign-in" replace />;
+
+  /** `intent` picks the tab: someone who just watched the pitch has no account
+   *  yet, so "Başla" opens sign-up. Skipping reads as "I already know this" —
+   *  and that is nearly always a returning user, so it opens sign-in. */
+  function finish(intent: "signup" | "signin") {
+    markOnboardingSeen();
+    navigate(intent === "signup" ? "/sign-up" : "/sign-in", { replace: true });
   }
 
   function onScroll() {
@@ -32,7 +66,7 @@ export function OnboardingPage() {
 
   function next() {
     if (last) {
-      finish();
+      finish("signup");
       return;
     }
     const el = trackRef.current;
@@ -53,8 +87,8 @@ export function OnboardingPage() {
       <div className="relative flex justify-end px-5 pt-3">
         <button
           type="button"
-          onClick={finish}
-          className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-muted transition hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
+          onClick={() => finish("signin")}
+          className="min-h-[44px] rounded-lg px-3 py-1.5 text-[13px] font-medium text-muted transition hover:text-text dark:text-muted-dark dark:hover:text-text-dark"
         >
           {t("onboarding.skip")}
         </button>

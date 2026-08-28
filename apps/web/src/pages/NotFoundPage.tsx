@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 export function NotFoundPage() {
   const { t } = useTranslation();
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
+    // Rendered as a standalone route (no AppShell), so it carries its own safe
+    // areas — otherwise the copy sat under the notch on a cold deep link.
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-4 pb-safe pl-safe pr-safe pt-safe text-center">
       <h1 className="text-balance text-2xl font-semibold tracking-tight">
         {t("notFound.title")}
       </h1>

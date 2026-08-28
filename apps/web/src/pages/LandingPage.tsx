@@ -1,26 +1,58 @@
 import { useState, forwardRef } from "react";
-import { useNavigate } from "react-router-dom";
+// A raw <a> to /forgot-password used to hard-reload the SPA — on the Capacitor
+// wrap that means re-bootstrapping the entire app to reach one form.
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Apple } from "lucide-react";
+import { Eye, EyeOff, Apple, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field as UiField, type FieldProps } from "@/components/ui/field";
 import { BrandMark } from "@/components/BrandMark";
 import { signIn, signUp } from "@/lib/authClient";
 import { pushToast } from "@/hooks/useToast";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 
+/** Minimal shape of the translator we need — mirrors lib/apiError.ts. */
+type Translate = (key: string, opts?: Record<string, unknown>) => string;
+
+/**
+ * BetterAuth answers with English server messages ("Invalid email or password"),
+ * which are both the wrong language and the wrong register for a Turkish-first
+ * app. Map the codes we can and fall back to our own generic copy — never to an
+ * empty description, which is exactly what an offline submit used to produce.
+ */
+function authErrorMessage(error: { code?: string; message?: string } | undefined, t: Translate): string {
+  switch (error?.code) {
+    case "INVALID_EMAIL_OR_PASSWORD":
+      return t("auth.invalidCredentials");
+    case "USER_ALREADY_EXISTS":
+    case "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL":
+      return t("auth.emailTaken");
+    case "PASSWORD_TOO_SHORT":
+      return t("auth.passwordTooShort");
+    default:
+      return error?.message || t("errors.generic");
+  }
+}
+
 function SocialButtons() {
   const { t } = useTranslation();
   const cfg = usePublicConfig();
+  // The OAuth hand-off is a full-page navigation that can take a beat to start.
+  // Without this the button looked inert and invited a second tap.
+  const [pending, setPending] = useState<"apple" | "google" | null>(null);
   if (!cfg.data?.appleSignIn && !cfg.data?.googleSignIn) return null;
-  const go = (provider: "apple" | "google") =>
-    signIn.social({ provider, callbackURL: `${window.location.origin}/dashboard` });
+  const go = (provider: "apple" | "google") => {
+    setPending(provider);
+    void signIn
+      .social({ provider, callbackURL: `${window.location.origin}/dashboard` })
+      .catch(() => setPending(null));
+  };
   return (
     <div className="mt-5 flex flex-col gap-2">
       <div className="my-1 flex items-center gap-3">
@@ -31,12 +63,24 @@ function SocialButtons() {
         <span className="h-px flex-1 bg-border dark:bg-border-dark" />
       </div>
       {cfg.data.appleSignIn && (
-        <Button type="button" variant="outline" size="lg" onClick={() => go("apple")}>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={() => go("apple")}
+          disabled={pending !== null}
+        >
           <Apple className="h-4 w-4" /> {t("auth.continueApple")}
         </Button>
       )}
       {cfg.data.googleSignIn && (
-        <Button type="button" variant="outline" size="lg" onClick={() => go("google")}>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={() => go("google")}
+          disabled={pending !== null}
+        >
           {t("auth.continueGoogle")}
         </Button>
       )}
@@ -130,7 +174,9 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
 
 function SignInForm() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [magicBusy, setMagicBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
   const schema = z.object({
@@ -144,11 +190,41 @@ function SignInForm() {
     const res = await signIn.email({ email: v.email, password: v.password });
     if (res.error) {
       setBusy(false);
-      pushToast({ variant: "danger", title: t("auth.signInFailed"), description: res.error.message });
+      pushToast({
+        variant: "danger",
+        title: t("auth.signInFailed"),
+        description: authErrorMessage(res.error, t),
+      });
       return;
     }
     window.location.assign("/dashboard");
   });
+
+  /**
+   * Passwordless sign-in. The magic-link plugin is wired end to end — server
+   * plugin, client plugin, the /magic-link-sent screen and its copy — but until
+   * now nothing in the UI could trigger it, so the whole path was unreachable.
+   * It reuses the email already typed above and the field's own validation, so
+   * a bad address is reported under the input instead of in a toast.
+   */
+  const onMagicLink = async () => {
+    if (!(await form.trigger("email"))) return;
+    setMagicBusy(true);
+    const res = await signIn.magicLink({
+      email: form.getValues("email"),
+      callbackURL: `${window.location.origin}/dashboard`,
+    });
+    setMagicBusy(false);
+    if (res.error) {
+      pushToast({
+        variant: "danger",
+        title: t("auth.magicFailed"),
+        description: authErrorMessage(res.error, t),
+      });
+      return;
+    }
+    navigate("/magic-link-sent");
+  };
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -177,14 +253,30 @@ function SignInForm() {
         />
       </Field>
 
-      <Button type="submit" variant="accent" size="lg" disabled={busy} className="mt-1 shadow-ignite">
+      <Button
+        type="submit"
+        variant="accent"
+        size="lg"
+        disabled={busy || magicBusy}
+        className="mt-1 shadow-ignite"
+      >
         {t("auth.signIn")}
       </Button>
 
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => void onMagicLink()}
+        disabled={busy || magicBusy}
+        className="text-muted dark:text-muted-dark"
+      >
+        <Mail className="h-4 w-4" /> {t("auth.magicLink")}
+      </Button>
+
       <p className="text-center text-sm">
-        <a href="/forgot-password" className="text-muted underline-offset-4 hover:underline dark:text-muted-dark">
+        <Link to="/forgot-password" className="text-muted underline-offset-4 hover:underline dark:text-muted-dark">
           {t("auth.forgotPassword")}
-        </a>
+        </Link>
       </p>
     </form>
   );
@@ -209,7 +301,11 @@ function SignUpForm() {
     const res = await signUp.email({ email: v.email, password: v.password, name: v.name });
     if (res.error) {
       setBusy(false);
-      pushToast({ variant: "danger", title: t("auth.signUpFailed"), description: res.error.message });
+      pushToast({
+        variant: "danger",
+        title: t("auth.signUpFailed"),
+        description: authErrorMessage(res.error, t),
+      });
       return;
     }
     window.location.assign("/dashboard");
@@ -255,18 +351,10 @@ function SignUpForm() {
 
 // ─── shared primitives ───────────────────────────────────────────────────────
 
-function Field({
-  id, label, error, children,
-}: {
-  id: string; label: string; error?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="label-micro text-muted dark:text-muted-dark">{label}</Label>
-      {children}
-      {error && <p className="text-xs text-danger">{error}</p>}
-    </div>
-  );
+/** The shared Field in this screen's micro-caps label treatment. All the aria
+ *  wiring (invalid state, error announcement) comes from the shared one. */
+function Field(props: Omit<FieldProps, "labelClassName">) {
+  return <UiField {...props} labelClassName="label-micro text-muted dark:text-muted-dark" />;
 }
 
 const PasswordInput = forwardRef<HTMLInputElement, {

@@ -4,6 +4,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { maintenanceCreateSchema, maintenanceUpdateSchema } from "@mototracker/shared";
+import { authorizeRecord, canAccessBike } from "../lib/orgAccess.js";
 
 interface Row {
   id: string;
@@ -15,6 +16,7 @@ interface Row {
   last_done_km: number | null;
   interval_months: number | null;
   interval_km: number | null;
+  cost: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -31,6 +33,7 @@ export function rowToMaintenance(r: Row) {
     lastDoneKm: r.last_done_km,
     intervalMonths: r.interval_months,
     intervalKm: r.interval_km,
+    cost: r.cost,
     notes: r.notes,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -40,22 +43,19 @@ export function rowToMaintenance(r: Row) {
 export const bikesNestedMaintRouter: Router = Router({ mergeParams: true });
 bikesNestedMaintRouter.use(requireUser);
 
+// A vehicle's service schedule belongs to the vehicle, not to whoever entered
+// it: on an org fleet every member who can see the van sees its maintenance.
 bikesNestedMaintRouter.get(
   "/:id/maintenance-items",
   asyncHandler(async (req, res) => {
     const db = getDb();
-    const bike = db
-      .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
-    if (!bike) {
+    if (!canAccessBike(req.user!.id, req.params.id!, "read", db)) {
       res.status(404).json({ error: "not_found" });
       return;
     }
     const rows = db
-      .prepare(
-        "SELECT * FROM maintenance_item WHERE bike_id = ? AND user_id = ? ORDER BY kind ASC",
-      )
-      .all(req.params.id, req.user!.id) as Row[];
+      .prepare("SELECT * FROM maintenance_item WHERE bike_id = ? ORDER BY kind ASC")
+      .all(req.params.id) as Row[];
     res.json(rows.map(rowToMaintenance));
   }),
 );
@@ -65,18 +65,15 @@ bikesNestedMaintRouter.post(
   asyncHandler(async (req, res) => {
     const body = maintenanceCreateSchema.parse(req.body);
     const db = getDb();
-    const bike = db
-      .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
-    if (!bike) {
+    if (!canAccessBike(req.user!.id, req.params.id!, "write", db)) {
       res.status(404).json({ error: "not_found" });
       return;
     }
     const id = newId();
     db.prepare(
       `INSERT INTO maintenance_item
-         (id, bike_id, user_id, kind, custom_label, last_done_on, last_done_km, interval_months, interval_km, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, bike_id, user_id, kind, custom_label, last_done_on, last_done_km, interval_months, interval_km, cost, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.params.id,
@@ -87,6 +84,7 @@ bikesNestedMaintRouter.post(
       body.lastDoneKm ?? null,
       body.intervalMonths ?? null,
       body.intervalKm ?? null,
+      body.cost ?? null,
       body.notes ?? null,
     );
     const row = db.prepare("SELECT * FROM maintenance_item WHERE id = ?").get(id) as Row;
@@ -97,17 +95,24 @@ bikesNestedMaintRouter.post(
 export const maintenanceItemsRouter: Router = Router();
 maintenanceItemsRouter.use(requireUser);
 
+/** Fetch by id, unfiltered — the caller is authorised separately. */
+function findItem(id: string): Row | undefined {
+  return getDb().prepare("SELECT * FROM maintenance_item WHERE id = ?").get(id) as Row | undefined;
+}
+
+function recordOf(row: Row) {
+  return { bikeId: row.bike_id, userId: row.user_id };
+}
+
 maintenanceItemsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    const db = getDb();
-    const row = db
-      .prepare("SELECT * FROM maintenance_item WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id) as Row | undefined;
+    const row = findItem(req.params.id!);
     if (!row) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(row), "read")) return;
     res.json(rowToMaintenance(row));
   }),
 );
@@ -117,13 +122,12 @@ maintenanceItemsRouter.patch(
   asyncHandler(async (req, res) => {
     const body = maintenanceUpdateSchema.parse(req.body);
     const db = getDb();
-    const exists = db
-      .prepare("SELECT id FROM maintenance_item WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
+    const exists = findItem(req.params.id!);
     if (!exists) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(exists), "write", { db })) return;
     const fieldMap: Record<string, string> = {
       kind: "kind",
       customLabel: "custom_label",
@@ -131,6 +135,7 @@ maintenanceItemsRouter.patch(
       lastDoneKm: "last_done_km",
       intervalMonths: "interval_months",
       intervalKm: "interval_km",
+      cost: "cost",
       notes: "notes",
     };
     const sets: string[] = [];
@@ -143,10 +148,8 @@ maintenanceItemsRouter.patch(
     }
     if (sets.length) {
       sets.push("updated_at = datetime('now')");
-      values.push(req.params.id, req.user!.id);
-      db.prepare(`UPDATE maintenance_item SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`).run(
-        ...values,
-      );
+      values.push(req.params.id);
+      db.prepare(`UPDATE maintenance_item SET ${sets.join(", ")} WHERE id = ?`).run(...values);
     }
     const row = db.prepare("SELECT * FROM maintenance_item WHERE id = ?").get(req.params.id) as Row;
     res.json(rowToMaintenance(row));
@@ -157,13 +160,13 @@ maintenanceItemsRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
     const db = getDb();
-    const r = db
-      .prepare("DELETE FROM maintenance_item WHERE id = ? AND user_id = ?")
-      .run(req.params.id, req.user!.id);
-    if (r.changes === 0) {
+    const existing = findItem(req.params.id!);
+    if (!existing) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(existing), "write", { db })) return;
+    db.prepare("DELETE FROM maintenance_item WHERE id = ?").run(req.params.id);
     res.status(204).end();
   }),
 );

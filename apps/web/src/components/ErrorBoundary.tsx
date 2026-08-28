@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { track } from "@/lib/telemetry";
 
 interface Props {
   children: ReactNode;
@@ -6,6 +7,39 @@ interface Props {
 
 interface State {
   hasError: boolean;
+}
+
+// A crashing tree can re-mount and throw again; cap the reports so a render
+// loop can't flood the sink with the same failure.
+const MAX_REPORTS = 3;
+let reportCount = 0;
+
+// The /api/events row stores props as JSON — keep stacks to a sane size.
+const MAX_MESSAGE = 300;
+const MAX_STACK = 1200;
+
+function clip(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+
+/**
+ * Best-effort crash report to our own telemetry sink — no third-party SDK, and
+ * no second crash: every step is guarded, and `track()` itself already swallows
+ * transport failures rather than retrying.
+ */
+function reportCrash(error: Error, info: ErrorInfo): void {
+  if (reportCount >= MAX_REPORTS) return;
+  reportCount += 1;
+  try {
+    track("client_error", {
+      message: clip(String(error?.message ?? error), MAX_MESSAGE),
+      stack: clip(String(error?.stack ?? ""), MAX_STACK),
+      componentStack: clip(String(info?.componentStack ?? ""), MAX_STACK),
+      path: typeof location !== "undefined" ? location.pathname : "",
+    });
+  } catch {
+    /* reporting the crash must never become the crash */
+  }
 }
 
 /**
@@ -25,6 +59,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[error-boundary]", error, info.componentStack);
+    reportCrash(error, info);
   }
 
   override render(): ReactNode {

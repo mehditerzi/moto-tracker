@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { BrandMark } from "@/components/BrandMark";
 import { authClient } from "@/lib/authClient";
 import { CheckCircle2 } from "lucide-react";
@@ -60,12 +60,13 @@ export function ForgotPasswordPage() {
               </div>
             ) : (
               <form onSubmit={onSubmit} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="email" className="label-micro text-muted dark:text-muted-dark">
-                    {t("auth.email")}
-                  </Label>
+                <Field
+                  id="email"
+                  label={t("auth.email")}
+                  error={error || undefined}
+                  labelClassName="label-micro text-muted dark:text-muted-dark"
+                >
                   <Input
-                    id="email"
                     type="email"
                     inputMode="email"
                     autoComplete="email"
@@ -76,8 +77,7 @@ export function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError(""); }}
                   />
-                  {error && <p className="text-xs text-danger">{error}</p>}
-                </div>
+                </Field>
 
                 <Button type="submit" variant="accent" size="lg" disabled={busy}>
                   {t("auth.forgotSend")}

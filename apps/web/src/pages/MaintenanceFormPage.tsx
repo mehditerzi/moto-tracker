@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
 import {
@@ -29,6 +29,11 @@ const schema = z.object({
   lastDoneKm: z.union([z.coerce.number().int().nonnegative(), z.literal("")]).optional(),
   intervalMonths: z.union([z.coerce.number().int().positive(), z.literal("")]).optional(),
   intervalKm: z.union([z.coerce.number().int().positive(), z.literal("")]).optional(),
+  // Money, so not an integer — and never negative. The empty literal is listed
+  // FIRST on purpose: `z.coerce.number()` turns "" into 0, so with the usual
+  // ordering a blank box would submit a cost of ₺0 and claim a free service job
+  // instead of leaving the cost unrecorded.
+  cost: z.union([z.literal(""), z.coerce.number().nonnegative()]).optional(),
   notes: z.string().max(2000).optional().or(z.literal("")),
 });
 type FormValues = z.infer<typeof schema>;
@@ -54,6 +59,7 @@ export function MaintenanceFormPage({ mode }: Props) {
     resolver: zodResolver(schema),
     defaultValues: { kind: "engine_oil" },
   });
+  const kind = form.watch("kind");
 
   useEffect(() => {
     if (mode === "edit" && item.data) {
@@ -64,6 +70,7 @@ export function MaintenanceFormPage({ mode }: Props) {
         lastDoneKm: item.data.lastDoneKm ?? "",
         intervalMonths: item.data.intervalMonths ?? "",
         intervalKm: item.data.intervalKm ?? "",
+        cost: item.data.cost ?? "",
         notes: item.data.notes ?? "",
       });
     }
@@ -77,6 +84,7 @@ export function MaintenanceFormPage({ mode }: Props) {
       lastDoneKm: typeof v.lastDoneKm === "number" ? v.lastDoneKm : null,
       intervalMonths: typeof v.intervalMonths === "number" ? v.intervalMonths : null,
       intervalKm: typeof v.intervalKm === "number" ? v.intervalKm : null,
+      cost: typeof v.cost === "number" ? v.cost : null,
       notes: v.notes || null,
     };
     try {
@@ -101,6 +109,7 @@ export function MaintenanceFormPage({ mode }: Props) {
     if (!(await confirm({ title: t("maintenance.deleteConfirm"), confirmLabel: t("items.delete"), destructive: true }))) return;
     try {
       await deleteMut.mutateAsync(itemId);
+      pushToast({ variant: "success", title: t("items.deleted") });
       navigate("/dashboard");
     } catch (e) {
       pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
@@ -121,12 +130,12 @@ export function MaintenanceFormPage({ mode }: Props) {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="kind">{t("items.type")}</Label>
+            <Field id="kind" label={t("items.type")}>
               <select
                 id="kind"
                 {...form.register("kind")}
-                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+                // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
+                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-base transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
               >
                 {KINDS.map((k) => (
                   <option key={k} value={k}>
@@ -134,55 +143,72 @@ export function MaintenanceFormPage({ mode }: Props) {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="customLabel">{t("maintenance.customLabel")}</Label>
-              <Input id="customLabel" {...form.register("customLabel")} />
-            </div>
+            </Field>
+            {/* Only "Diğer" has anything to label. Shown for every kind it read
+                as a field you were supposed to fill in for engine oil too. */}
+            {kind === "custom" && (
+              <Field
+                label={t("maintenance.customLabel")}
+                error={form.formState.errors.customLabel?.message}
+              >
+                <Input {...form.register("customLabel")} autoCapitalize="sentences" />
+              </Field>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lastDoneOn">{t("maintenance.lastDoneOn")}</Label>
-                <Input id="lastDoneOn" type="date" {...form.register("lastDoneOn")} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lastDoneKm">{t("maintenance.lastDoneKm")}</Label>
-                <Input
-                  id="lastDoneKm"
-                  type="number"
-                  inputMode="numeric"
-                  {...form.register("lastDoneKm")}
-                />
-              </div>
+              <Field
+                label={t("maintenance.lastDoneOn")}
+                error={form.formState.errors.lastDoneOn?.message}
+              >
+                <Input type="date" {...form.register("lastDoneOn")} />
+              </Field>
+              <Field
+                label={t("maintenance.lastDoneKm")}
+                error={form.formState.errors.lastDoneKm?.message}
+              >
+                <Input type="number" inputMode="numeric" {...form.register("lastDoneKm")} />
+              </Field>
             </div>
+            {/* Sits with "last done" rather than with the interval fields: it is
+                what THAT job cost, and the fleet cost rollup buckets it by
+                last_done_on. Optional — most people just log the service. */}
+            <Field
+              label={t("maintenance.cost")}
+              hint={t("bike.optional")}
+              error={form.formState.errors.cost?.message}
+            >
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                placeholder="0"
+                {...form.register("cost")}
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="intervalMonths">{t("maintenance.intervalMonths")}</Label>
-                <Input
-                  id="intervalMonths"
-                  type="number"
-                  inputMode="numeric"
-                  {...form.register("intervalMonths")}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="intervalKm">{t("maintenance.intervalKm")}</Label>
-                <Input
-                  id="intervalKm"
-                  type="number"
-                  inputMode="numeric"
-                  {...form.register("intervalKm")}
-                />
-              </div>
+              <Field
+                label={t("maintenance.intervalMonths")}
+                error={form.formState.errors.intervalMonths?.message}
+              >
+                <Input type="number" inputMode="numeric" {...form.register("intervalMonths")} />
+              </Field>
+              <Field
+                label={t("maintenance.intervalKm")}
+                error={form.formState.errors.intervalKm?.message}
+              >
+                <Input type="number" inputMode="numeric" {...form.register("intervalKm")} />
+              </Field>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="notes">{t("items.note")}</Label>
+            <Field id="notes" label={t("items.note")} error={form.formState.errors.notes?.message}>
               <textarea
                 id="notes"
                 rows={3}
+                aria-invalid={form.formState.errors.notes ? true : undefined}
+                aria-describedby={form.formState.errors.notes ? "notes-error" : undefined}
                 {...form.register("notes")}
-                className="rounded-xl border border-border bg-surface p-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+                className="rounded-xl border border-border bg-surface p-2 text-base transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
               />
-            </div>
+            </Field>
             <div className="mt-2 flex gap-2">
               <Button asChild variant="ghost" className="flex-1">
                 <Link to="/dashboard">{t("common.cancel")}</Link>

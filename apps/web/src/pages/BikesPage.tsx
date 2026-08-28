@@ -5,6 +5,8 @@ import { Plus, Bike as BikeIcon, ChevronRight, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { useBikes } from "@/hooks/useBikes";
@@ -46,16 +48,28 @@ function GarageFullBanner() {
 
 export function BikesPage() {
   const { t } = useTranslation();
-  const { data, isLoading, isError } = useBikes();
+  const { data, isLoading, isError, refetch } = useBikes();
 
+  // A skeleton in the shape of the list, not a centred "Loading…" — the text
+  // version collapsed the page to one line and then shoved everything down.
   if (isLoading) {
     return (
-      <p className="text-center text-muted dark:text-muted-dark">{t("dashboard.loading")}</p>
+      <div className="flex flex-col gap-5" aria-hidden>
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-7 w-36" />
+          </div>
+          <Skeleton className="h-9 w-20 rounded-xl" />
+        </div>
+        <div className="grid gap-2.5">
+          <Skeleton className="h-[76px] rounded-2xl" />
+          <Skeleton className="h-[76px] rounded-2xl" />
+        </div>
+      </div>
     );
   }
-  if (isError) {
-    return <p className="text-center text-danger">{t("dashboard.loadFailed")}</p>;
-  }
+  if (isError) return <ErrorState onRetry={() => void refetch()} />;
 
   if (!data || data.length === 0) {
     return (
