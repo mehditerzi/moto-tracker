@@ -150,6 +150,11 @@ function limiter({ windowMs, max, method }: LimitOptions) {
 export function buildApp(opts: BuildAppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
+  // No ETags on res.json(). Without this the browser can still revalidate and
+  // get a 304, which the client cannot parse — see the /api no-store note
+  // below. express.static keeps its own ETags (serve-static does not consult
+  // this setting), so asset caching is unaffected.
+  app.set("etag", false);
   if (config.TRUST_PROXY) {
     app.set("trust proxy", true);
   }
@@ -220,6 +225,30 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   // but the endpoint that redeems one is still the only place in the API where a
   // stranger can submit a secret they might have found, so it is throttled.
   app.use("/api/org-invites", limiter({ windowMs: 15 * 60 * 1000, max: 30, method: "POST" }));
+
+  /**
+   * Authenticated JSON must never be cached or revalidated.
+   *
+   * Express puts a weak ETag on every res.json(), and these routes sent no
+   * Cache-Control, so /api/me was a revalidatable authenticated response. The
+   * browser would send If-None-Match and the server would answer 304 — and the
+   * client's api() helper treats anything outside 200-299 as a failure
+   * (`if (!res.ok) throw`). So a successful sign-in was followed by a 304 on
+   * /api/me, which surfaced as a query error, which RequireAuth reads as
+   * "not signed in" and redirects to the login page. Logging in bounced you
+   * straight back to logging in.
+   *
+   * no-store also keeps per-user data out of any shared cache — this app sits
+   * behind Cloudflare, and an ETag'd authenticated response is exactly the
+   * shape that can be served to the wrong person.
+   *
+   * Routes that deliberately cache (bike photos, document images) set their own
+   * Cache-Control afterwards and still win.
+   */
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    next();
+  });
 
   app.use("/api/health", healthRouter);
   app.use("/api/public-config", publicConfigRouter);
