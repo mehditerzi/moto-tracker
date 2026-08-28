@@ -4,7 +4,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { tripCreateSchema } from "@mototracker/shared";
-import { bikeScope, canAccessBike } from "../lib/orgAccess.js";
+import { bikeScope, canAccessRecord, canAttachRecord, canReadPersonalLayer } from "../lib/orgAccess.js";
 
 export const tripsRouter: Router = Router();
 tripsRouter.use(requireUser);
@@ -52,7 +52,11 @@ tripsRouter.get(
   asyncHandler(async (req, res) => {
     const db = getDb();
     const bikeId = typeof req.query.bikeId === "string" ? req.query.bikeId : null;
-    if (bikeId && !canAccessBike(req.user!.id, bikeId, "read", db)) {
+    // `canReadPersonalLayer`, not `canAccessBike`: supplying a bikeId makes this
+    // query bypass `bikeScope` and read the table directly, so the narrower
+    // question has to be asked here or a personal-group guest would be handed
+    // the owner's entire journey log for a car they were only shown.
+    if (bikeId && !canReadPersonalLayer(req.user!.id, bikeId, db)) {
       res.status(404).json({ error: "bike_not_found" });
       return;
     }
@@ -80,7 +84,11 @@ tripsRouter.get(
     const row = db.prepare("SELECT * FROM trip WHERE id = ?").get(req.params.id) as
       | TripRow
       | undefined;
-    if (!row || !canAccessBike(req.user!.id, row.bike_id, "read", db)) {
+    // `canAccessRecord`, not `canAccessBike`: a trip is a record of where a
+    // PERSON went, so reaching it needs more than reaching the vehicle. The
+    // difference bites for a personal-group guest — a mechanic can read the
+    // car's service history and must never be able to read its owner's routes.
+    if (!row || !canAccessRecord(req.user!.id, { bikeId: row.bike_id, userId: row.user_id }, "read", db)) {
       res.status(404).json({ error: "not_found" });
       return;
     }
@@ -93,9 +101,12 @@ tripsRouter.post(
   asyncHandler(async (req, res) => {
     const body = tripCreateSchema.parse(req.body);
     const db = getDb();
-    // Only attribute a trip to a vehicle the caller may write to — their own, or
-    // the org vehicle they are currently holding.
-    if (!canAccessBike(req.user!.id, body.bikeId, "write", db)) {
+    // Only attribute a trip to a vehicle the caller may write to — their own, the
+    // org vehicle they are currently holding, or one shared into their garage
+    // group as a full member. `canAttachRecord` also refuses a personal-group
+    // GUEST: they have write on the vehicle's facts but no personal layer, so a
+    // trip saved here would be invisible to its own author the moment it landed.
+    if (!canAttachRecord(req.user!.id, body.bikeId, db)) {
       res.status(404).json({ error: "bike_not_found" });
       return;
     }
@@ -129,12 +140,13 @@ tripsRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
     const db = getDb();
-    const row = db.prepare("SELECT id, bike_id FROM trip WHERE id = ?").get(req.params.id) as
-      | { id: string; bike_id: string }
+    const row = db.prepare("SELECT id, bike_id, user_id FROM trip WHERE id = ?").get(req.params.id) as
+      | { id: string; bike_id: string; user_id: string }
       | undefined;
     // Unknown id, or a trip on a vehicle the caller can't reach — both look the
-    // same to the caller.
-    if (!row || !canAccessBike(req.user!.id, row.bike_id, "write", db)) {
+    // same to the caller. Record-scoped, so a guest cannot delete somebody's
+    // journey log off a vehicle they were merely shown.
+    if (!row || !canAccessRecord(req.user!.id, { bikeId: row.bike_id, userId: row.user_id }, "write", db)) {
       res.status(404).json({ error: "not_found" });
       return;
     }

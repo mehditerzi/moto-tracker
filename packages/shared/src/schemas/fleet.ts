@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { orgModeSchema, orgRoleSchema, type OrgMode } from "./organization.js";
+import { orgBusinessModeSchema, orgModeSchema, orgRoleSchema, type OrgMode } from "./organization.js";
 
 /**
  * Fleet operations — the shapes the dispatch-board screens exchange with the API.
@@ -31,7 +31,16 @@ import { orgModeSchema, orgRoleSchema, type OrgMode } from "./organization.js";
 export const orgSettingsUpdateSchema = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    mode: orgModeSchema.optional(),
+    // `orgBusinessModeSchema`, NOT `orgModeSchema`. A settings PATCH is the one
+    // route that writes `mode`, and if it accepted 'personal' a fleet owner
+    // could downgrade their org into a consumer garage group — moving every
+    // vehicle's bill from `organization.max_vehicles` onto the custodians'
+    // (free) personal ceilings. The reverse would be worse: a personal group
+    // could promote itself into the fleet product, which is exactly the in-app
+    // fleet acquisition path docs/fleet-design.md §1 forbids. Neither direction
+    // is expressible here, and `requireOrgRole` refuses personal groups on this
+    // route anyway — two independent locks on the same door.
+    mode: orgBusinessModeSchema.optional(),
   })
   .refine((v) => v.name !== undefined || v.mode !== undefined, {
     message: "empty_update",

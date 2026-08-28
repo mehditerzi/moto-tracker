@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { OrgMode, OrgRole } from "@mototracker/shared";
+import type { OrgBusinessMode, OrgMode, OrgRole } from "@mototracker/shared";
 
 /**
  * Organization membership — the ONE thing every fleet decision in the client
@@ -28,6 +28,24 @@ export interface OrgMembership {
   name: string;
   mode: OrgMode;
   role: OrgRole;
+}
+
+/**
+ * A membership that has been PROVEN to be a business fleet.
+ *
+ * `OrgMode` has three values, because a personal garage group is an
+ * organization too — same tables, same roles, same permission module. The fleet
+ * screens speak a vocabulary a household has none of (assignments, contracts,
+ * cost rollups), so they take this narrower type and the compiler, rather than a
+ * comment, enforces that a garage group can never reach one. `fleetOrgs` below
+ * is the only place the narrowing happens.
+ */
+export interface FleetOrgMembership extends OrgMembership {
+  mode: OrgBusinessMode;
+}
+
+function isFleetOrg(o: OrgMembership): o is FleetOrgMembership {
+  return o.mode !== "personal";
 }
 
 export const ORGS_KEY = ["orgs"] as const;
@@ -69,12 +87,12 @@ export interface FleetAccess {
   isPending: boolean;
   /** Every membership, drivers included. */
   orgs: OrgMembership[];
-  /** Memberships that may see fleet UI at all — never a driver. */
-  fleetOrgs: OrgMembership[];
+  /** Memberships that may see fleet UI at all — never a driver, never personal. */
+  fleetOrgs: FleetOrgMembership[];
   /** True when fleet nav/chrome may be rendered for this user. */
   canSeeFleet: boolean;
   /** The org the fleet screens are currently pointed at. */
-  active: OrgMembership | null;
+  active: FleetOrgMembership | null;
   setActiveOrgId: (id: string) => void;
 }
 
@@ -96,7 +114,20 @@ export function useFleetAccess(): FleetAccess {
 
   return useMemo(() => {
     const all = orgs.data ?? [];
-    const fleetOrgs = all.filter((o) => o.role !== "driver");
+    // TWO filters, and the mode one is the newer and the more important.
+    //
+    // `mode !== "personal"` keeps the FLEET PRODUCT invisible to consumers. A
+    // personal garage group is an `organization` too — same tables, same roles,
+    // same permission module — so without this line a user who shared a car with
+    // their spouse would become "a non-driver org member" and the entire fleet
+    // surface would appear: the triage board, the cost rollups, the CSV
+    // importer, the people screens. That is not a cosmetic bug. docs/fleet-design.md
+    // §1 makes fleet's invisibility an App Review 3.1.1 posture, and the gate it
+    // names is this function.
+    //
+    // `role !== "driver"` is the original rule: a fleet driver has a membership
+    // but gets the consumer app scoped to the vehicle in their hands (§3).
+    const fleetOrgs = all.filter(isFleetOrg).filter((o) => o.role !== "driver");
     // Self-heal a stored id that points at an org the user has left, so a stale
     // localStorage value can never strand a manager on an empty board.
     const active = fleetOrgs.find((o) => o.orgId === selected) ?? fleetOrgs[0] ?? null;

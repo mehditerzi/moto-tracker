@@ -59,6 +59,30 @@ enforced server-side; the UI mirrors them but is never the enforcement point.
 The driver boundary is the security-critical one: a driver must not be able to
 enumerate the rest of the fleet through any route.
 
+
+### Personal garage groups are NOT fleet
+
+An `organization` can also be a **personal garage group** (`mode: 'personal'`) —
+a household or a rider and their mechanic sharing a vehicle. It reuses these same
+tables, roles and `orgAccess.ts` on purpose: one permission model, not two. It is
+emphatically **not** the fleet product, and two guards keep them apart:
+
+- **Server:** `requireOrgRole` refuses a personal group with 404, so every route
+  under `/api/orgs` — triage, inventory, costs, import, members, contracts, and
+  the settings PATCH that writes `mode` — is unreachable from one. The mirror
+  guard `requirePersonalGroupRole` refuses a business org on the sharing routes.
+  `orgSettingsUpdateSchema` cannot express `'personal'`, so neither direction is
+  a conversion path.
+- **Client:** `useFleetAccess().fleetOrgs` filters `mode !== "personal"`, and its
+  `FleetOrgMembership` type makes that narrowing something the compiler checks
+  rather than something a reviewer has to notice.
+
+Unlike a fleet, a personal group **is** user-creatable (`POST
+/api/vehicle-shares/groups`). That is consistent with §1 rather than an exception
+to it: it costs nothing, unlocks nothing, and its vehicles are billed to their
+custodians' ordinary consumer entitlement — there is no purchasing mechanism
+anywhere near it.
+
 ---
 
 ## 3. The driver experience is the consumer app

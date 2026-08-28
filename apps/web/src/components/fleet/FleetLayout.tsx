@@ -2,7 +2,7 @@ import { NavLink, Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LayoutGrid, Car, Wallet, Users, Contact, Upload } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { canManageFleet, useFleetAccess, type OrgMembership } from "@/hooks/useOrgs";
+import { canManageFleet, useFleetAccess, type FleetOrgMembership } from "@/hooks/useOrgs";
 import { cn } from "@/lib/cn";
 
 /**
@@ -120,7 +120,13 @@ export function FleetLayout() {
 }
 
 export interface FleetContext {
-  org: OrgMembership;
+  /**
+   * `FleetOrgMembership`, not `OrgMembership`: `OrgMode` now has a third value
+   * ('personal', the consumer garage group) and nothing under /fleet can render
+   * one. `useFleetAccess` does the narrowing, so every screen below this layout
+   * gets a mode the compiler has already proved is a business fleet.
+   */
+  org: FleetOrgMembership;
 }
 
 /** Every fleet screen reads its org from here rather than re-deriving it. */

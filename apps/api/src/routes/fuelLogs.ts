@@ -4,7 +4,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { fuelLogCreateSchema } from "@mototracker/shared";
-import { bikeScope, canAccessBike, canAccessRecord } from "../lib/orgAccess.js";
+import { bikeScope, canAccessRecord, canAttachRecord, canReadPersonalLayer } from "../lib/orgAccess.js";
 
 export const fuelLogsRouter: Router = Router();
 fuelLogsRouter.use(requireUser);
@@ -47,7 +47,10 @@ fuelLogsRouter.get(
   asyncHandler(async (req, res) => {
     const db = getDb();
     const bikeId = typeof req.query.bikeId === "string" ? req.query.bikeId : null;
-    if (bikeId && !canAccessBike(req.user!.id, bikeId, "read", db)) {
+    // `canReadPersonalLayer`, not `canAccessBike`: with a bikeId this query
+    // reads the table directly rather than through `bikeScope`, so what somebody
+    // SPENT on fuel would otherwise be visible to anyone the car was shared with.
+    if (bikeId && !canReadPersonalLayer(req.user!.id, bikeId, db)) {
       res.status(404).json({ error: "bike_not_found" });
       return;
     }
@@ -78,7 +81,10 @@ fuelLogsRouter.post(
     const db = getDb();
     // A driver logging a fill-up on the vehicle they are holding is the whole
     // point of "write"; an org vehicle they are NOT holding is invisible to them.
-    if (!canAccessBike(req.user!.id, body.bikeId, "write", db)) {
+    // `canAttachRecord` additionally refuses a personal-group GUEST: a fuel log
+    // is what somebody SPENT, it is not a fact about the car, and a guest has no
+    // personal layer on a vehicle that was merely shared with them.
+    if (!canAttachRecord(req.user!.id, body.bikeId, db)) {
       res.status(404).json({ error: "bike_not_found" });
       return;
     }
@@ -130,7 +136,10 @@ fuelLogsRouter.delete(
     const row = db.prepare("SELECT id, bike_id, user_id FROM fuel_log WHERE id = ?").get(req.params.id) as
       | { id: string; bike_id: string; user_id: string }
       | undefined;
-    if (row && canAccessBike(req.user!.id, row.bike_id, "write", db)) {
+    // Record-scoped: deleting somebody else's fill-up off a shared vehicle is
+    // not something a guest may do, and it is not something the vehicle-level
+    // check could have told us.
+    if (row && canAccessRecord(req.user!.id, { bikeId: row.bike_id, userId: row.user_id }, "write", db)) {
       db.prepare("DELETE FROM fuel_log WHERE id = ?").run(row.id);
     }
     res.status(204).end();

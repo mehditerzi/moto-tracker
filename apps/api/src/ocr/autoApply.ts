@@ -3,6 +3,7 @@ import { newId } from "../lib/ulid.js";
 import type { ParsedOcr } from "./parser.js";
 import { inferVehicleType } from "./catalog.js";
 import { bikeFacts, permits } from "../lib/orgAccess.js";
+import { findIdentityMatch, tryRegisterIdentities } from "../lib/vehicleIdentity.js";
 
 export interface AutoApplyInput {
   db: Database.Database;
@@ -239,6 +240,22 @@ function pickOrCreateBike(
     // review screen still lets them attach the scan to the right vehicle.
     if (np && plateBelongsToUsersOrg(db, userId, np)) return null;
 
+    // The GLOBAL duplicate rule, enforced on the automatic path too.
+    //
+    // A ruhsat scan is the most likely way a second copy of a vehicle would be
+    // born: two people photograph the same registration card and each gets their
+    // own record of the same car. `findIdentityMatch` asks the registry, so a
+    // chassis (or engine) that already belongs to somebody stops this cold.
+    //
+    // Doing NOTHING is the right answer here rather than raising a conflict. A
+    // background OCR worker has nobody to ask, and the duplicate conversation —
+    // request access, or claim you bought it — needs a person in front of a
+    // screen. The scan is still attached to the document, and the user gets the
+    // conversation the moment they try to add the vehicle by hand.
+    if (findIdentityMatch(db, { chassisNo: parsed.chassisNo, engineNo: parsed.engineNo })) {
+      return null;
+    }
+
     const id = newId();
     const nickname =
       [parsed.make, parsed.model].filter(Boolean).join(" ").trim() ||
@@ -266,6 +283,11 @@ function pickOrCreateBike(
       parsed.cylinderCc,
       parsed.fuelType,
     );
+    // Claim the identity for the vehicle we just minted. `try`-flavoured because
+    // losing a race with a simultaneous add must not fail the whole scan: the
+    // vehicle is perfectly usable either way, it simply is not the holder of
+    // record for that VIN.
+    tryRegisterIdentities(db, id, { chassisNo: parsed.chassisNo, engineNo: parsed.engineNo });
     return { bikeId: id, action: "created" };
   }
 
@@ -320,6 +342,13 @@ function patchBikeBlanks(
   sets.push("updated_at = datetime('now')");
   values.push(bikeId);
   db.prepare(`UPDATE bike SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+  // A scan that filled in a previously-blank chassis or engine number has just
+  // given this vehicle an identity it did not have. Register it, so the next
+  // person to type that VIN is told the vehicle is already tracked instead of
+  // quietly creating a twin. Tolerant of a conflict: if the identity is already
+  // spoken for, the FIELD is still correct on this row and worth keeping — the
+  // registry entry is what it does not get.
+  tryRegisterIdentities(db, bikeId, { chassisNo: parsed.chassisNo, engineNo: parsed.engineNo });
   return true;
 }
 

@@ -25,6 +25,7 @@ import { friendlyError } from "@/lib/apiError";
 import { useFleetDisclosure } from "@/hooks/useFleetDisclosure";
 import { OrgVehicleBadge } from "@/components/fleet/OrgVehicleBadge";
 import { OrgVehicleNotice } from "@/components/fleet/OrgVehicleNotice";
+import { SharedVehicleBadgeById } from "@/components/share/SharedVehicleBadge";
 import type { DashboardEntry, DatedItemType } from "@mototracker/shared";
 
 export function DashboardPage() {
@@ -184,6 +185,9 @@ export function DashboardPage() {
                 <span className="num text-xs uppercase tracking-wider">{active.bike.plate}</span>
               )}
             </div>
+            {/* Quiet, but always there. The worst state to be in with a shared
+                vehicle is not knowing you are in it. */}
+            <SharedVehicleBadgeById bikeId={active.bike.id} />
             <QuickKmUpdate bikeId={active.bike.id} currentKm={active.bike.currentKm} />
           </div>
           <Button asChild variant="outline" size="icon" aria-label={t("dashboard.edit")}>

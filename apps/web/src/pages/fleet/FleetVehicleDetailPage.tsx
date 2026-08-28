@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, FileText, Pencil } from "lucide-react";
-import type { DatedItem, DatedItemType } from "@mototracker/shared";
+import type { DatedItem, DatedItemType, OrgBusinessMode } from "@mototracker/shared";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
@@ -176,7 +176,14 @@ function HistoryList({
   mode,
 }: {
   history: NonNullable<ReturnType<typeof useFleetVehicleHistory>["data"]>;
-  mode: "fleet" | "rental";
+  /**
+   * The two BUSINESS modes only. `OrgMode` gained a third value ('personal',
+   * the consumer garage group) and this component renders assignment/contract
+   * vocabulary that a household has none of. Keeping the prop narrow means the
+   * compiler — not a comment — enforces that a personal group can never reach a
+   * fleet screen; `useFleetAccess` filters it out well before this point.
+   */
+  mode: OrgBusinessMode;
 }) {
   const { t } = useTranslation();
   // One list, both modes: whichever relationship the org actually uses is the

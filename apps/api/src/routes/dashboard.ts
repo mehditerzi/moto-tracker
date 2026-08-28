@@ -3,7 +3,7 @@ import { requireUser } from "../middleware/requireUser.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { rowToDatedItem } from "./datedItems.js";
-import { bikeScope } from "../lib/orgAccess.js";
+import { readableBikeScope } from "../lib/orgAccess.js";
 
 interface BikeRow {
   id: string;
@@ -29,8 +29,14 @@ dashboardRouter.get(
   asyncHandler(async (req, res) => {
     const db = getDb();
     // Exactly the vehicles the caller may read: their own garage, the fleets they
-    // help run, or — for a driver — only the vehicle currently in their hands.
-    const scope = bikeScope(req.user!.id, db);
+    // help run, the garages they have been shared into, or — for a fleet driver —
+    // only the vehicle currently in their hands.
+    //
+    // `readableBikeScope`, not `bikeScope`: a dashboard row is a vehicle and its
+    // renewal deadlines, which is precisely what a share conveys. The narrower
+    // `bikeScope` is the PERSONAL-LAYER scope and is what keeps a shared-with
+    // guest out of the trip, fuel and document lists (lib/orgAccess.ts).
+    const scope = readableBikeScope(req.user!.id, db);
     const bikes = db
       .prepare(
         `SELECT id, vehicle_type, nickname, plate, make, model, year, color, photo_url, current_km, updated_at

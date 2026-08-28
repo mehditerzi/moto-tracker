@@ -40,6 +40,16 @@ export function rowToMaintenance(r: Row) {
   };
 }
 
+/**
+ * These records ARE facts about the vehicle — a renewal deadline, a service
+ * interval — not facts about the person who typed them. That distinction is the
+ * whole sharing model: it is what a personal-group GUEST (a mechanic, an
+ * inspection agency) is allowed to see and edit, whereas trips, fuel spending
+ * and scanned documents stay with their author. The flag defaults to false in
+ * `lib/orgAccess.ts`, so a record type is private until a route says otherwise.
+ */
+const VEHICLE_FACT = { vehicleFact: true } as const;
+
 export const bikesNestedMaintRouter: Router = Router({ mergeParams: true });
 bikesNestedMaintRouter.use(requireUser);
 
@@ -112,7 +122,7 @@ maintenanceItemsRouter.get(
       res.status(404).json({ error: "not_found" });
       return;
     }
-    if (!authorizeRecord(req, res, recordOf(row), "read")) return;
+    if (!authorizeRecord(req, res, recordOf(row), "read", VEHICLE_FACT)) return;
     res.json(rowToMaintenance(row));
   }),
 );
@@ -127,7 +137,7 @@ maintenanceItemsRouter.patch(
       res.status(404).json({ error: "not_found" });
       return;
     }
-    if (!authorizeRecord(req, res, recordOf(exists), "write", { db })) return;
+    if (!authorizeRecord(req, res, recordOf(exists), "write", { db, ...VEHICLE_FACT })) return;
     const fieldMap: Record<string, string> = {
       kind: "kind",
       customLabel: "custom_label",
@@ -165,7 +175,7 @@ maintenanceItemsRouter.delete(
       res.status(404).json({ error: "not_found" });
       return;
     }
-    if (!authorizeRecord(req, res, recordOf(existing), "write", { db })) return;
+    if (!authorizeRecord(req, res, recordOf(existing), "write", { db, ...VEHICLE_FACT })) return;
     db.prepare("DELETE FROM maintenance_item WHERE id = ?").run(req.params.id);
     res.status(204).end();
   }),

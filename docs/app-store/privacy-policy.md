@@ -1,15 +1,20 @@
 # Garajım — Privacy Policy
 
-_Last updated: 2026-08-17_
+_Last updated: 2026-08-28_
 
 Garajım ("the app") helps you track your vehicle documents and their expiry
 dates, record the trips you ride, and ride together with friends on a live map.
 This policy explains what data the app collects, why, and how it is handled. The
 service is operated by the app's owner on self-hosted infrastructure.
 
-Most people use Garajım on their own. Some use it as a member of a company's
-**organization** — a business that runs a fleet or rents vehicles out. If that is
-you, everything below still applies, and
+Most people use Garajım on their own. You can also **share a vehicle, or a whole
+garage, with other people** — a partner, your family, or your mechanic. If you do,
+[Sharing a vehicle with other people](#sharing-a-vehicle-with-other-people)
+explains exactly what they can and cannot see.
+
+Separately, some people use Garajım as a member of a company's **organization** —
+a business that runs a fleet or rents vehicles out. If that is you, everything
+below still applies, and
 [Organizations and company vehicles](#organizations-and-company-vehicles)
 explains what is different, including what your employer can see.
 
@@ -25,7 +30,10 @@ explains what is different, including what your employer can see.
   and secure your account.
 - **Vehicle information you enter or scan:** plate, make, model, year, chassis
   number, engine number, cylinder capacity, and document expiry dates
-  (insurance / kasko / inspection / maintenance).
+  (insurance / kasko / inspection / maintenance). The chassis and engine numbers
+  are also used to recognise when two records describe the same real vehicle —
+  see
+  [Sharing a vehicle with other people](#sharing-a-vehicle-with-other-people).
 - **Document photos:** images you capture or upload of your vehicle documents.
   They are processed to read the dates and vehicle details, then stored so you
   can review them.
@@ -40,6 +48,12 @@ explains what is different, including what your employer can see.
   trip was logged", "a scan failed") used to find bugs and improve the app.
 - **Notification token:** if you enable reminders, a push token/subscription for
   your device so we can send expiry reminders.
+- **Shared garages:** if you share a vehicle or accept somebody's invitation, we
+  store who is in that shared garage, at what level, and which vehicles are in it.
+- **Access and ownership requests:** if you ask about a vehicle that is already
+  tracked, we store your request, the identifier you supplied, the note you wrote
+  and what was decided — and, once a vehicle changes hands, a record of the
+  handover.
 - **Organization membership:** if a company adds you to its organization, we
   store which organization you belong to, your role in it, and which of its
   vehicles is assigned to you — see
@@ -85,6 +99,91 @@ Your location is used only for these features. It is never used for advertising
 and never sold. It is not shared with anyone other than the ride members you
 deliberately ride with and — for a trip recorded on a company vehicle — the
 organization that vehicle belongs to.
+
+## Sharing a vehicle with other people
+
+You can share a vehicle — or a **shared garage** holding several vehicles — with
+other people. Nothing is shared unless you deliberately do it: you send an
+invitation to a specific email address, and the other person has to accept it.
+You can remove them, or stop sharing the vehicle, at any time.
+
+There are two levels, and the difference between them is the whole point.
+
+**Guest** — for a mechanic, a service, or a friend borrowing the vehicle. They
+can see and update **the vehicle's own facts**:
+
+- its make, model, year, plate, chassis number and engine number;
+- its renewal dates (inspection / insurance / kasko / MTV);
+- its service and maintenance history;
+- its odometer reading.
+
+A guest **cannot** see your trips or the routes you drove, your fuel purchases,
+or any document you scanned against that vehicle. They cannot rename the vehicle,
+change its plate, delete it, or share it onward. They see only the vehicles in
+the garage you shared with them — never the rest of your account.
+
+**Member** — for a partner or family, when you are genuinely sharing a garage.
+Everything a guest sees, **plus the trips recorded on those vehicles (including
+routes), the fuel purchases logged against them, and the documents scanned
+against them**. Please read that sentence before you invite somebody as a member:
+it means they can see where those vehicles were driven and what was spent on
+them. A member still cannot delete a vehicle or manage who else is in the garage.
+
+Neither level ever exposes your other vehicles, and neither ever exposes anything
+in your account outside the shared garage.
+
+**What the other person contributes.** A vehicle that you put into a shared
+garage still belongs to you — you remain the person it is billed to, and you can
+take it back out at any time, which immediately ends everyone else's access to
+it. If somebody leaves a shared garage, any vehicle of their own goes with them.
+
+**Duplicate vehicles.** The same real vehicle cannot be recorded twice: we match
+on the chassis (VIN) and engine numbers. If you add a vehicle that somebody else
+is already keeping records for, we tell you that the vehicle is already tracked
+and let you either ask for access or say that you bought it — and we tell you
+**nothing else**. Not who holds it, not their name or email address, not the
+vehicle's nickname, plate, or anything else about it. We deliberately do **not**
+match on plate numbers, both because Turkish plates are reassigned to different
+vehicles over time and because a plate is something a stranger can read off a
+bumper. If you send such a request, the current holder sees your name, your email
+address and the short note you wrote, so that they can decide. They are never
+told anything about you otherwise, and you are never told anything about them.
+
+## Ownership handover: what happens when a vehicle changes hands
+
+If a vehicle is sold, its record can move to the new owner — either because the
+current holder hands it over, or because they approve a request from the buyer.
+It only ever happens when the **current holder agrees**. There is no automatic
+transfer: if nobody answers a request, nothing happens to the vehicle, and the
+person who asked can start a separate record of their own instead.
+
+A handover moves the facts about the **vehicle**, and nothing about the **person**.
+
+**Transfers to the new owner:**
+
+- the vehicle's identity — make, model, year, chassis number, engine number;
+- its renewal dates (inspection / insurance / kasko / MTV);
+- its service and maintenance history;
+- its odometer reading.
+
+**Stays with the previous owner, and is never shown to the new owner:**
+
+- the GPS trips they recorded and the routes they drove;
+- their fuel purchases and what they spent;
+- every document they scanned, and the images of those documents;
+- the photos they took of the vehicle.
+
+Those records move to an archived copy of the vehicle in the previous owner's own
+garage, so they keep them and can still read them; the new owner cannot see them
+and is never given any reference to them.
+
+**Why the split is drawn there.** A scanned Turkish *ruhsat* carries the previous
+owner's **T.C. kimlik number, name and home address**. A trip log is everywhere
+they drove. A fuel log is what they spent, and where. None of that is information
+about the car, and handing it to whoever bought the car would be a disclosure of
+personal data with no lawful basis under KVKK/GDPR. The service history is
+different: it is a fact about the vehicle, and it is the reason this feature
+exists. There is no setting that changes this.
 
 ## Organizations and company vehicles
 
@@ -183,6 +282,12 @@ them to build an advertising or cross-site profile.
 - To authenticate you and keep your account secure.
 - To validate purchases and grant the vehicle allowance you paid for.
 - To fix bugs and improve the app, using the first-party usage events above.
+- To show a vehicle you have shared to the people you shared it with, at the
+  level you chose, as described in
+  [Sharing a vehicle with other people](#sharing-a-vehicle-with-other-people).
+- To recognise when two records describe the same real vehicle, so that one
+  vehicle is not tracked twice and its history survives a change of owner. We
+  store the chassis and engine numbers you enter or scan for this purpose.
 - To run a company's fleet on its behalf, where you are a member of an
   organization: showing that organization the records kept on _its_ vehicles, as
   described in
@@ -224,6 +329,15 @@ organization, because they are the company's and not yours; wherever such a
 record still carried your name, it is handed to another member of the
 organization, so your identifier does not survive in it. If you were the last
 remaining member, the organization and everything in it is deleted along with you.
+
+If you have shared vehicles, deleting your account removes them along with
+everything else of yours, and the people you shared with lose access to them at
+the same moment. If a vehicle of yours was **handed over** to somebody else
+before that, it is theirs and stays with them — but only ever with the facts
+listed under
+[Ownership handover](#ownership-handover-what-happens-when-a-vehicle-changes-hands);
+your trips, fuel logs and documents were never given to them and are deleted with
+your account.
 
 Records an organization holds about its own customers are deleted by that
 organization — see

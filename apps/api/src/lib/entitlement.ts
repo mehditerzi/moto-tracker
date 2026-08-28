@@ -50,17 +50,45 @@ interface EntitlementRow {
 }
 
 /**
- * Count a user's active (non-archived) PERSONAL vehicles — the number that
- * counts against their own subscription.
+ * Count the active (non-archived) vehicles that count against a USER's own
+ * subscription.
  *
- * `org_id IS NULL` is load-bearing: an organization's vehicles are billed to the
- * organization (see `canAddOrgVehicle`), so registering a company van must not
- * consume the personal garage the member paid for. Because every pre-org row has
- * org_id NULL, this is a no-op for existing users.
+ * The rule, in one sentence: **a vehicle is billed to whoever holds it, and
+ * sharing never changes who that is.**
+ *
+ * Three cases fall out of it:
+ *
+ *   `org_id IS NULL` — an ordinary personal vehicle. Counts. (Every pre-org row
+ *   looks like this, so nothing changed for existing users.)
+ *
+ *   A BUSINESS org's vehicle — billed to the organization against
+ *   `organization.max_vehicles` (see `canAddOrgVehicle`), so registering a
+ *   company van must not consume the personal garage the member paid for. Does
+ *   not count.
+ *
+ *   A PERSONAL GROUP's vehicle — counts against its CUSTODIAN, exactly as if it
+ *   had never been shared. This is the anti-farming rule and it is the reason
+ *   the join below exists at all. Without it, moving a vehicle into a garage
+ *   group would set `org_id` and quietly drop it off everybody's ceiling: a free
+ *   user could make a group, put ten cars in it, and pay for none of them. A
+ *   personal group has no operator and no fleet contract, so there is no other
+ *   ceiling for it to fall to.
+ *
+ * The pleasant consequence for the honest case: a couple sharing one car burn
+ * ONE slot between them (the custodian's), not one each. Membership grants no
+ * capacity whatsoever — the vehicles you can see and the vehicles you pay for
+ * are different questions, and only the second one is asked here.
  */
 export function countActiveBikes(userId: string, db: DB = getDb()): number {
   const row = db
-    .prepare("SELECT COUNT(*) AS n FROM bike WHERE user_id = ? AND org_id IS NULL AND archived = 0")
+    .prepare(
+      `SELECT COUNT(*) AS n
+         FROM bike b
+         LEFT JOIN organization o ON o.id = b.org_id
+        WHERE b.user_id = ?
+          AND b.archived = 0
+          AND (b.org_id IS NULL OR o.is_personal = 1)`,
+    )
     .get(userId) as { n: number };
   return row.n;
 }
@@ -125,6 +153,17 @@ export function canAddVehicle(userId: string, db: DB = getDb()): boolean {
 // and has nothing to do with any member's personal entitlement — a fleet owner
 // on the free consumer tier can still run a 40-vehicle fleet, and buying a
 // personal vehicle pack does not enlarge the fleet.
+
+/**
+ * Everything below concerns BUSINESS organizations only. A personal garage group
+ * is an `organization` row too, but it has no fleet contract, no operator and no
+ * `max_vehicles` anybody could have bought — its vehicles are charged to their
+ * custodians by `countActiveBikes` above. `POST /api/bikes` therefore routes a
+ * personal group to `canAddVehicle`, never to `canAddOrgVehicle`, and
+ * `setOrgMaxVehicles` is reachable only from fleet billing. If a personal group
+ * ever reached this code it would read `max_vehicles = 0` and refuse, which is
+ * the safe direction.
+ */
 
 /** Count an organization's active (non-archived) vehicles. */
 export function countActiveOrgBikes(orgId: string, db: DB = getDb()): number {

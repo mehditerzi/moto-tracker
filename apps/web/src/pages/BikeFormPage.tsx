@@ -33,6 +33,10 @@ import { useConfirm } from "@/components/ConfirmSheet";
 import { ErrorState } from "@/components/ErrorState";
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { VehicleAvatar } from "@/components/VehicleAvatar";
+import { DuplicateVehicleSheet } from "@/components/share/DuplicateVehicleSheet";
+import { VehicleShareSection } from "@/components/share/VehicleShareSection";
+import { asDuplicateVehicle, asOwnDuplicate } from "@/hooks/useVehicleShares";
+import type { DuplicateVehicle } from "@mototracker/shared";
 import type { OrgMembership } from "@/hooks/useOrgs";
 import { deniedRedirect, useVehicleTarget } from "@/pages/fleet/vehicleTarget";
 import { ensureFleetLocale } from "@/lib/fleetLocale";
@@ -66,6 +70,11 @@ export function BikeFormPage() {
   const archiveMut = useArchiveBike();
   const [paywall, setPaywall] = useState(false);
   const [orgLimit, setOrgLimit] = useState(false);
+  // The vehicle the user is trying to add is already tracked by somebody. Held
+  // in state rather than navigated to, because the form must stay behind the
+  // sheet: if they decide it is a different vehicle after all, their typing is
+  // still there.
+  const [duplicate, setDuplicate] = useState<DuplicateVehicle | null>(null);
   const [searchParams] = useSearchParams();
 
   /**
@@ -199,6 +208,7 @@ export function BikeFormPage() {
       firstRegistrationDate: v.firstRegistrationDate || null,
     };
     setOrgLimit(false);
+    setDuplicate(null);
     try {
       if (isEdit && id) {
         await updateMut.mutateAsync(payload);
@@ -218,6 +228,23 @@ export function BikeFormPage() {
         navigate("/bikes");
       }
     } catch (e) {
+      // ── the vehicle is already in the system ────────────────────────────
+      //
+      // Two shapes of 409. One is a stranger's record — the user is offered the
+      // request-access / I-bought-it conversation and learns nothing else. The
+      // other is their OWN vehicle, typed twice, which needs no conversation at
+      // all: send them to the record they already have.
+      const dup = asDuplicateVehicle(e);
+      if (dup) {
+        setDuplicate(dup);
+        return;
+      }
+      const own = asOwnDuplicate(e);
+      if (own) {
+        pushToast({ variant: "success", title: t("share.alreadyYours") });
+        navigate(`/bikes/${own.bikeId}/edit`);
+        return;
+      }
       if (isVehicleLimitError(e)) {
         // One machine code, two ceilings. A personal vehicle hit the consumer
         // entitlement, and the paywall is the honest next step. An ORG vehicle
@@ -310,6 +337,7 @@ export function BikeFormPage() {
       {/* Not mounted at all in an org context: the fleet UI contains no
           acquisition affordance anywhere (docs/fleet-design.md §1). */}
       {!org && <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />}
+      <DuplicateVehicleSheet duplicate={duplicate} onClose={() => setDuplicate(null)} />
       <Card>
         <CardHeader>
           <CardTitle>
@@ -557,6 +585,13 @@ export function BikeFormPage() {
               </Button>
             )}
           </form>
+          {/* Sharing is offered for a PERSONAL vehicle only. A company van is
+              governed by its organization, and an affordance here would both
+              contradict the fleet permission model and reveal fleet's existence
+              to a consumer looking at their own car (docs/fleet-design.md §1).
+              A vehicle already in a garage GROUP is personal too — `orgId` then
+              points at a personal org, which `VehicleShareSection` resolves. */}
+          {isEdit && bike.data && !org && <VehicleShareSection bike={bike.data} />}
           {isEdit && id && <BikeDocumentsSection bikeId={id} />}
           {isEdit && id && <DocumentWalletSection bikeId={id} />}
         </CardContent>

@@ -31,6 +31,7 @@ import { orgInvitesRouter, orgMembersRouter } from "./routes/orgMembers.js";
 import { orgFleetRouter } from "./routes/orgFleet.js";
 import { orgContractsRouter } from "./routes/orgContracts.js";
 import { orgImportRouter } from "./routes/orgImport.js";
+import { vehicleSharesRouter } from "./routes/vehicleShares.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { getAuth } from "./auth/index.js";
 import { toNodeHandler } from "better-auth/node";
@@ -275,6 +276,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
   app.use("/api/entitlement", entitlementRouter);
+  app.use("/api/vehicle-shares", vehicleSharesRouter);
   // Webhook first: it's unauthenticated (Apple → us) and must not hit the
   // requireUser middleware that iapRouter applies to the shared /api/iap path.
   app.use("/api/iap", iapWebhookRouter);

@@ -66,6 +66,61 @@ describe("locale key parity", () => {
     expect(enKeys.has("settings.daysBeforeShort")).toBe(true);
   });
 
+  /**
+   * Sharing is a CONSUMER feature, so its vocabulary belongs in the always-loaded
+   * bundle rather than the lazy fleet chunk — and every string in it is a
+   * disclosure of what another person will be able to see, which must never
+   * render as a raw key path in either language.
+   */
+  it("keeps the sharing vocabulary in the main bundle, in both languages", () => {
+    for (const key of [
+      "share.sectionTitle",
+      "share.role.guest.title",
+      "share.role.guest.body",
+      "share.role.member.title",
+      "share.role.member.body",
+      "share.duplicateTitle",
+      "share.duplicateBodyChassis",
+      "share.duplicateBodyEngine",
+      "share.choiceAccessTitle",
+      "share.choicePurchaseTitle",
+      "share.claimDisclosure",
+      "share.handoverTransfers",
+      "share.handoverKeeps",
+      "share.handoverConfirmBody",
+      "share.decideIgnoreNote",
+      "share.inviteLinkWarning",
+    ]) {
+      expect(trKeys.has(key), `tr is missing ${key}`).toBe(true);
+      expect(enKeys.has(key), `en is missing ${key}`).toBe(true);
+    }
+  });
+
+  /**
+   * The duplicate screen must not name the holder, and the copy is where such a
+   * sentence would realistically creep back in — "ask <name>", "owned by", an
+   * email placeholder. Guard the words rather than trusting a code review.
+   */
+  it("never promises to identify who holds a duplicate vehicle", () => {
+    const strings = (obj: unknown, path = ""): [string, string][] => {
+      if (typeof obj === "string") return [[path, obj]];
+      if (obj === null || typeof obj !== "object") return [];
+      return Object.entries(obj as Record<string, unknown>).flatMap(([k, v]) =>
+        strings(v, path ? `${path}.${k}` : k),
+      );
+    };
+    const dupCopy = [...strings(tr), ...strings(en)].filter(([k]) =>
+      /^share\.(duplicate|choice|claimSent|claimWaiting|claimUnanswered)/.test(k),
+    );
+    expect(dupCopy.length).toBeGreaterThan(0);
+    // The realistic regression is INTERPOLATING an identity into this copy —
+    // "ask {{ownerName}}", "owned by ahmet@…" — not the ordinary phrase
+    // "if the previous owner agrees", which is both true and necessary.
+    const namesTheHolder =
+      /\{\{holder|\{\{owner|\{\{email|\{\{plate|\{\{nickname|\bowned by\b|\bthe owner is\b|sahibi:\s|sahibi \{\{/i;
+    expect(dupCopy.filter(([, v]) => namesTheHolder.test(v))).toEqual([]);
+  });
+
   it("includes settings.updateFailed in both locales", () => {
     expect(trKeys.has("settings.updateFailed")).toBe(true);
     expect(enKeys.has("settings.updateFailed")).toBe(true);

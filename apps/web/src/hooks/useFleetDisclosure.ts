@@ -99,7 +99,13 @@ export function useFleetDisclosure(): FleetDisclosure {
     staleTime: 60_000,
   });
 
-  const memberships = orgs.data ?? [];
+  // BUSINESS orgs only. This hook drives the "company vehicle" badge and the
+  // employee-monitoring notice that suspends trip recording until it is
+  // acknowledged — a disclosure about an EMPLOYER. A personal garage group is an
+  // `organization` too, so without this filter sharing a car with your spouse
+  // would flag it as a company vehicle and tell you your employer can see where
+  // you drive, which is both false and alarming.
+  const memberships = (orgs.data ?? []).filter((o) => o.mode !== "personal");
   const byId = new Map(memberships.map((o) => [o.orgId, o]));
   const orgVehicles = new Map<string, OrgVehicleInfo>();
   for (const b of bikes.data ?? []) {
