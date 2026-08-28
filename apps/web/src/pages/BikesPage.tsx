@@ -11,8 +11,7 @@ import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { useBikes } from "@/hooks/useBikes";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { vehicleIcon } from "@/lib/vehicleType";
-import { env } from "@/env";
+import { VehicleAvatar } from "@/components/VehicleAvatar";
 
 /**
  * At-cap upsell: shown above the vehicle list whenever the garage is full so
@@ -116,9 +115,7 @@ export function BikesPage() {
       <GarageFullBanner />
 
       <div className="grid gap-2.5">
-        {data.map((b, i) => {
-          const Icon = vehicleIcon(b.vehicleType);
-          return (
+        {data.map((b, i) => (
           <motion.div
             key={b.id}
             initial={{ opacity: 0, y: 6 }}
@@ -130,17 +127,15 @@ export function BikesPage() {
             <Link to={`/bikes/${b.id}/edit`} className="block">
               <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-text/20 hover:shadow-card dark:hover:border-text-dark/20">
                 <div className="flex min-w-0 items-center gap-3">
-                  {b.photoUrl ? (
-                    <img
-                      src={`${env.VITE_API_URL}${b.photoUrl}`}
-                      alt=""
-                      className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-border dark:ring-border-dark"
-                    />
-                  ) : (
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
-                      <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
-                    </div>
-                  )}
+                  {/* `thumb`: a 44px square does not need the 1280px master.
+                      One component for both states, so a row is the same height
+                      whether the vehicle has a photo, is still loading one, or
+                      never had one. */}
+                  <VehicleAvatar
+                    vehicle={b}
+                    size="thumb"
+                    className="h-11 w-11 shrink-0 rounded-xl ring-1 ring-border dark:ring-border-dark"
+                  />
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-semibold">{b.nickname}</div>
                     <div className="truncate text-[13px] text-muted dark:text-muted-dark">
@@ -157,8 +152,7 @@ export function BikesPage() {
               </Card>
             </Link>
           </motion.div>
-          );
-        })}
+        ))}
       </div>
     </div>
   );

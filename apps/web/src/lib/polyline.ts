@@ -108,3 +108,25 @@ export function simplifyToBudget(points: LatLng[], maxPoints = 1000, toleranceM 
   }
   return result;
 }
+
+/**
+ * Encode to at most `maxChars`, loosening the simplification until it fits.
+ *
+ * Unlike `simplifyToBudget` the ceiling here is the *encoded* length, because
+ * the constraint being satisfied is a wire limit — the ride hub's 16 KiB frame
+ * cap — not a point count. A route the group is following is worth more coarse
+ * than absent, so this always returns something (the two endpoints in the
+ * limit) rather than giving up.
+ */
+export function encodeWithinBudget(points: LatLng[], maxChars: number): string {
+  if (points.length < 2) return encodePolyline(points);
+  let result = simplifyToBudget(points, 1200, 15);
+  let encoded = encodePolyline(result);
+  let tol = 15;
+  while (encoded.length > maxChars && tol < 100_000 && result.length > 2) {
+    tol *= 2;
+    result = simplifyRoute(result, tol);
+    encoded = encodePolyline(result);
+  }
+  return encoded;
+}

@@ -213,7 +213,13 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   // Sized well above real usage: a heavy session scans a handful of documents,
   // opens one map, joins one ride and flushes a few telemetry batches.
   // Each upload runs sharp + the full OCR pipeline (Tesseract/Ollama).
-  app.use("/api/documents", limiter({ windowMs: 60 * 60 * 1000, max: 60, method: "POST" }));
+  // Sized so the per-user DAILY cap in routes/documents.ts (60) is always the
+  // binding limit, never this. Bulk capture uploads a batch of up to 25 in one
+  // burst; at 60/hour a user hit an unexplained 429 partway through their third
+  // batch, while the daily cap they were actually near said nothing. This
+  // limiter exists to blunt a flood, not to ration normal use — the daily cap
+  // does the rationing, and it fails with a message that names the reason.
+  app.use("/api/documents", limiter({ windowMs: 60 * 60 * 1000, max: 90, method: "POST" }));
   // Join codes are 6 chars from a 31-letter alphabet — throttle enumeration.
   app.use("/api/ride-groups/join", limiter({ windowMs: 10 * 60 * 1000, max: 20, method: "POST" }));
   // Mints signed Apple credentials. MapKit re-authorizes near expiry (30 min),

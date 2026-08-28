@@ -14,16 +14,21 @@ import type { LatLng } from "./polyline";
  */
 
 // MapKit JS ships no types — model just the surface we use.
+/** `mapkit.Coordinate`. Read back off overlays and search results. */
+export interface MapKitCoordinate {
+  latitude: number;
+  longitude: number;
+}
 export interface MapKitSearchResult {
   displayLines?: string[];
-  coordinate: { latitude: number; longitude: number };
+  coordinate: MapKitCoordinate;
   name?: string;
   formattedAddress?: string;
 }
 /** A `mapkit.PolylineOverlay` — `Directions` hands one back, styled or not. */
 export interface MapKitPolyline {
   /** The overlay's coordinates; we re-use them to draw the casing beneath. */
-  points?: unknown[];
+  points?: MapKitCoordinate[];
   /** `mapkit.Style` — settable after construction (mapkit.Overlay#style). */
   style?: unknown;
 }
@@ -60,17 +65,41 @@ export interface MapKitNS {
       cb: (err: unknown, data: { places: MapKitSearchResult[] }) => void,
     ): number;
   };
-  Directions: new () => {
-    route(
-      req: { origin: unknown; destination: unknown; transportType?: unknown },
-      cb: (err: unknown, data: { routes: MapKitRoute[] }) => void,
+  Directions: {
+    new (opts?: Record<string, unknown>): {
+      route(
+        req: {
+          origin: unknown;
+          destination: unknown;
+          transportType?: unknown;
+          requestsAlternateRoutes?: boolean;
+        },
+        cb: (err: unknown, data: { routes: MapKitRoute[] }) => void,
+      ): number;
+    };
+    /** `mapkit.Directions.Transport` — Automobile is the closest to a bike. */
+    Transport?: { Automobile: string; Walking: string };
+  };
+  /**
+   * Reverse geocoding, used to give a dropped checkpoint a real name instead of
+   * a pair of coordinates. Optional in the type because a name is a nicety —
+   * every call site has a usable fallback if the namespace lacks it.
+   */
+  Geocoder?: new (opts?: Record<string, unknown>) => {
+    reverseLookup(
+      coordinate: unknown,
+      cb: (err: unknown, data: { results: MapKitSearchResult[] }) => void,
     ): number;
   };
-  Directions_Transport?: unknown;
 }
 export interface MapKitMap {
   /** mapkit.Map.ColorSchemes value; settable while the map is live. */
   colorScheme?: string;
+  /** `mapkit.CoordinateRegion` currently displayed — biases search results. */
+  region?: unknown;
+  /** `mapkit.Coordinate` at the centre of the view; the "drop a pin here" target. */
+  center?: MapKitCoordinate;
+  setCenterAnimated?: (center: unknown, animated?: boolean) => void;
   addOverlay(o: unknown): void;
   removeOverlay(o: unknown): void;
   addAnnotation(a: unknown): void;
@@ -270,6 +299,126 @@ export function casingForPolyline(
   return new mk.PolylineOverlay(points, { style: routeStrokeStyles(mk, w).casing });
 }
 
+// ─── multi-leg routing ────────────────────────────────────────────────────────
+
+/**
+ * MapKit JS `Directions` has no waypoint parameter — it routes one origin to
+ * one destination. A multi-stop plan is therefore literally a chain of legs,
+ * which is also why MAX_STOPS exists: every stop is another network round trip.
+ */
+export interface PlannedLeg {
+  /** The overlay MapKit handed back, ready to style and add to the map. */
+  polyline: MapKitPolyline;
+  points: LatLng[];
+  km: number;
+  minutes: number;
+}
+
+/** Coordinates off an overlay MapKit built, as our own plain tuples. */
+export function polylinePoints(polyline: MapKitPolyline): LatLng[] {
+  const points = polyline.points;
+  if (!Array.isArray(points)) return [];
+  const out: LatLng[] = [];
+  for (const p of points) {
+    if (p && Number.isFinite(p.latitude) && Number.isFinite(p.longitude)) {
+      out.push([p.latitude, p.longitude]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Automobile is the closest transport MapKit offers to a motorcycle: same road
+ * network, same restrictions that matter (motorway access, one-ways). Walking
+ * would happily route a rider down a staircase.
+ */
+function automobile(mk: MapKitNS): unknown {
+  return mk.Directions.Transport?.Automobile ?? "Automobile";
+}
+
+/** One origin→destination leg, promisified. Rejects on a routing failure. */
+export function routeLeg(mk: MapKitNS, from: LatLng, to: LatLng): Promise<PlannedLeg> {
+  return new Promise((resolve, reject) => {
+    new mk.Directions().route(
+      {
+        origin: new mk.Coordinate(from[0], from[1]),
+        destination: new mk.Coordinate(to[0], to[1]),
+        transportType: automobile(mk),
+        requestsAlternateRoutes: false,
+      },
+      (err, data) => {
+        const route = data?.routes?.[0];
+        if (err || !route) {
+          reject(err instanceof Error ? err : new Error("route_failed"));
+          return;
+        }
+        resolve({
+          polyline: route.polyline,
+          points: polylinePoints(route.polyline),
+          km: route.distance / 1000,
+          minutes: route.expectedTravelTime / 60,
+        });
+      },
+    );
+  });
+}
+
+/**
+ * Routes through every waypoint in order. Sequential rather than parallel: the
+ * Directions service is quota'd per app, and firing twelve requests at once on
+ * a phone's connection is how you get a burst of failures instead of a route.
+ *
+ * `onLeg` reports each leg as it lands so the map can draw progressively — a
+ * rider who added a fifth stop sees the first four legs stay put rather than
+ * the whole line blinking out while the last one is fetched.
+ */
+export async function routeThrough(
+  mk: MapKitNS,
+  waypoints: readonly LatLng[],
+  onLeg?: (leg: PlannedLeg, index: number) => void,
+): Promise<PlannedLeg[]> {
+  const legs: PlannedLeg[] = [];
+  for (let i = 1; i < waypoints.length; i++) {
+    const leg = await routeLeg(mk, waypoints[i - 1]!, waypoints[i]!);
+    legs.push(leg);
+    onLeg?.(leg, i - 1);
+  }
+  return legs;
+}
+
+/**
+ * A human name for a dropped pin. Best-effort by design: a checkpoint with no
+ * name is still a checkpoint, so every failure resolves to null rather than
+ * blocking the rider on a network call they never asked for.
+ */
+export function reverseLookupName(mk: MapKitNS, point: LatLng): Promise<string | null> {
+  const Geocoder = mk.Geocoder;
+  if (!Geocoder) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (name: string | null) => {
+      if (!settled) {
+        settled = true;
+        resolve(name);
+      }
+    };
+    // A geocode that never calls back must not leave the "adding a stop" UI
+    // spinning at the roadside.
+    setTimeout(() => done(null), 4000);
+    try {
+      new Geocoder({ language: navigator.language }).reverseLookup(
+        new mk.Coordinate(point[0], point[1]),
+        (err, data) => {
+          const first = data?.results?.[0];
+          done(err || !first ? null : (first.name ?? first.formattedAddress ?? null));
+        },
+      );
+    } catch {
+      done(null);
+    }
+  });
+}
+
 // ─── marker ink ───────────────────────────────────────────────────────────────
 
 /**
@@ -283,11 +432,46 @@ export const MARKER_INK = {
   finish: "#E1FF4D",
   /** A rider reporting a fresh position — `success`, glyph = their initial. */
   riderLive: "#3DD680",
+  /** A rider stopped at the roadside — `warning`. Present, but not moving. */
+  riderStopped: "#F2A93B",
   /** A rider whose last fix has gone stale — `muted`, so it can't read as live. */
   riderStale: "#6B6B72",
+  /** An intermediate checkpoint — neutral, so it never competes with the route. */
+  checkpoint: "#F2F2EE",
+  /** The leader's rally point — `warning`, the one beacon everyone converges on. */
+  rally: "#F2A93B",
   /** Glyph colour for the light-on-lime markers. */
   onAccent: "#0A0A0F",
 } as const;
+
+// ─── rider status ─────────────────────────────────────────────────────────────
+
+/**
+ * What a rider's dot means right now. "stopped" is the state the old UI could
+ * not express and the one a group cares about most after "behind": a fresh fix
+ * that is not moving is someone at a petrol station, a red light — or the side
+ * of the road.
+ */
+export type RiderStatus = "moving" | "stopped" | "stale" | "offline";
+
+/** ~5 km/h. Below this a motorcycle is not making progress. */
+export const STOPPED_SPEED_MS = 1.4;
+
+export function riderStatus(
+  pos: { speed: number | null; t: number } | null | undefined,
+  now = Date.now(),
+): RiderStatus {
+  if (!pos) return "offline";
+  if (isPositionStale(pos.t, now)) return "stale";
+  if (pos.speed != null && pos.speed >= 0 && pos.speed < STOPPED_SPEED_MS) return "stopped";
+  return "moving";
+}
+
+export function riderInk(status: RiderStatus): string {
+  if (status === "moving") return MARKER_INK.riderLive;
+  if (status === "stopped") return MARKER_INK.riderStopped;
+  return MARKER_INK.riderStale;
+}
 
 // ─── live position staleness ──────────────────────────────────────────────────
 
@@ -378,13 +562,26 @@ export function regionForPoints(
   };
 }
 
-/** Frames `items` with pixel insets, falling back to a computed region. */
+export interface FramePadding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/**
+ * Frames `items` with pixel insets, falling back to a computed region.
+ *
+ * The padding may be asymmetric, which matters on the full-screen map: a
+ * uniform inset centres the route under a bottom sheet that covers a third of
+ * the screen, so the half of the group you most need to see ends up behind it.
+ */
 export function frameItems(
   mk: MapKitNS,
   map: MapKitMap,
   items: unknown[],
   points: readonly LatLng[],
-  opts: { padding: number; animate: boolean },
+  opts: { padding: number | FramePadding; animate: boolean },
 ): void {
   const box = regionForPoints(points);
   if (!box) return;
@@ -394,10 +591,12 @@ export function frameItems(
   );
   if (typeof map.showItems === "function" && items.length > 0) {
     const p = opts.padding;
+    const inset: FramePadding =
+      typeof p === "number" ? { top: p, right: p, bottom: p, left: p } : p;
     map.showItems(items, {
       animate: opts.animate,
       minimumSpan,
-      padding: mk.Padding ? new mk.Padding({ top: p, right: p, bottom: p, left: p }) : undefined,
+      padding: mk.Padding ? new mk.Padding(inset) : undefined,
     });
     return;
   }

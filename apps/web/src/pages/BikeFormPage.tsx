@@ -4,7 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Trash2, Pencil, Plus, Camera, X, ChevronDown, Building2 } from "lucide-react";
+import { Trash2, Pencil, Plus, Camera, Image as ImageIcon, X, ChevronDown, Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { env } from "@/env";
 import { useConfirm } from "@/components/ConfirmSheet";
 import { ErrorState } from "@/components/ErrorState";
 import { PaywallSheet } from "@/components/PaywallSheet";
+import { VehicleAvatar } from "@/components/VehicleAvatar";
 import type { OrgMembership } from "@/hooks/useOrgs";
 import { deniedRedirect, useVehicleTarget } from "@/pages/fleet/vehicleTarget";
 import { ensureFleetLocale } from "@/lib/fleetLocale";
@@ -317,9 +318,7 @@ export function BikeFormPage() {
         </CardHeader>
         <CardContent>
           {org && <OrgGarageBanner org={org} />}
-          {isEdit && id && (
-            <VehiclePhotoSection bikeId={id} photoUrl={bike.data?.photoUrl ?? null} />
-          )}
+          {isEdit && id && <VehiclePhotoSection bikeId={id} bike={bike.data} />}
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
             {/* Vehicle type — scopes the make/model dropdowns below. A segmented
                 control rather than a labelled input, so it gets a named radio
@@ -699,61 +698,174 @@ function DetailsDisclosure({
   );
 }
 
-function VehiclePhotoSection({ bikeId, photoUrl }: { bikeId: string; photoUrl: string | null }) {
+/** Refused before we spend a phone's upload budget on it — the API's own ceiling. */
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+/**
+ * The vehicle's picture, and the three things you can do to it.
+ *
+ * Every state is the SAME tile: the identity tint underneath, the photo (or a
+ * local preview of the one being uploaded) on top. So the box never changes
+ * size, an upload shows the new photo the instant it is chosen rather than
+ * after the round trip, and a failure falls back to what was there before with
+ * the error stated in place and a retry — not a toast that scrolls away and
+ * leaves you looking at an unexplained old photo.
+ *
+ * Two entry points on a phone: "take a photo" (`capture` opens the camera
+ * directly) and "choose one" (the library). One combined `accept="image/*"`
+ * input would make iOS put up an action sheet the user then has to answer —
+ * naming both up front is the same reachability for one tap less.
+ */
+function VehiclePhotoSection({
+  bikeId,
+  bike,
+}: {
+  bikeId: string;
+  bike: { id: string; vehicleType?: "motorcycle" | "car" | null; nickname: string; make: string | null; model: string | null; color: string | null; photoUrl: string | null } | undefined;
+}) {
   const { t } = useTranslation();
   const upload = useUploadBikePhoto(bikeId);
   const remove = useDeleteBikePhoto(bikeId);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const src = photoUrl ? `${env.VITE_API_URL}${photoUrl}` : null;
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const lastFile = useRef<File | null>(null);
+  const hasPhoto = Boolean(bike?.photoUrl);
 
-  const pick = () => inputRef.current?.click();
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
+  // Object URLs are a real allocation; release the previous one whenever it is
+  // replaced and on unmount, or a few retries leak the whole photo each time.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  const send = async (f: File) => {
+    if (f.size > MAX_PHOTO_BYTES) {
+      setFailed(t("bike.photoTooLarge"));
+      return;
+    }
+    lastFile.current = f;
+    setFailed(null);
+    setPreview((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return URL.createObjectURL(f);
+    });
     try {
       await upload.mutateAsync(f);
+      // The server URL is now authoritative (and carries the new `?v=`), so
+      // drop the local preview rather than holding two sources of truth.
+      setPreview((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
     } catch (err) {
-      pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(err, t) });
+      setPreview((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
+      setFailed(friendlyError(err, t));
     }
   };
 
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    // Cleared before the await: without it, picking the same file twice in a
+    // row fires no change event and the retry silently does nothing.
+    e.target.value = "";
+    if (f) void send(f);
+  };
+
+  const busy = upload.isPending || remove.isPending;
+
   return (
-    <div className="mb-4">
-      {src ? (
-        <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border-dark">
-          <img src={src} alt={t("bike.photo")} className="block h-44 w-full object-cover" />
-          <div className="absolute bottom-2 right-2 flex gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={pick} disabled={upload.isPending}>
-              <Camera className="h-3.5 w-3.5" /> {t("bike.changePhoto")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="text-danger border-danger/40 hover:bg-danger/10"
-              onClick={() => remove.mutate()}
-              disabled={remove.isPending}
-              aria-label={t("bike.removePhoto")}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={pick}
-          disabled={upload.isPending}
-          className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-muted transition hover:border-text/30 hover:text-text dark:border-border-dark dark:text-muted-dark"
-        >
-          <Camera className="h-6 w-6" strokeWidth={1.6} />
-          <span className="text-[13px] font-medium">
-            {upload.isPending ? t("common.loading") : t("bike.addPhoto")}
+    <div className="mb-4 flex flex-col gap-2">
+      <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border-dark">
+        <VehicleAvatar
+          vehicle={bike ?? { id: bikeId }}
+          previewSrc={preview}
+          emphasis
+          label={t("bike.photoOf", { name: bike?.nickname ?? "" })}
+          className="aspect-[16/9] w-full"
+        />
+        {upload.isPending && (
+          <span
+            className="absolute inset-0 grid place-items-center bg-black/35 text-[13px] font-medium text-white"
+            role="status"
+          >
+            {t("common.loading")}
           </span>
-        </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="flex-1"
+          onClick={() => cameraRef.current?.click()}
+          disabled={busy}
+        >
+          <Camera className="h-3.5 w-3.5" /> {t("bike.takePhoto")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="flex-1"
+          onClick={() => libraryRef.current?.click()}
+          disabled={busy}
+        >
+          <ImageIcon className="h-3.5 w-3.5" />{" "}
+          {hasPhoto ? t("bike.changePhoto") : t("bike.choosePhoto")}
+        </Button>
+        {hasPhoto && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-danger/40 text-danger hover:border-danger/60 hover:bg-danger/10"
+            onClick={() => remove.mutate()}
+            disabled={busy}
+            aria-label={t("bike.removePhoto")}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+
+      {failed && (
+        <p
+          role="alert"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-danger/40 bg-danger/5 px-3 py-2 text-[12px] text-danger"
+        >
+          <span className="min-w-0">{failed}</span>
+          {lastFile.current && (
+            <button
+              type="button"
+              className="font-semibold underline underline-offset-2"
+              onClick={() => lastFile.current && void send(lastFile.current)}
+            >
+              {t("common.retry")}
+            </button>
+          )}
+        </p>
       )}
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+
+      {/* `capture` is what makes the first button open the camera rather than
+          the picker. Kept on a separate input because the attribute cannot be
+          toggled reliably across WebViews once the element exists. */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={onFile}
+      />
+      <input ref={libraryRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
     </div>
   );
 }

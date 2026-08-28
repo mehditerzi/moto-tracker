@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Image as ImageIcon } from "lucide-react";
+import { Camera, Image as ImageIcon, Layers, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -11,14 +11,69 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useUploadDocument } from "@/hooks/useDocuments";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCreateBatch, useOpenBatches, useUploadDocument } from "@/hooks/useDocuments";
 import { useBike } from "@/hooks/useBikes";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
 import { track } from "@/lib/telemetry";
 import { CameraCapture } from "@/components/CameraCapture";
 import { downscaleImageFile } from "@/lib/camera";
 
+// Bulk capture is its own pair of screens and its own chunk: a user who only
+// ever scans one insurance policy at a time should not download the batch
+// review pass to do it. Routing happens here rather than in routes.tsx so the
+// whole feature lives behind the one `/capture` entry the app already knows.
+const BatchCapturePage = lazy(() =>
+  import("@/pages/capture/BatchCapturePage").then((m) => ({ default: m.BatchCapturePage })),
+);
+const BatchReviewPage = lazy(() =>
+  import("@/pages/capture/BatchReviewPage").then((m) => ({ default: m.BatchReviewPage })),
+);
+
+function CapturePending() {
+  return (
+    <div className="mx-auto flex max-w-md flex-col gap-3" aria-hidden>
+      <Skeleton className="h-44 rounded-2xl" />
+      <Skeleton className="h-11 rounded-xl" />
+    </div>
+  );
+}
+
+/**
+ * `/capture` is three screens behind one URL:
+ *
+ *   /capture                        — the single-document flow (unchanged).
+ *   /capture?batch=<id>             — rapid capture into that batch.
+ *   /capture?batch=<id>&step=review — the batch review pass.
+ *
+ * The batch id in the URL is what makes a half-finished pile resumable: the
+ * worker keeps reading after the app is closed, and coming back to the link
+ * lands exactly where the user was.
+ */
 export function DocumentCapturePage() {
+  const [params] = useSearchParams();
+  const batchId = params.get("batch");
+  const step = params.get("step");
+
+  if (batchId && step === "review") {
+    return (
+      <Suspense fallback={<CapturePending />}>
+        <BatchReviewPage batchId={batchId} />
+      </Suspense>
+    );
+  }
+  if (batchId) {
+    return (
+      <Suspense fallback={<CapturePending />}>
+        <BatchCapturePage batchId={batchId} />
+      </Suspense>
+    );
+  }
+  return <SingleCapture />;
+}
+
+function SingleCapture() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -32,6 +87,10 @@ export function DocumentCapturePage() {
   const cameraInput = useRef<HTMLInputElement | null>(null);
   const galleryInput = useRef<HTMLInputElement | null>(null);
   const upload = useUploadDocument();
+  const createBatch = useCreateBatch();
+  // Only asked for on the "add a vehicle" entry — a scan aimed at a vehicle has
+  // nothing to resume.
+  const openBatches = useOpenBatches(!bikeId);
 
   function openCamera() {
     // Live viewfinder with the document guide when supported; otherwise fall
@@ -119,6 +178,35 @@ export function DocumentCapturePage() {
           }}
         />
       )}
+
+      {/* Resume. The worker keeps reading whether or not the app is open, so a
+          pile left half-reviewed is not lost — but it is invisible unless we
+          say so here, which is the difference between "resumable" and
+          "resumable if you remember the link". */}
+      {!preview &&
+        (openBatches.data ?? []).map((b) => (
+          <Card key={b.id} className="mb-3 border-accent/50">
+            <CardHeader>
+              <CardTitle className="text-base">{t("batch.resumeTitle")}</CardTitle>
+              <CardDescription>
+                {t("batch.resumeSub", {
+                  total: b.progress.total,
+                  done: b.progress.total - b.progress.pending,
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="accent"
+                className="min-h-[44px]"
+                onClick={() => navigate(`/capture?batch=${b.id}&step=review`)}
+              >
+                {t("batch.resume")} <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-[22px] tracking-tight">
@@ -157,6 +245,34 @@ export function DocumentCapturePage() {
                 >
                   <ImageIcon className="h-4 w-4" /> {t("capture.gallery")}
                 </Button>
+                {/* Bulk is offered only when the scan is not already aimed at a
+                    vehicle: "several documents for this one van" is the single
+                    flow repeated, not a batch — a batch is where vehicles come
+                    from. */}
+                {!bikeId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      track("batch_started", {});
+                      createBatch.mutate(
+                        {},
+                        {
+                          onSuccess: (b) => navigate(`/capture?batch=${b.id}`, { replace: true }),
+                          onError: (e) =>
+                            pushToast({
+                              variant: "danger",
+                              title: t("batch.startFailed"),
+                              description: friendlyError(e, t),
+                            }),
+                        },
+                      );
+                    }}
+                    disabled={createBatch.isPending}
+                  >
+                    <Layers className="h-4 w-4" /> {t("batch.startBulk")}
+                  </Button>
+                )}
                 {bikeId ? (
                   <Button
                     type="button"

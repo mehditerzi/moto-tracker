@@ -9,7 +9,7 @@ import { extractTextWithTesseract } from "./tesseractClient.js";
 import { parseOcr, type ParsedOcr } from "./parser.js";
 import { backstopFromText } from "./backstop.js";
 import { validateAndCorrect } from "./validators.js";
-import { autoApply } from "./autoApply.js";
+import { autoApply, suggestBikeForScan } from "./autoApply.js";
 import { inferVehicleType } from "./catalog.js";
 
 interface DocRow {
@@ -17,6 +17,7 @@ interface DocRow {
   user_id: string;
   bike_id: string | null;
   file_path: string;
+  batch_id: string | null;
 }
 
 export interface OcrResult {
@@ -142,61 +143,125 @@ export function __resetRunVisionOcrForTests(): void {
   _ocrPipeline = defaultOcrPipeline;
 }
 
-// ── concurrency control ───────────────────────────────────────────────────────
-// Per-user serial chains (one user can't run two scans at once, and a slow scan
-// never blocks a *different* user) plus a global semaphore that caps total
-// parallelism so we don't thrash Tesseract/Ollama.
-const userChains = new Map<string, Promise<void>>();
+// ── scheduling ────────────────────────────────────────────────────────────────
+//
+// Three properties, in the order they matter:
+//
+//   1. PER-USER SERIAL. One user never has two scans running at once. Their
+//      documents also complete in the order they were shot, which is what makes
+//      "document 3 of 17" mean the third photo the user took.
+//   2. FAIR ACROSS USERS. Round-robin: when a slot frees, it goes to the user
+//      who has been waiting longest, not to whoever has the most work queued.
+//      This is what stops a twenty-document batch from monopolising the box —
+//      the previous per-user promise chains got this roughly right by accident
+//      (a chain only asked for a slot once its predecessor finished), but only
+//      as long as no two users batched at the same time.
+//   3. BULK YIELDS TO INTERACTIVE. A batch is reviewed in one sitting minutes
+//      from now; a single scan has someone watching a spinner. So a lone upload
+//      jumps every queued batch document, at every free slot. It cannot starve
+//      the batch — a single user's interactive scan is one document, and their
+//      own batch documents queue behind it by rule 1.
+//
+// The global ceiling stays OCR_CONCURRENCY (default 2): Tesseract and Ollama
+// are the scarce resource and over-subscribing them makes everything slower.
 
-class Semaphore {
-  private active = 0;
-  private readonly queue: Array<() => void> = [];
-  constructor(private readonly max: number) {}
-  async acquire(): Promise<() => void> {
-    if (this.active >= this.max) {
-      await new Promise<void>((resolve) => this.queue.push(resolve));
+export type OcrPriority = "interactive" | "bulk";
+const PRIORITY_ORDER: readonly OcrPriority[] = ["interactive", "bulk"] as const;
+
+interface QueuedJob {
+  documentId: string;
+  priority: OcrPriority;
+  settle: () => void;
+}
+
+/** userId → the documents they are waiting on, oldest first. */
+const queues = new Map<string, QueuedJob[]>();
+/** Users with a job running right now — at most one entry each (property 1). */
+const running = new Set<string>();
+/** Round-robin ring: users with queued work, least-recently-served first. */
+const ring: string[] = [];
+let active = 0;
+
+/** Pull the next runnable job, honouring priority then round-robin fairness. */
+function nextJob(): { userId: string; job: QueuedJob } | null {
+  for (const priority of PRIORITY_ORDER) {
+    for (let i = 0; i < ring.length; i++) {
+      const userId = ring[i]!;
+      if (running.has(userId)) continue;
+      const q = queues.get(userId);
+      // The head is what runs: a user's own documents stay in capture order.
+      if (!q || q.length === 0 || q[0]!.priority !== priority) continue;
+      const job = q.shift()!;
+      // Move this user to the back of the ring — served, so others go first.
+      ring.splice(i, 1);
+      if (q.length > 0) ring.push(userId);
+      else queues.delete(userId);
+      return { userId, job };
     }
-    this.active++;
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      this.active--;
-      this.queue.shift()?.();
-    };
+  }
+  return null;
+}
+
+function pump(): void {
+  while (active < config.OCR_CONCURRENCY) {
+    const picked = nextJob();
+    if (!picked) return;
+    const { userId, job } = picked;
+    active++;
+    running.add(userId);
+    void processDocument(job.documentId)
+      .catch((e) => {
+        // processDocument already records the failure on the row; this only
+        // guards against a defect in the recording itself stalling the queue.
+        console.error(`[ocr] document ${job.documentId} failed:`, e);
+      })
+      .finally(() => {
+        active--;
+        running.delete(userId);
+        job.settle();
+        pump();
+      });
   }
 }
-const globalSem = new Semaphore(config.OCR_CONCURRENCY);
 
 /**
- * Queue a document for OCR. Documents from the same user run strictly in order;
- * documents from different users run concurrently up to OCR_CONCURRENCY.
+ * Queue a document for OCR. Resolves when that document has been processed
+ * (successfully or not) — never rejects, because a failed scan is recorded on
+ * the row, not thrown at the uploader who has long since had their 201.
  */
-export function enqueueDocument(documentId: string, userId: string): Promise<void> {
-  const prev = userChains.get(userId) ?? Promise.resolve();
-  const next = prev
-    .then(async () => {
-      const release = await globalSem.acquire();
-      try {
-        await processDocument(documentId);
-      } catch (e) {
-        console.error(`[ocr] document ${documentId} failed:`, e);
-      } finally {
-        release();
-      }
-    })
-    // Drop the chain entry once it's the tail, so the map doesn't grow forever.
-    .finally(() => {
-      if (userChains.get(userId) === next) userChains.delete(userId);
-    });
-  userChains.set(userId, next);
-  return next;
+export function enqueueDocument(
+  documentId: string,
+  userId: string,
+  opts: { priority?: OcrPriority } = {},
+): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const job: QueuedJob = {
+      documentId,
+      priority: opts.priority ?? "interactive",
+      settle: resolve,
+    };
+    const q = queues.get(userId);
+    if (q) q.push(job);
+    else {
+      queues.set(userId, [job]);
+      ring.push(userId);
+    }
+    // Start on a later tick so a burst of uploads inside one request handler is
+    // queued in full before the first job takes a slot — otherwise the ring
+    // holds one user and "fairness" has nothing to be fair between.
+    queueMicrotask(pump);
+  });
+}
+
+/** Documents queued but not yet started, for a user. Diagnostics and tests. */
+export function queueDepth(userId: string): number {
+  return queues.get(userId)?.length ?? 0;
 }
 
 export async function processDocument(documentId: string): Promise<void> {
   const db = getDb();
   const doc = db
-    .prepare("SELECT id, user_id, bike_id, file_path FROM document WHERE id = ?")
+    .prepare("SELECT id, user_id, bike_id, file_path, batch_id FROM document WHERE id = ?")
     .get(documentId) as DocRow | undefined;
   if (!doc) return;
 
@@ -233,14 +298,32 @@ export async function processDocument(documentId: string): Promise<void> {
       console.log(`[ocr] validators: ${issues.map((i) => `${i.field}:${i.kind}`).join(", ")}`);
     }
 
-    const apply = autoApply({
-      db,
-      userId: doc.user_id,
-      documentId: doc.id,
-      bikeIdHint: doc.bike_id,
-      parsed,
-      threshold: config.OCR_AUTO_APPLY_THRESHOLD,
-    });
+    // A document in a batch is READ but not APPLIED. The whole point of bulk
+    // capture is one human pass over the results: if the worker auto-created a
+    // vehicle per confident ruhsat, the review screen would be reporting
+    // history instead of asking a question, a single misread plate would have
+    // already minted a vehicle, and twenty scans would have spent twenty slots
+    // of a paid quota before anyone looked. So we stop at a SUGGESTION and let
+    // the batch apply do the writing. See routes/documents.ts.
+    const apply = doc.batch_id
+      ? { appliedDatedItemId: null, appliedFuelLogId: null, appliedBikeId: null, bikeAction: "none" as const }
+      : autoApply({
+          db,
+          userId: doc.user_id,
+          documentId: doc.id,
+          bikeIdHint: doc.bike_id,
+          parsed,
+          threshold: config.OCR_AUTO_APPLY_THRESHOLD,
+        });
+
+    let suggestedBikeId: string | null = null;
+    if (doc.batch_id) {
+      const batch = db.prepare("SELECT org_id FROM document_batch WHERE id = ?").get(doc.batch_id) as
+        | { org_id: string | null }
+        | undefined;
+      const s = suggestBikeForScan(db, doc.user_id, batch?.org_id ?? null, parsed);
+      if (s.kind === "update" || s.kind === "org_conflict") suggestedBikeId = s.bikeId;
+    }
 
     // If the doc was uploaded without a bike context but autoApply matched
     // (or created) one, link the document to that bike so the review screen
@@ -250,7 +333,16 @@ export async function processDocument(documentId: string): Promise<void> {
     // Infer car vs motorcycle from the catalog so the review screen shows the
     // right icon and the "create vehicle" path persists the correct type. Null
     // when the make/model is ambiguous — the UI falls back to a neutral default.
-    const extracted = { ...parsed, vehicleType: inferVehicleType(parsed.make, parsed.model) };
+    //
+    // `issues` travels with the extraction because the review screen needs to
+    // point at the two suspect fields; without it a low overall confidence
+    // could only say "check everything", which for a ten-field ruhsat is the
+    // same as offering no help at all.
+    const extracted = {
+      ...parsed,
+      vehicleType: inferVehicleType(parsed.make, parsed.model),
+      issues,
+    };
 
     db.prepare(
       `UPDATE document
@@ -262,6 +354,7 @@ export async function processDocument(documentId: string): Promise<void> {
              bike_id = ?,
              applied_dated_item_id = ?,
              applied_fuel_log_id = ?,
+             suggested_bike_id = ?,
              updated_at = datetime('now')
          WHERE id = ?`,
     ).run(
@@ -272,6 +365,7 @@ export async function processDocument(documentId: string): Promise<void> {
       newBikeId,
       apply.appliedDatedItemId,
       apply.appliedFuelLogId,
+      suggestedBikeId,
       doc.id,
     );
 

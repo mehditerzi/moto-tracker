@@ -10,3 +10,4 @@ export * from "./schemas/notification.js";
 export * from "./schemas/iap.js";
 export * from "./schemas/organization.js";
 export * from "./schemas/fleet.js";
+export * from "./schemas/ride.js";

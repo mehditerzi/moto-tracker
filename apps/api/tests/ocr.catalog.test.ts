@@ -84,6 +84,99 @@ describe("ocr/catalog inferVehicleType", () => {
   });
 });
 
+/**
+ * The car catalog grew from ~340 models to ~890, and every one of them is a new
+ * chance for the matcher to answer a scanned ruhsat with the wrong vehicle.
+ * These are the cases that would break first.
+ */
+describe("ocr/catalog Turkish-market cars", () => {
+  it("matches the nameplates a Turkish ruhsat prints", () => {
+    const cases: [string, string, string, string][] = [
+      // raw make, raw model, canonical make, canonical model
+      ["FIAT", "EGEA", "Fiat", "Egea"],
+      ["FIAT", "DOBLO", "Fiat", "Doblo"],
+      ["RENAULT", "SYMBOL", "Renault", "Symbol"],
+      ["RENAULT", "MEGANE", "Renault", "Megane"],
+      ["DACIA", "SANDERO", "Dacia", "Sandero"],
+      ["PEUGEOT", "301", "Peugeot", "301"],
+      ["FORD", "TRANSIT CUSTOM", "Ford", "Transit Custom"],
+      ["OPEL", "ASTRA", "Opel", "Astra"],
+      ["HYUNDAI", "ACCENT BLUE", "Hyundai", "Accent Blue"],
+      ["TOYOTA", "COROLLA", "Toyota", "Corolla"],
+      ["TOGG", "T10X", "Togg", "T10X"],
+    ];
+    for (const [rm, rmo, make, model] of cases) {
+      const r = canonicalize(rm, rmo);
+      expect(r.make, rm).toBe(make);
+      expect(r.model, `${rm} ${rmo}`).toBe(model);
+    }
+  });
+
+  it("folds Turkish characters in both the make and the model", () => {
+    // Field D.1 on a Tofaş-era ruhsat, with the dotted/dotless I and ş intact.
+    expect(canonicalize("TOFAŞ", "ŞAHİN").model).toBe("Şahin");
+    expect(canonicalize("tofas", "dogan").model).toBe("Doğan");
+    expect(matchMake("CİTROEN")?.name).toBe("Citroën");
+    expect(matchMake("ŞKODA")?.name).toBe("Skoda");
+  });
+
+  it("resolves the local assembler printed on the ruhsat", () => {
+    expect(matchMake("TOFAS FIAT")?.name).toBe("Fiat");
+    expect(matchMake("OYAK RENAULT")?.name).toBe("Renault");
+    expect(matchMake("FORD OTOSAN")?.name).toBe("Ford");
+    expect(matchMake("HYUNDAI ASSAN")?.name).toBe("Hyundai");
+    expect(matchMake("MERCEDES")?.name).toBe("Mercedes-Benz");
+  });
+
+  it("never crosses model families that differ only by their number", () => {
+    // The car equivalent of CB500F vs CB650F. Digit sequences must be identical
+    // for a fuzzy candidate to be considered at all.
+    const p = matchMake("Peugeot")!;
+    expect(matchModel(p.make, "308")?.name).toBe("308");
+    expect(matchModel(p.make, "3008")?.name).toBe("3008");
+    expect(matchModel(p.make, "301")?.name).toBe("301");
+    const b = matchMake("BMW")!;
+    expect(matchModel(b.make, "320i")?.name).toBe("320i");
+    expect(matchModel(b.make, "320d")?.name).toBe("320d");
+    const a = matchMake("Audi")!;
+    expect(matchModel(a.make, "A3")?.name).toBe("A3");
+    expect(matchModel(a.make, "Q3")?.name).toBe("Q3");
+    const f = matchMake("Fiat")!;
+    expect(matchModel(f.make, "500")?.name).toBe("500");
+    expect(matchModel(f.make, "500X")?.name).toBe("500X");
+  });
+
+  it("keeps the near-miss brands apart despite the bigger overlay", () => {
+    // Adding ~35 car brands widened the fuzzy candidate pool. Every one of these
+    // is within one or two edits of another catalog make and must NOT match it.
+    expect(matchMake("Seat")?.name).toBe("Seat");
+    expect(matchMake("Fiat")?.name).toBe("Fiat");
+    expect(matchMake("Opel")?.name).toBe("Opel");
+    expect(matchMake("BMC")?.name).toBe("BMC");
+    expect(matchMake("BMW")?.name).toBe("BMW");
+    // …and a plausible OCR mangling of a short brand still resolves to nothing
+    // rather than to a neighbour.
+    expect(matchMake("Opal")).toBeNull();
+    expect(matchMake("Kua")).toBeNull();
+    expect(matchMake("BMX")).toBeNull();
+  });
+
+  it("infers the vehicle type from a Turkish car model", () => {
+    expect(inferVehicleType("Fiat", "Egea")).toBe("car");
+    expect(inferVehicleType("Renault", "Clio")).toBe("car");
+    expect(inferVehicleType("Togg", "T10X")).toBe("car");
+    // Honda still builds both, and "Civic" is what settles it.
+    expect(inferVehicleType("Honda", "Civic")).toBe("car");
+    expect(inferVehicleType("Honda", "PCX125")).toBe("motorcycle");
+  });
+
+  it("tolerates the typos an OCR pass actually makes", () => {
+    expect(canonicalize("RENAUT", "CLIO").make).toBe("Renault");
+    expect(canonicalize("VOLKSWAGEN", "PASSAT").model).toBe("Passat");
+    expect(canonicalize("MERCEDES BENZ", "C 200").model).toBe("C200");
+  });
+});
+
 describe("ocr/catalog similarity", () => {
   it("is 1 for identical and lower for edits", () => {
     expect(similarity("abc", "abc")).toBe(1);

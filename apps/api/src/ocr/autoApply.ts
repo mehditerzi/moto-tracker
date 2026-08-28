@@ -78,6 +78,96 @@ function plateBelongsToUsersOrg(
   return rows.some((r) => normalizePlate(r.plate) === normalizedPlate);
 }
 
+// ─── batch review: suggest, never apply ───────────────────────────────────────
+
+/**
+ * What an existing garage says about one scanned document, WITHOUT writing
+ * anything. This is the read-only half of `pickOrCreateBike`, used by the bulk
+ * review flow: inside a batch nothing is created or patched until the user
+ * applies the batch, so the worker's job is to answer the question the review
+ * screen asks — "is this a vehicle I already have?" — and stop.
+ *
+ *   update      — the plate (or chassis number) names a vehicle already in the
+ *                 target garage. This is also the duplicate-plate answer: a
+ *                 second photo of a vehicle you own is not a new vehicle, it is
+ *                 an update, and the review screen says so rather than offering
+ *                 to create a twin.
+ *   create      — identifying details, no match. A new vehicle.
+ *   org_conflict— the plate belongs to a vehicle in one of the uploader's own
+ *                 organizations, but this batch targets their personal garage.
+ *                 Creating here would copy company registration data into a
+ *                 private garage (the leak `plateBelongsToUsersOrg` exists to
+ *                 stop) — so the review screen refuses and explains, instead of
+ *                 silently doing nothing.
+ *   none        — nothing identifying was read; there is no vehicle to propose.
+ */
+export type ScanSuggestion =
+  | { kind: "update"; bikeId: string }
+  | { kind: "create" }
+  | { kind: "org_conflict"; bikeId: string }
+  | { kind: "none" };
+
+/**
+ * Vehicles a batch may match against: the batch's ORG garage, or — for a
+ * personal batch — the uploader's own vehicles. Never both. A batch declares its
+ * target garage when it is created and every vehicle it touches lives there.
+ */
+function garageBikes(db: Database.Database, userId: string, orgId: string | null): BikeRow[] {
+  return (
+    orgId
+      ? db
+          .prepare(
+            "SELECT id, plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE org_id = ? AND archived = 0",
+          )
+          .all(orgId)
+      : db
+          .prepare(
+            "SELECT id, plate, make, model, year, chassis_no, engine_no, cylinder_cc FROM bike WHERE user_id = ? AND org_id IS NULL AND archived = 0",
+          )
+          .all(userId)
+  ) as BikeRow[];
+}
+
+export function suggestBikeForScan(
+  db: Database.Database,
+  userId: string,
+  orgId: string | null,
+  parsed: ParsedOcr,
+): ScanSuggestion {
+  const np = normalizePlate(parsed.plate);
+  const chassis = parsed.chassisNo?.replace(/\s+/g, "").toUpperCase() ?? null;
+  const bikes = garageBikes(db, userId, orgId);
+
+  if (np) {
+    const hit = bikes.find((b) => normalizePlate(b.plate) === np);
+    if (hit) return { kind: "update", bikeId: hit.id };
+  }
+  // Chassis is the stronger identifier when a plate was misread or is absent —
+  // a VIN is unique to a vehicle for life, a plate only until it is re-issued.
+  if (chassis && chassis.length >= 10) {
+    const hit = bikes.find((b) => b.chassis_no?.replace(/\s+/g, "").toUpperCase() === chassis);
+    if (hit) return { kind: "update", bikeId: hit.id };
+  }
+
+  if (!parsed.plate && !parsed.make && !parsed.model && !parsed.chassisNo) return { kind: "none" };
+
+  // Personal batch, company plate: the one case where "create" is wrong even
+  // though nothing in this garage matches.
+  if (!orgId && np) {
+    const orgHit = db
+      .prepare(
+        `SELECT b.id, b.plate FROM bike b
+           JOIN org_member m ON m.org_id = b.org_id AND m.user_id = ? AND m.status = 'active'
+          WHERE b.org_id IS NOT NULL AND b.plate IS NOT NULL AND b.archived = 0`,
+      )
+      .all(userId) as { id: string; plate: string }[];
+    const conflict = orgHit.find((r) => normalizePlate(r.plate) === np);
+    if (conflict) return { kind: "org_conflict", bikeId: conflict.id };
+  }
+
+  return { kind: "create" };
+}
+
 /**
  * Decide which bike this scan applies to. Strategy:
  *   1. Honour the explicit bikeIdHint — the vehicle the document was uploaded
