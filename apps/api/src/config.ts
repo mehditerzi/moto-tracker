@@ -160,6 +160,30 @@ const Env = z.object({
     .transform((v) => v === "true")
     .default("true"),
   /**
+   * How long product telemetry (`event` rows) is kept before the daily prune
+   * deletes it. 180 days by default — see notify/retention.ts.
+   */
+  EVENT_RETENTION_DAYS: z.coerce.number().int().positive().default(180),
+  /**
+   * Send the CSP as `Content-Security-Policy-Report-Only` instead of enforcing
+   * it. Defaults to TRUE, deliberately.
+   *
+   * The iOS wrapper loads the live site through `server.url`, so the phone gets
+   * this header from us. Capacitor injects its native bridge as a WKUserScript,
+   * which *should* be exempt from page CSP — but if it is not on some WebKit
+   * version, a strict `script-src` takes out StoreKit, push and background
+   * geolocation simultaneously, on every installed device, with no way to roll
+   * back short of a server redeploy.
+   *
+   * So: ship report-only, watch for violations on a real device, then set
+   * CSP_REPORT_ONLY=false to enforce. Report-only still surfaces every
+   * violation; it just does not block. See docs/operations.md.
+   */
+  CSP_REPORT_ONLY: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("true"),
+  /**
    * Issue the session cookie as SameSite=None; Secure so it is sent on
    * cross-origin requests — required when a native wrapper (Capacitor iOS,
    * origin `capacitor://localhost`) calls this API. Forces Secure (browsers
