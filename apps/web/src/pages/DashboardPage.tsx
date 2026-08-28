@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { Plus, Pencil, Bike as BikeIcon, Settings2, Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
+import { FIELD_WIDTH } from "@/components/ui/control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useUpdateBike } from "@/hooks/useBikes";
@@ -388,24 +389,37 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
     return (
       <div className="mt-2 flex items-center gap-2">
         <Gauge className="h-3.5 w-3.5 shrink-0 text-muted dark:text-muted-dark" />
-        <Input
-          ref={inputRef}
-          type="number"
-          inputMode="numeric"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
-          // Was `h-7 ... text-sm`: a 28px control (under the 44px target) whose
-          // 14px text made iOS zoom the page the moment it took focus — on a
-          // field the app asks you to use after every ride. Height and the
-          // 16px-on-phones size now come from Input itself; only the width is
-          // set here, wide enough for a six-figure odometer.
-          className="w-32"
-          disabled={update.isPending}
-          autoFocus
-        />
-        <span className="text-xs text-muted dark:text-muted-dark">km</span>
+        {/* `FIELD_WIDTH.number` — the same 152px an odometer reading gets on the
+            vehicle form, from the same table, rather than a `w-32` guessed here.
+            It goes on a wrapper because NumberInput's own box is `w-full`; a
+            width class on the control would be overridden by it.
+
+            Height and the 16px-on-phones type come from the control (this was
+            `h-7 ... text-sm`: a 28px box under the 44px target whose 14px text
+            made iOS zoom the page the moment it took focus, on a field the app
+            asks you to use after every ride). The unit moved inside as a suffix,
+            so the trailing "km" span is gone.
+
+            `type="text"` + inputMode="numeric" via NumberInput, not
+            `type="number"`: a stray scroll over this focused field used to
+            rewrite a recorded odometer reading, and on a Turkish keypad the
+            separator key made WebKit report the whole value as empty. */}
+        <div className={FIELD_WIDTH.number}>
+          <NumberInput
+            ref={inputRef}
+            suffix="km"
+            // No visible label — the Gauge glyph is the only marking, and a
+            // glyph is not an accessible name.
+            aria-label={t("dashboard.updateKm")}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
+            enterKeyHint="done"
+            disabled={update.isPending}
+            autoFocus
+          />
+        </div>
       </div>
     );
   }
