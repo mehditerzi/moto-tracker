@@ -13,6 +13,7 @@ import { vehicleIcon } from "@/lib/vehicleType";
 import { pushNextDeadline } from "@/lib/widget";
 import { env } from "@/env";
 import { StatusChip } from "@/components/StatusChip";
+import { ErrorState } from "@/components/ErrorState";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
 import { TYPE_ORDER } from "@/lib/datedItems";
@@ -20,11 +21,18 @@ import { statusFor } from "@/lib/datedItems";
 import { MaintenancePanel } from "@/components/MaintenancePanel";
 import { OfficialServicesCard } from "@/components/OfficialServicesCard";
 import { pushToast } from "@/hooks/useToast";
+import { friendlyError } from "@/lib/apiError";
+import { useFleetDisclosure } from "@/hooks/useFleetDisclosure";
+import { OrgVehicleBadge } from "@/components/fleet/OrgVehicleBadge";
+import { OrgVehicleNotice } from "@/components/fleet/OrgVehicleNotice";
 import type { DashboardEntry, DatedItemType } from "@mototracker/shared";
 
 export function DashboardPage() {
   const { t } = useTranslation();
   const dash = useDashboard();
+  // Which vehicles belong to an organization, and to which one. Empty (and free
+  // of any request) for a consumer — see hooks/useFleetDisclosure.ts.
+  const { orgVehicles } = useFleetDisclosure();
   // Persisted (localStorage) so the selection survives the capture → review →
   // back round-trip and app restarts — the OCR button always targets the bike
   // the user actually picked.
@@ -86,8 +94,7 @@ export function DashboardPage() {
         </div>
       </div>
     );
-  if (dash.isError || !dash.data)
-    return <p className="text-center text-danger">{t("dashboard.loadFailed")}</p>;
+  if (dash.isError || !dash.data) return <ErrorState onRetry={() => void dash.refetch()} />;
 
   if (dash.data.length === 0) {
     return (
@@ -117,12 +124,18 @@ export function DashboardPage() {
 
   const active = (dash.data.find((e) => e.bike.id === activeBikeId) ?? dash.data[0])!;
   const ActiveIcon = vehicleIcon(active.bike.vehicleType);
+  const activeOrg = orgVehicles.get(active.bike.id) ?? null;
 
   return (
     <div className="flex flex-col gap-5">
       <UpcomingAlertsCard entries={dash.data} />
 
-      <BikeSwitcher entries={dash.data} activeBikeId={active.bike.id} onSelect={setActiveBikeId} />
+      <BikeSwitcher
+        entries={dash.data}
+        activeBikeId={active.bike.id}
+        onSelect={setActiveBikeId}
+        orgNameFor={(id) => orgVehicles.get(id)?.orgName ?? null}
+      />
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -145,9 +158,14 @@ export function DashboardPage() {
 
           <header className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="label-micro flex items-center gap-1.5 text-muted dark:text-muted-dark">
-                <ActiveIcon className="h-3.5 w-3.5" strokeWidth={1.8} />
-                {t("dashboard.active")}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="label-micro flex items-center gap-1.5 text-muted dark:text-muted-dark">
+                  <ActiveIcon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  {t("dashboard.active")}
+                </div>
+                {/* Persistent, non-dismissible: a driver must never be unsure
+                    which garage they are in. */}
+                {activeOrg && <OrgVehicleBadge orgName={activeOrg.orgName} />}
               </div>
               <h1 className="mt-1.5 truncate text-[32px] font-semibold leading-none tracking-tight">
                 {active.bike.nickname}
@@ -166,6 +184,8 @@ export function DashboardPage() {
               <Link to={`/bikes/${active.bike.id}/edit`}><Pencil className="h-4 w-4" /></Link>
             </Button>
           </header>
+
+          {activeOrg && <OrgVehicleNotice orgName={activeOrg.orgName} />}
 
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label={t("dashboard.active")}>
             {TYPE_ORDER.map((type, i) => (
@@ -291,17 +311,32 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
     setEditing(false);
   }, [bikeId, currentKm]);
 
+  // Escape used to only flip `editing` off, which fired the input's blur — so
+  // "cancel" committed the very edit it was meant to discard. Cancelling now
+  // restores the stored value first and suppresses the blur save.
+  const cancelledRef = useRef(false);
+
   const save = async () => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      return;
+    }
     if (update.isPending) return;
     const n = parseInt(value, 10);
     if (!isNaN(n) && n >= 0 && n !== currentKm) {
       try {
         await update.mutateAsync({ currentKm: n } as any);
         pushToast({ variant: "success", title: t("bike.updated") });
-      } catch {
-        pushToast({ variant: "danger", title: t("items.saveFailed") });
+      } catch (e) {
+        pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
       }
     }
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    cancelledRef.current = true;
+    setValue(currentKm != null ? String(currentKm) : "");
     setEditing(false);
   };
 
@@ -312,10 +347,11 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
         <Input
           ref={inputRef}
           type="number"
+          inputMode="numeric"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={save}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
           className="h-7 w-28 text-sm"
           disabled={update.isPending}
           autoFocus

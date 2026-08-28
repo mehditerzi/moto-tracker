@@ -1,12 +1,15 @@
 {
   "brand": "Garajım",
   "nav": {
+    "primary": "Ana menü",
+    "home": "Ana sayfa",
     "bikes": "Araçlar",
     "trips": "Yolculuklar",
     "fuel": "Yakıt",
     "map": "Harita",
     "settings": "Ayarlar",
-    "signOut": "Çıkış"
+    "signOut": "Çıkış",
+    "fleet": "Filo"
   },
   "map": {
     "title": "Harita",
@@ -50,7 +53,10 @@
     "partial": "Kısmi",
     "pricePerLiter": "litre başına",
     "spendByMonth": "Aylık yakıt masrafı",
-    "economyTrend": "Tüketim eğilimi"
+    "economyTrend": "Tüketim eğilimi",
+    "noVehicleSub": "Yakıt takibi için garajında en az bir araç olmalı.",
+    "emptySub": "İlk dolumunu yukarıdaki formdan ekle veya fişini taratıp otomatik doldur.",
+    "deleteConfirm": "Bu yakıt kaydını silmek istiyor musun?"
   },
   "services": {
     "title": "Resmi işlemler",
@@ -79,7 +85,7 @@
   "auth": {
     "signIn": "Giriş yap",
     "signUp": "Hesap oluştur",
-    "magicLink": "Sihirli bağlantı gönder",
+    "magicLink": "Şifresiz giriş bağlantısı gönder",
     "magicLinkSubtitle": "Şifre yerine e-postana gelen bağlantı",
     "google": "Google ile devam et",
     "welcomeBack": "Tekrar hoş geldin",
@@ -102,7 +108,6 @@
     "nameRequired": "Ad gerekli",
     "emailFirst": "Önce e-posta girin",
     "signInFailed": "Giriş başarısız",
-    "or": "veya",
     "continueApple": "Apple ile devam et",
     "continueGoogle": "Google ile devam et",
     "signUpFailed": "Kayıt başarısız",
@@ -123,7 +128,9 @@
     "resetSave": "Yeni şifreyi kaydet",
     "resetFailed": "Şifre sıfırlanamadı",
     "resetSuccess": "Şifre güncellendi — giriş yapabilirsin",
-    "resetInvalidLink": "Geçersiz veya süresi dolmuş sıfırlama bağlantısı."
+    "resetInvalidLink": "Geçersiz veya süresi dolmuş sıfırlama bağlantısı.",
+    "invalidCredentials": "E-posta veya şifre hatalı.",
+    "emailTaken": "Bu e-posta zaten kayıtlı. Giriş yapmayı dene."
   },
   "dashboard": {
     "active": "Aktif araç",
@@ -169,7 +176,8 @@
     "expiresOn": "Bitiş tarihi",
     "newRecord": "Yeni {{type}} kaydı",
     "editRecord": "Kaydı düzenle",
-    "currency": "TL"
+    "currency": "TL",
+    "deleted": "Kayıt silindi"
   },
   "bike": {
     "newTitle": "Yeni araç",
@@ -199,7 +207,13 @@
     "changePhoto": "Değiştir",
     "removePhoto": "Fotoğrafı kaldır",
     "documents": "Belgeler",
-    "scannedDocs": "Taranan belgeler"
+    "scannedDocs": "Taranan belgeler",
+    "nicknameRequired": "Araca bir ad ver",
+    "nicknameHint": "uygulamada bu adla görünür",
+    "moreDetails": "Ruhsat bilgileri",
+    "moreDetailsSub": "Renk, yakıt, şase ve motor no",
+    "selectMakeFirst": "Önce marka seç",
+    "archiveConfirmBody": "Araç garajından kalkar. Yakıt, belge ve bakım kayıtları silinmez."
   },
   "maintenance": {
     "title": "Bakım",
@@ -221,7 +235,8 @@
     "lastDoneKm": "Son yapım km",
     "intervalMonths": "Periyot (ay)",
     "intervalKm": "Periyot (km)",
-    "deleteConfirm": "Sil?",
+    "cost": "Bakım tutarı (₺)",
+    "deleteConfirm": "Bu bakım kaydını silmek istiyor musun?",
     "due": "Vade"
   },
   "settings": {
@@ -254,6 +269,8 @@
     "deleteAccountPasswordPlaceholder": "Şifre",
     "deleteAccountSubmit": "Hesabı kalıcı olarak sil",
     "deleteAccountWrongPassword": "Şifre yanlış.",
+    "deleteAccountConfirmPhraseMessage": "Onaylamak için {{phrase}} yazın.",
+    "deleteAccountWrongConfirmation": "Onaylamak için {{phrase}} kelimesini tam olarak gösterildiği gibi yazın.",
     "deleteAccountSuccess": "Hesabınız silindi.",
     "on": "Açık",
     "off": "Kapalı",
@@ -296,11 +313,13 @@
     "errorLimit": "Bugünlük belge yükleme sınırına ulaşıldı. Yarın tekrar dene.",
     "errorFileRequired": "Lütfen bir görsel seç.",
     "errorBikeNotFound": "Araç bulunamadı.",
+    "errorUnsupportedType": "Yalnızca JPEG, PNG, WebP veya HEIC görseller destekleniyor — PDF taranamıyor.",
+    "errorTooLarge": "Görsel çok büyük (en fazla 10 MB). Fotoğrafı tekrar çekmeyi dene.",
     "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene."
   },
   "review": {
     "reading": "Belge okunuyor",
-    "readingSub": "Bu birkaç saniye sürebilir.",
+    "readingSub": "Genellikle 10–30 saniye sürer. Bu ekranda beklemen şart değil.",
     "fieldsUpdated": "{{count}} alan güncellendi",
     "failedTitle": "Okunamadı",
     "failedSub": "Belgeyi okumayı denedik ama bir şeyler ters gitti.",
@@ -352,7 +371,13 @@
     "lowConfidence": "Düşük güven — lütfen okunan değerleri kontrol et.",
     "missingHint": "Okunamayan alanları elle doldurabilirsin.",
     "stillWorking": "Bu beklenenden uzun sürüyor…",
-    "muayeneDetected": "Belgede muayene tarihi bulundu: {{date}} — kaydetmek için “Ekle”ye dokun."
+    "muayeneDetected": "Belgede muayene tarihi bulundu: {{date}} — kaydetmek için “Ekle”ye dokun.",
+    "backgroundHint": "Okuma arka planda devam ediyor — bu ekranı kapatabilirsin, sonuç aracına işlenir. İstersen bilgileri elle de girebilirsin.",
+    "checkAgain": "Durumu kontrol et",
+    "failedHint": "Genelde bulanık, karanlık ya da eğri çekilmiş fotoğraflarda olur. Belgeyi düz bir zemine koyup tekrar dene ya da bilgileri elle gir.",
+    "pickVehicle": "Bu belge hangi araca ait?",
+    "noVehicleYet": "Bu tarihi kaydetmek için önce bir araç eklemen gerekiyor.",
+    "done": "Bitti"
   },
   "common": {
     "save": "Kaydet",
@@ -366,7 +391,8 @@
     "no": "Hayır",
     "dash": "—",
     "dismiss": "Kapat",
-    "close": "Kapat"
+    "close": "Kapat",
+    "retry": "Tekrar dene"
   },
   "paywall": {
     "title": "Daha fazla araç ekle",
@@ -399,7 +425,32 @@
     "restoreSuccess": "Satın alımlar geri yüklendi.",
     "restoreNone": "Önceki satın alım bulunamadı.",
     "purchaseSuccess": "Hazır — aracınızı ekleyebilirsiniz.",
-    "legal": "Otomatik yenilenen abonelik. App Store'dan iptal edilene kadar her dönem yenilenir. Apple Kimliği ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz."
+    "legal": "Otomatik yenilenen abonelik. App Store'dan iptal edilene kadar her dönem yenilenir. Apple Kimliği ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz.",
+    "terms": "Kullanım Koşulları (EULA)",
+    "privacy": "Gizlilik Politikası",
+    "garageState": "{{max}} araçtan {{used}} tanesi kullanımda",
+    "vehiclesWord": "araç",
+    "unlock": "{{count}} aracın kilidini aç",
+    "perVehicleMonth": "≈ araç başına ayda {{price}}",
+    "save": "%{{percent}} tasarruf",
+    "termLabel": "Süre",
+    "termRenews": "otomatik yenilenir",
+    "termOneTime": "tek seferlik ödeme",
+    "seeAll": "Tüm paketleri ve süreleri karşılaştır",
+    "showLess": "Daha az seçenek göster",
+    "processing": "İşleniyor…",
+    "loading": "Paketler yükleniyor…",
+    "retry": "Tekrar dene",
+    "unavailableTitle": "Paketler şu anda kullanılamıyor",
+    "unavailableBody": "App Store hesabınız için hiçbir araç paketi döndürmedi. Bu genellikle geçicidir — bağlantınızı kontrol edip birazdan tekrar deneyin.",
+    "partialNotice": "{{count}} paket App Store mağazanızda sunulmuyor ve gizlendi.",
+    "paymentsDisabled": "Bu cihazda satın alma kapalı. Ekran Süresi → İçerik ve Gizlilik Kısıtlamaları'nı kontrol edin.",
+    "cancelled": "Satın alma iptal edildi. Herhangi bir ücret alınmadı.",
+    "pendingTitle": "Onay bekleniyor",
+    "pendingBody": "Satın almanız tamamlanmadan önce onay gerekiyor — Satın Almadan Önce Sor veya bankanız tarafından.",
+    "pendingNoCharge": "Henüz herhangi bir ücret alınmadı. Onaylandığı anda araçlarınız otomatik olarak açılır; bu ekranı kapatsanız bile.",
+    "pendingClose": "Anladım",
+    "opensExternally": "tarayıcınızda açılır"
   },
   "install": {
     "title": "Ana Ekrana Ekle",
@@ -432,8 +483,8 @@
     "home": "Anasayfaya dön"
   },
   "errors": {
-    "generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
-    "server": "Sunucuda bir sorun oluştu. Birazdan tekrar deneyin.",
+    "generic": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+    "server": "Sunucuda bir sorun oluştu. Birazdan tekrar dene.",
     "network": "Bağlantı kurulamadı. İnternet bağlantını kontrol edip tekrar dene.",
     "unauthenticated": "Oturumun sona ermiş. Lütfen tekrar giriş yap.",
     "validation_error": "Girdiğin bilgilerde bir hata var. Lütfen alanları kontrol et.",
@@ -443,15 +494,50 @@
     "file_required": "Bir görsel seçilmedi. Lütfen bir fotoğraf seç.",
     "invalid_password": "Şifre hatalı. Lütfen tekrar dene.",
     "bad_item_type": "Geçersiz kayıt türü.",
-    "vehicle_limit_reached": "Araç sınırınıza ulaştınız. Daha fazlası için yükseltin.",
+    "vehicle_limit_reached": "Araç sınırına ulaştın. Daha fazlası için paketini yükselt.",
     "iap_plugin_missing": "Bu uygulama sürümünde satın alma yok — App Store'dan güncelleyin.",
     "iap_unavailable": "Satın alma şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
     "verification_failed": "Satın alma doğrulanamadı. Simülatörde test ediyorsanız gerçek cihazda sandbox hesabı kullanın.",
     "unknown_product": "Bu ürün tanınmadı. Uygulamayı güncelleyip tekrar deneyin.",
-    "no_valid_transaction": "Satın alma hesabınıza uygulanamadı.",
-    "ride_not_found": "Bu kodla bir sürüş bulunamadı — sona ermiş olabilir.",
-    "iap_unavailable": "Satın alma şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
     "no_valid_transaction": "Satın alımınızı doğrulayamadık. Lütfen tekrar deneyin.",
-    "internal_error": "Sunucuda bir sorun oluştu. Birazdan tekrar deneyin."
+    "ride_not_found": "Bu kodla bir sürüş bulunamadı — sona ermiş olabilir.",
+    "internal_error": "Sunucuda bir sorun oluştu. Birazdan tekrar deneyin.",
+    "unsupported_media_type": "Yalnızca JPEG, PNG, WebP veya HEIC görseller destekleniyor.",
+    "file_too_large": "Görsel çok büyük (en fazla 10 MB).",
+    "too_many_files": "Lütfen tek seferde bir görsel yükle.",
+    "unexpected_file": "Bu dosya burada beklenmiyordu. Lütfen bir fotoğraf seçip tekrar dene.",
+    "upload_error": "Yükleme tamamlanamadı. Lütfen tekrar dene.",
+    "iap_products_failed": "Araç paketleri App Store'dan yüklenemedi. Lütfen tekrar deneyin.",
+    "iap_product_not_found": "Bu paket App Store'da henüz mevcut değil. Başka bir paket deneyin veya kısa süre sonra tekrar bakın.",
+    "iap_product_unavailable": "Bu paket şu anda satın alınamıyor.",
+    "iap_not_available_in_storefront": "Bu paket App Store ülkenizde satılmıyor.",
+    "iap_payment_not_allowed": "Bu cihazda satın alma kısıtlanmış. Ekran Süresi → İçerik ve Gizlilik Kısıtlamaları'nı kontrol edin.",
+    "iap_network_error": "App Store'a ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+    "iap_not_entitled": "App Store bu isteği reddetti. Apple Hesabınızdan çıkıp tekrar giriş yapın ve yeniden deneyin.",
+    "iap_store_error": "App Store'da bir sorun oluştu. Lütfen birazdan tekrar deneyin.",
+    "iap_ineligible_for_offer": "Bu teklif için uygun değilsiniz.",
+    "iap_purchase_failed": "Satın alma tamamlanamadı. Hesabınızdan herhangi bir ücret alınmadı.",
+    "iap_restore_failed": "Satın alımlarınız geri yüklenemedi. Lütfen tekrar deneyin.",
+    "iap_cancelled": "Satın alma iptal edildi. Herhangi bir ücret alınmadı.",
+    "iap_invalid_arguments": "Uygulama App Store'a geçersiz bir istek gönderdi. Lütfen uygulamayı güncelleyin.",
+    "iap_unsupported_os": "Satın almalar için iOS 15 veya üzeri gerekir. Lütfen iPhone'unuzu güncelleyin.",
+    "no_purchases": "Bu Apple Hesabı için önceki satın alım bulunamadı.",
+    "iap_no_production_verifier": "Satın almalar bizim tarafımızda yanlış yapılandırılmış ve şu anda tamamlanamıyor. Bilgilendirildik — lütfen daha sonra tekrar deneyin."
+  },
+  "fleet": {
+    "orgVehicle": {
+      "label": "Şirket aracı",
+      "tooltip": "Bu araç {{org}} kuruluşuna ait. Araca kaydedilenleri kuruluş görebilir."
+    },
+    "limits": {
+      "thisVehicle": "Yalnızca bu araç. Başka bir araca kaydettikleriniz bu kuruluşa gitmez.",
+      "whileAssigned": "Yalnızca araç size zimmetliyken. Araç teslim edildiğinde araca erişiminiz de sona erer.",
+      "neverPersonal": "Kişisel araçlarınız hiçbir zaman kuruluşa görünmez — üye olsanız bile."
+    },
+    "policyLink": "Gizlilik Politikası — Kuruluşlar ve şirket araçları",
+    "notice": {
+      "summary": "Bu şirket aracına kaydettiğiniz sürüşleri {{org}} görebilir.",
+      "more": "Ayrıntılar"
+    }
   }
 }

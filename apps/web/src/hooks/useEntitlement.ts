@@ -7,12 +7,18 @@ export const ENTITLEMENT_KEY = ["entitlement"] as const;
 /**
  * The user's current vehicle allowance and subscription state. Drives whether
  * the "add vehicle" action navigates to the scanner or opens the paywall.
+ *
+ * `enabled: false` is for the ORG path: a company vehicle is billed to
+ * `organization.max_vehicles` and has nothing to do with the caller's consumer
+ * subscription, so that flow must not even ask this question (see
+ * `addVehicleIntent`).
  */
-export function useEntitlement() {
+export function useEntitlement({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<EntitlementSummary>({
     queryKey: ENTITLEMENT_KEY,
     queryFn: () => api<EntitlementSummary>("/api/entitlement"),
     // Cheap and cap-critical — keep it fresh-ish but don't hammer.
     staleTime: 30_000,
+    enabled,
   });
 }
