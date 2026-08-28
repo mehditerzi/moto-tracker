@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Bike as BikeIcon, Settings2, Gauge } from "lucide-react";
+import { Plus, Pencil, Bike as BikeIcon, Settings2, Gauge, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { NumberInput } from "@/components/ui/number-input";
@@ -48,11 +48,17 @@ export function DashboardPage() {
     if (!exists) setActiveBikeId(dash.data[0]!.bike.id);
   }, [dash.data, activeBikeId, setActiveBikeId]);
 
+  // Computed once and shared with the alerts card below. It used to run here
+  // AND inside UpcomingAlertsCard on every render — two call sites free to
+  // drift, so the deadline pushed to the iOS widget could disagree with the
+  // one on screen.
+  const upcoming = useMemo(() => collectUpcoming(dash.data ?? []), [dash.data]);
+
   // Feed the iOS home-screen widget the soonest upcoming deadline (native no-op
   // on web). Recomputed whenever the dashboard data changes.
   useEffect(() => {
     if (!dash.data) return;
-    const next = collectUpcoming(dash.data)[0];
+    const next = upcoming[0];
     pushNextDeadline(
       next
         ? {
@@ -63,7 +69,7 @@ export function DashboardPage() {
           }
         : null,
     );
-  }, [dash.data, t]);
+  }, [dash.data, upcoming, t]);
 
   if (dash.isLoading)
     return (
@@ -130,7 +136,7 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <UpcomingAlertsCard entries={dash.data} />
+      <UpcomingAlertsCard items={upcoming} />
 
       <BikeSwitcher
         entries={dash.data}
@@ -237,7 +243,9 @@ export function DashboardPage() {
         <OfficialServicesCard />
       </motion.div>
 
-      <div className="mb-safe mt-4 flex items-center justify-center">
+      {/* No `mb-safe`: `main` already reserves `--tabbar-clear` below the
+          content, so adding the inset again here left a second empty band. */}
+      <div className="mt-4 flex items-center justify-center">
         <Button asChild size="sm" variant="ghost" className="text-muted dark:text-muted-dark">
           <Link to="/bikes"><Settings2 className="h-3.5 w-3.5" /> {t("dashboard.manageBikes")}</Link>
         </Button>
@@ -279,17 +287,24 @@ function collectUpcoming(entries: DashboardEntry[]): UpcomingItem[] {
   return result.sort((a, b) => a.daysRemaining - b.daysRemaining);
 }
 
-function UpcomingAlertsCard({ entries }: { entries: DashboardEntry[] }) {
+function UpcomingAlertsCard({ items }: { items: UpcomingItem[] }) {
   const { t } = useTranslation();
-  const items = collectUpcoming(entries);
   if (items.length === 0) return null;
+  // Four rows is the right amount to scan; three vehicles can easily produce a
+  // dozen within the window, and silently dropping the rest makes the card
+  // read as the whole picture when it is a quarter of it.
+  const shown = items.slice(0, 4);
+  const hidden = items.length - shown.length;
 
   return (
     <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-2xl border border-border bg-surface/80 px-4 py-3 dark:border-border-dark dark:bg-surface-dark/60">
-        <p className="label-micro mb-2.5 text-muted dark:text-muted-dark">{t("dashboard.upcoming")}</p>
+        <p className="label-micro mb-2.5 flex items-center justify-between gap-2 text-muted dark:text-muted-dark">
+          <span>{t("dashboard.upcoming")}</span>
+          {hidden > 0 && <span className="num shrink-0 normal-case tracking-normal">+{hidden}</span>}
+        </p>
         <ul className="flex flex-col gap-1.5">
-          {items.slice(0, 4).map((item) => (
+          {shown.map((item) => (
             <UpcomingRow key={`${item.bikeId}-${item.type}`} item={item} />
           ))}
         </ul>
@@ -312,16 +327,26 @@ function UpcomingRow({ item }: { item: UpcomingItem }) {
         to={`/dated-items/${item.itemId}`}
         className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 hover:bg-surface-elev dark:hover:bg-surface-elev-dark transition"
       >
-        <div className="min-w-0">
+        {/* `truncate` belongs on this block, not on the span it used to sit on:
+            overflow:hidden does nothing to an inline box, so a long Turkish
+            nickname ran on underneath the day counter instead of ellipsing. */}
+        <div className="min-w-0 truncate">
           <span className="text-[13px] font-medium">
             {t(`items.${item.type}`)}
           </span>
           {" "}
-          <span className="text-[12px] text-muted dark:text-muted-dark truncate">
+          <span className="text-[12px] text-muted dark:text-muted-dark">
             · {item.bikeName}
           </span>
         </div>
         <div className={`flex items-baseline gap-1 shrink-0 ${urgency}`}>
+          {/* Urgency was carried by hue alone — 7, 30 and 60 days differ only
+              in colour, which is invisible to a red-green colourblind user and
+              to anyone glancing in sunlight. Overdue already says a word; this
+              gives the last-week case a second channel too. */}
+          {item.daysRemaining <= 7 && (
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 self-center" aria-hidden />
+          )}
           <span className="num text-[15px] font-semibold leading-none">
             {item.daysRemaining < 0 ? t("items.expired") : item.daysRemaining}
           </span>
@@ -368,7 +393,7 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
     if (!isNaN(n) && n >= 0 && n !== currentKm) {
       savingRef.current = true;
       try {
-        await update.mutateAsync({ currentKm: n } as any);
+        await update.mutateAsync({ currentKm: n });
         pushToast({ variant: "success", title: t("bike.updated") });
       } catch (e) {
         pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
