@@ -8,3 +8,5 @@ export * from "./schemas/trip.js";
 export * from "./schemas/fuelLog.js";
 export * from "./schemas/notification.js";
 export * from "./schemas/iap.js";
+export * from "./schemas/organization.js";
+export * from "./schemas/fleet.js";
