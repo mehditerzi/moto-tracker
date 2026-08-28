@@ -25,6 +25,21 @@ import UIKit
 /// If you add another plugin class to this target, register it here too.
 /// Nothing will warn you — a missing registration looks exactly like a plugin
 /// that was never written.
+/// `@objc(MainViewController)` is deliberate and load-bearing.
+///
+/// A Swift subclass of an `@objc` class is registered with the Objective-C
+/// runtime under its MANGLED name — `_TtC3App18MainViewController` — and
+/// Interface Builder reconstructs that from `customModule`. If the two ever
+/// disagree, or the file is missing from the built target, the storyboard
+/// cannot instantiate the root view controller and the app launches to a black
+/// screen with only `Unknown class _TtC3App18MainViewController in Interface
+/// Builder file.` in the log.
+///
+/// An explicit `@objc` name removes the mangling from the equation: the class
+/// registers as literally `MainViewController`, and `Main.storyboard` refers to
+/// it by that name with **no** `customModule`. Do not re-add `customModule` —
+/// it would send Interface Builder looking for the mangled name again.
+@objc(MainViewController)
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(StoreKitPlugin())
