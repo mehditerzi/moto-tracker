@@ -49,10 +49,18 @@ interface EntitlementRow {
   updated_at: string;
 }
 
-/** Count a user's active (non-archived) vehicles — the number that counts against the cap. */
+/**
+ * Count a user's active (non-archived) PERSONAL vehicles — the number that
+ * counts against their own subscription.
+ *
+ * `org_id IS NULL` is load-bearing: an organization's vehicles are billed to the
+ * organization (see `canAddOrgVehicle`), so registering a company van must not
+ * consume the personal garage the member paid for. Because every pre-org row has
+ * org_id NULL, this is a no-op for existing users.
+ */
 export function countActiveBikes(userId: string, db: DB = getDb()): number {
   const row = db
-    .prepare("SELECT COUNT(*) AS n FROM bike WHERE user_id = ? AND archived = 0")
+    .prepare("SELECT COUNT(*) AS n FROM bike WHERE user_id = ? AND org_id IS NULL AND archived = 0")
     .get(userId) as { n: number };
   return row.n;
 }
@@ -105,9 +113,50 @@ export function getMaxVehicles(userId: string, db: DB = getDb()): number {
   return resolveEntitlement(userId, db).maxVehicles;
 }
 
-/** True when the user can add one more active vehicle. */
+/** True when the user can add one more active PERSONAL vehicle. */
 export function canAddVehicle(userId: string, db: DB = getDb()): boolean {
   return countActiveBikes(userId, db) < getMaxVehicles(userId, db);
+}
+
+// ─── organization ceilings ────────────────────────────────────────────────────
+//
+// An org vehicle is billed to the ORGANIZATION, never to the member who happens
+// to register it. The ceiling therefore comes from `organization.max_vehicles`
+// and has nothing to do with any member's personal entitlement — a fleet owner
+// on the free consumer tier can still run a 40-vehicle fleet, and buying a
+// personal vehicle pack does not enlarge the fleet.
+
+/** Count an organization's active (non-archived) vehicles. */
+export function countActiveOrgBikes(orgId: string, db: DB = getDb()): number {
+  const row = db
+    .prepare("SELECT COUNT(*) AS n FROM bike WHERE org_id = ? AND archived = 0")
+    .get(orgId) as { n: number };
+  return row.n;
+}
+
+/** The org's active-vehicle ceiling; 0 for an org that does not exist. */
+export function getOrgMaxVehicles(orgId: string, db: DB = getDb()): number {
+  const row = db.prepare("SELECT max_vehicles FROM organization WHERE id = ?").get(orgId) as
+    | { max_vehicles: number }
+    | undefined;
+  return row?.max_vehicles ?? 0;
+}
+
+/** True when the organization can add one more active vehicle. */
+export function canAddOrgVehicle(orgId: string, db: DB = getDb()): boolean {
+  return countActiveOrgBikes(orgId, db) < getOrgMaxVehicles(orgId, db);
+}
+
+/**
+ * The seam for fleet billing: whatever grants an org its plan (a fleet IAP tier,
+ * later) calls this and nothing else. Keeping the write in one place means the
+ * ceiling can never drift from what was actually purchased.
+ */
+export function setOrgMaxVehicles(orgId: string, maxVehicles: number, db: DB = getDb()): void {
+  db.prepare("UPDATE organization SET max_vehicles = ?, updated_at = datetime('now') WHERE id = ?").run(
+    maxVehicles,
+    orgId,
+  );
 }
 
 /**

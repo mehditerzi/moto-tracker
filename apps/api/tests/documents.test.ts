@@ -260,7 +260,9 @@ describe("/api/documents", () => {
         filename: "x.txt",
         contentType: "text/plain",
       });
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBe(415);
+    // A translatable machine code, not a Turkish sentence.
+    expect(res.body.error).toBe("unsupported_media_type");
   });
 
   it("does not return another user's document", async () => {

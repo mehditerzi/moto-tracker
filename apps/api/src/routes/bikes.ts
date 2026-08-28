@@ -11,14 +11,17 @@ import { newId } from "../lib/ulid.js";
 import { config } from "../config.js";
 import { bikeCreateSchema, bikeUpdateSchema } from "@mototracker/shared";
 import { inferVehicleType } from "../ocr/catalog.js";
-import { canAddVehicle } from "../lib/entitlement.js";
+import { canAddOrgVehicle, canAddVehicle } from "../lib/entitlement.js";
+import { authorizeBike, bikeScope, roleInOrg, type BikeAccessFacts } from "../lib/orgAccess.js";
+import { ApiCodeError } from "../middleware/errorHandler.js";
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.mimetype)) {
-      cb(new Error("Yalnızca jpeg / png / webp / heic kabul ediliyor"));
+      // Machine code, not prose — the client is bilingual and translates it.
+      cb(new ApiCodeError("unsupported_media_type", 415));
       return;
     }
     cb(null, true);
@@ -30,6 +33,7 @@ export const bikesRouter: Router = Router();
 interface BikeRow {
   id: string;
   user_id: string;
+  org_id: string | null;
   vehicle_type: "motorcycle" | "car";
   nickname: string;
   plate: string | null;
@@ -52,7 +56,10 @@ interface BikeRow {
 function rowToBike(r: BikeRow) {
   return {
     id: r.id,
+    // For an org vehicle this is the CUSTODIAN (who registered it), not who may
+    // see it — access comes from orgId + membership. See lib/orgAccess.ts.
     userId: r.user_id,
+    orgId: r.org_id,
     vehicleType: r.vehicle_type,
     nickname: r.nickname,
     plate: r.plate,
@@ -77,40 +84,73 @@ function rowToBike(r: BikeRow) {
 
 bikesRouter.use(requireUser);
 
+// The caller's own garage plus every org vehicle they may read — one scope,
+// computed in lib/orgAccess.ts, never re-derived here. A driver sees only the
+// vehicles currently assigned to them, so this endpoint cannot be used to
+// enumerate a fleet.
 bikesRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const includeArchived = req.query.archived === "true";
     const db = getDb();
-    const rows = (
-      includeArchived
-        ? db.prepare("SELECT * FROM bike WHERE user_id = ? ORDER BY created_at DESC").all(req.user!.id)
-        : db
-            .prepare("SELECT * FROM bike WHERE user_id = ? AND archived = 0 ORDER BY created_at DESC")
-            .all(req.user!.id)
-    ) as BikeRow[];
+    const scope = bikeScope(req.user!.id, db);
+    const rows = db
+      .prepare(
+        `SELECT * FROM bike
+          WHERE id IN (${scope.sql})${includeArchived ? "" : " AND archived = 0"}
+          ORDER BY created_at DESC`,
+      )
+      .all(...scope.params) as BikeRow[];
     res.json(rows.map(rowToBike));
   }),
 );
+
+/**
+ * A vehicle is created either in the caller's personal garage (no orgId — the
+ * consumer app) or in one of their organizations. The two are billed to
+ * different ceilings, so the branch has to happen before anything is written.
+ */
+const bikeOrgSchema = z.object({ orgId: z.string().min(1).optional() });
 
 bikesRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const body = bikeCreateSchema.parse(req.body);
+    const { orgId } = bikeOrgSchema.parse(req.body);
     const db = getDb();
-    // First vehicle is free; each additional one needs an active subscription.
-    // Enforced here (not just in the UI) so the API is the source of truth.
-    if (!canAddVehicle(req.user!.id, db)) {
+
+    if (orgId) {
+      // Adding a vehicle grows the org's bill, so it is an owner/manager act —
+      // staff run the fleet, they don't size it. A non-member gets 404: the
+      // existence of an organization is not public information.
+      const role = roleInOrg(req.user!.id, orgId, db);
+      if (role === null) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      if (role !== "owner" && role !== "manager") {
+        res.status(403).json({ error: "forbidden" });
+        return;
+      }
+      if (!canAddOrgVehicle(orgId, db)) {
+        res.status(403).json({ error: "vehicle_limit_reached" });
+        return;
+      }
+    } else if (!canAddVehicle(req.user!.id, db)) {
+      // First vehicle is free; each additional one needs an active subscription.
+      // Enforced here (not just in the UI) so the API is the source of truth.
       res.status(403).json({ error: "vehicle_limit_reached" });
       return;
     }
+
     const id = newId();
     db.prepare(
-      `INSERT INTO bike (id, user_id, vehicle_type, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc, fuel_type, first_registration_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bike (id, user_id, org_id, vehicle_type, nickname, plate, make, model, year, current_km, color, chassis_no, engine_no, cylinder_cc, fuel_type, first_registration_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       req.user!.id,
+      orgId ?? null,
       // Respect an explicit choice; otherwise infer car/motorcycle from the
       // make/model (covers the review screen's "create bike", which omits it).
       body.vehicleType ?? inferVehicleType(body.make ?? null, body.model ?? null) ?? "motorcycle",
@@ -135,14 +175,8 @@ bikesRouter.post(
 bikesRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    const db = getDb();
-    const row = db
-      .prepare("SELECT * FROM bike WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id) as BikeRow | undefined;
-    if (!row) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
+    if (!authorizeBike(req, res, req.params.id!, "read")) return;
+    const row = getDb().prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
     res.json(rowToBike(row));
   }),
 );
@@ -152,13 +186,9 @@ bikesRouter.patch(
   asyncHandler(async (req, res) => {
     const body = bikeUpdateSchema.parse(req.body);
     const db = getDb();
-    const existing = db
-      .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
-    if (!existing) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
+    // "manage", not "write": a driver may log a fill-up on the van they are
+    // holding, but must not rename or re-plate it.
+    if (!authorizeBike(req, res, req.params.id!, "manage")) return;
     const fieldMap: Record<string, string> = {
       vehicleType: "vehicle_type",
       nickname: "nickname",
@@ -184,8 +214,9 @@ bikesRouter.patch(
     }
     if (sets.length) {
       sets.push("updated_at = datetime('now')");
-      values.push(req.params.id, req.user!.id);
-      db.prepare(`UPDATE bike SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`).run(...values);
+      values.push(req.params.id);
+      // Authorised above; an org vehicle's row is not keyed by the caller.
+      db.prepare(`UPDATE bike SET ${sets.join(", ")} WHERE id = ?`).run(...values);
     }
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
     res.json(rowToBike(row));
@@ -194,10 +225,23 @@ bikesRouter.patch(
 
 // ─── vehicle photo ────────────────────────────────────────────────────────────
 
-function ownedBike(userId: string, id: string) {
-  return getDb()
-    .prepare("SELECT id, photo_url FROM bike WHERE id = ? AND user_id = ?")
-    .get(id, userId) as { id: string; photo_url: string | null } | undefined;
+/**
+ * Where a vehicle's photo is written. Personal vehicles keep the per-user
+ * directory that DELETE /api/me wipes wholesale; ORG vehicles are written under
+ * `org/<orgId>` instead, because a company van's photo must not disappear
+ * because the member who uploaded it closed their account.
+ */
+function photoDirFor(facts: BikeAccessFacts, userId: string): string {
+  return facts.orgId
+    ? path.join(config.UPLOADS_DIR, "org", facts.orgId)
+    : path.join(config.UPLOADS_DIR, userId);
+}
+
+function photoUrlOf(id: string): string | null {
+  const row = getDb().prepare("SELECT photo_url FROM bike WHERE id = ?").get(id) as
+    | { photo_url: string | null }
+    | undefined;
+  return row?.photo_url ?? null;
 }
 
 bikesRouter.post(
@@ -209,13 +253,11 @@ bikesRouter.post(
       return;
     }
     const db = getDb();
-    if (!ownedBike(req.user!.id, req.params.id!)) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    const userDir = path.join(config.UPLOADS_DIR, req.user!.id);
-    await fs.mkdir(userDir, { recursive: true });
-    const outPath = path.join(userDir, `bike-${req.params.id}.jpg`);
+    const facts = authorizeBike(req, res, req.params.id!, "manage");
+    if (!facts) return;
+    const dir = photoDirFor(facts, req.user!.id);
+    await fs.mkdir(dir, { recursive: true });
+    const outPath = path.join(dir, `bike-${req.params.id}.jpg`);
     // A real photo — keep colour, a generous size, and a center-cropped 4:3 so it
     // sits nicely as a hero/thumbnail.
     const buf = await sharp(req.file.buffer)
@@ -224,8 +266,8 @@ bikesRouter.post(
       .jpeg({ quality: 82 })
       .toBuffer();
     await fs.writeFile(outPath, buf);
-    db.prepare("UPDATE bike SET photo_url = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?")
-      .run(outPath, req.params.id, req.user!.id);
+    db.prepare("UPDATE bike SET photo_url = ?, updated_at = datetime('now') WHERE id = ?")
+      .run(outPath, req.params.id);
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
     res.status(201).json(rowToBike(row));
   }),
@@ -234,44 +276,40 @@ bikesRouter.post(
 bikesRouter.get(
   "/:id/photo",
   asyncHandler(async (req, res) => {
-    const bike = ownedBike(req.user!.id, req.params.id!);
-    if (!bike?.photo_url) {
+    if (!authorizeBike(req, res, req.params.id!, "read")) return;
+    const photoUrl = photoUrlOf(req.params.id!);
+    if (!photoUrl) {
       res.status(404).json({ error: "not_found" });
       return;
     }
     res.setHeader("Content-Type", "image/jpeg");
     res.setHeader("Cache-Control", "private, max-age=300");
-    res.sendFile(path.resolve(bike.photo_url));
+    res.sendFile(path.resolve(photoUrl));
   }),
 );
 
 bikesRouter.delete(
   "/:id/photo",
   asyncHandler(async (req, res) => {
-    const bike = ownedBike(req.user!.id, req.params.id!);
-    if (!bike) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
+    if (!authorizeBike(req, res, req.params.id!, "manage")) return;
+    const photoUrl = photoUrlOf(req.params.id!);
     getDb()
-      .prepare("UPDATE bike SET photo_url = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?")
-      .run(req.params.id, req.user!.id);
-    if (bike.photo_url) await fs.rm(path.resolve(bike.photo_url), { force: true }).catch(() => {});
+      .prepare("UPDATE bike SET photo_url = NULL, updated_at = datetime('now') WHERE id = ?")
+      .run(req.params.id);
+    if (photoUrl) await fs.rm(path.resolve(photoUrl), { force: true }).catch(() => {});
     res.status(204).end();
   }),
 );
 
+// Archiving a vehicle frees a slot against the ceiling that pays for it, so it
+// is owner/manager-only on an org fleet (staff and drivers get 403).
 bikesRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
-    const db = getDb();
-    const result = db
-      .prepare("UPDATE bike SET archived = 1, updated_at = datetime('now') WHERE id = ? AND user_id = ?")
-      .run(req.params.id, req.user!.id);
-    if (result.changes === 0) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
+    if (!authorizeBike(req, res, req.params.id!, "delete")) return;
+    getDb()
+      .prepare("UPDATE bike SET archived = 1, updated_at = datetime('now') WHERE id = ?")
+      .run(req.params.id);
     res.status(204).end();
   }),
 );

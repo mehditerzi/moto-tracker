@@ -3,6 +3,12 @@ import request from "supertest";
 import sharp from "sharp";
 import { buildTestApp } from "./helpers/buildApp.js";
 import { signUpAndSignIn } from "./helpers/authedRequest.js";
+import { config } from "../src/config.js";
+
+// Own uploads dir, for the same reason fuelReceipt.test.ts has one:
+// documents.test.ts runs in a parallel worker and rm's the shared default,
+// which can delete the photo between the upload and the GET that serves it.
+(config as { UPLOADS_DIR: string }).UPLOADS_DIR = "/tmp/mototracker-test-uploads-bikephoto";
 
 function png() {
   return sharp({ create: { width: 12, height: 12, channels: 3, background: { r: 200, g: 30, b: 30 } } })
@@ -49,7 +55,9 @@ describe("bike photo", () => {
       .post(`/api/bikes/${bike.id}/photo`)
       .set("Cookie", cookie)
       .attach("file", Buffer.from("not an image"), "x.txt");
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBe(415);
+    // A translatable machine code, not a Turkish sentence.
+    expect(res.body.error).toBe("unsupported_media_type");
   });
 
   it("lists a vehicle's scanned documents", async () => {

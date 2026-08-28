@@ -4,6 +4,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { datedItemCreateSchema, datedItemUpdateSchema } from "@mototracker/shared";
+import { authorizeRecord, canAccessBike, canAccessRecord } from "../lib/orgAccess.js";
 
 interface DatedItemRow {
   id: string;
@@ -44,22 +45,20 @@ export function rowToDatedItem(r: DatedItemRow) {
 export const bikesNestedDatedRouter: Router = Router({ mergeParams: true });
 bikesNestedDatedRouter.use(requireUser);
 
+// Records are scoped by their VEHICLE, not by who typed them: on an org vehicle
+// the insurance a driver scanned has to be visible to the manager who pays for
+// it. For a personal vehicle the two are the same person, so nothing changes.
 bikesNestedDatedRouter.get(
   "/:id/dated-items",
   asyncHandler(async (req, res) => {
     const db = getDb();
-    const bike = db
-      .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
-    if (!bike) {
+    if (!canAccessBike(req.user!.id, req.params.id!, "read", db)) {
       res.status(404).json({ error: "not_found" });
       return;
     }
     const rows = db
-      .prepare(
-        "SELECT * FROM dated_item WHERE bike_id = ? AND user_id = ? ORDER BY type ASC, expires_on DESC",
-      )
-      .all(req.params.id, req.user!.id) as DatedItemRow[];
+      .prepare("SELECT * FROM dated_item WHERE bike_id = ? ORDER BY type ASC, expires_on DESC")
+      .all(req.params.id) as DatedItemRow[];
     res.json(rows.map(rowToDatedItem));
   }),
 );
@@ -69,20 +68,20 @@ bikesNestedDatedRouter.post(
   asyncHandler(async (req, res) => {
     const body = datedItemCreateSchema.parse(req.body);
     const db = getDb();
-    const bike = db
-      .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
-    if (!bike) {
+    if (!canAccessBike(req.user!.id, req.params.id!, "write", db)) {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    // Only honour sourceDocumentId if the document belongs to this user.
+    // Only honour sourceDocumentId if the caller may actually read that document
+    // — otherwise it would be a way to probe for other people's document ids.
     let sourceDocumentId: string | null = null;
     if (body.sourceDocumentId) {
-      const owns = db
-        .prepare("SELECT id FROM document WHERE id = ? AND user_id = ?")
-        .get(body.sourceDocumentId, req.user!.id);
-      if (owns) sourceDocumentId = body.sourceDocumentId;
+      const doc = db
+        .prepare("SELECT bike_id, user_id FROM document WHERE id = ?")
+        .get(body.sourceDocumentId) as { bike_id: string | null; user_id: string } | undefined;
+      if (doc && canAccessRecord(req.user!.id, { bikeId: doc.bike_id, userId: doc.user_id }, "read", db)) {
+        sourceDocumentId = body.sourceDocumentId;
+      }
     }
     const id = newId();
     db.prepare(
@@ -108,17 +107,27 @@ bikesNestedDatedRouter.post(
 export const datedItemsRouter: Router = Router();
 datedItemsRouter.use(requireUser);
 
+/** Fetch a dated item by id, unfiltered — the caller is authorised separately. */
+function findItem(id: string): DatedItemRow | undefined {
+  return getDb().prepare("SELECT * FROM dated_item WHERE id = ?").get(id) as
+    | DatedItemRow
+    | undefined;
+}
+
+/** The shape `authorizeRecord` needs: which vehicle, and who recorded it. */
+function recordOf(row: DatedItemRow) {
+  return { bikeId: row.bike_id, userId: row.user_id };
+}
+
 datedItemsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    const db = getDb();
-    const row = db
-      .prepare("SELECT * FROM dated_item WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id) as DatedItemRow | undefined;
+    const row = findItem(req.params.id!);
     if (!row) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(row), "read")) return;
     res.json(rowToDatedItem(row));
   }),
 );
@@ -128,13 +137,12 @@ datedItemsRouter.patch(
   asyncHandler(async (req, res) => {
     const body = datedItemUpdateSchema.parse(req.body);
     const db = getDb();
-    const existing = db
-      .prepare("SELECT id FROM dated_item WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id);
+    const existing = findItem(req.params.id!);
     if (!existing) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(existing), "write", { db })) return;
     const fieldMap: Record<string, string> = {
       type: "type",
       expiresOn: "expires_on",
@@ -153,10 +161,8 @@ datedItemsRouter.patch(
     }
     if (sets.length) {
       sets.push("updated_at = datetime('now')");
-      values.push(req.params.id, req.user!.id);
-      db.prepare(`UPDATE dated_item SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`).run(
-        ...values,
-      );
+      values.push(req.params.id);
+      db.prepare(`UPDATE dated_item SET ${sets.join(", ")} WHERE id = ?`).run(...values);
     }
     const row = db.prepare("SELECT * FROM dated_item WHERE id = ?").get(req.params.id) as DatedItemRow;
     res.json(rowToDatedItem(row));
@@ -167,13 +173,15 @@ datedItemsRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
     const db = getDb();
-    const result = db
-      .prepare("DELETE FROM dated_item WHERE id = ? AND user_id = ?")
-      .run(req.params.id, req.user!.id);
-    if (result.changes === 0) {
+    const existing = findItem(req.params.id!);
+    if (!existing) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    // Deleting a RECORD is a day-to-day act ("write"), unlike deleting the
+    // vehicle it belongs to.
+    if (!authorizeRecord(req, res, recordOf(existing), "write", { db })) return;
+    db.prepare("DELETE FROM dated_item WHERE id = ?").run(req.params.id);
     res.status(204).end();
   }),
 );
