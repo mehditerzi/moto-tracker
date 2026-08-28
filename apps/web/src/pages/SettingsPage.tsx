@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2, Crown } from "lucide-react";
+import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2, Crown, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,12 @@ import { signOut } from "@/lib/authClient";
 import { api, ApiError } from "@/lib/api";
 import { clearBearerToken } from "@/lib/nativeAuth";
 import { queryClient } from "@/lib/queryClient";
-import { useNotifPrefs, useUpdateNotifPref } from "@/hooks/useNotifPreferences";
+import {
+  useNotifCategories,
+  useNotifPrefs,
+  useUpdateNotifCategory,
+  useUpdateNotifPref,
+} from "@/hooks/useNotifPreferences";
 import { useDisablePush, useEnablePush, usePushStatus, useSendTestPush } from "@/hooks/usePush";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
@@ -316,8 +321,71 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      <SharingNotificationsCard />
+
       <DeleteAccountCard />
     </motion.div>
+  );
+}
+
+/**
+ * Sharing activity — a category, not a schedule, so it gets a plain switch and
+ * no lead-day row.
+ *
+ * The second paragraph is the important one and it is not boilerplate: this
+ * toggle does NOT cover requests filed against a vehicle you hold. Those are
+ * always delivered, because they start a three-week window after which the
+ * person who asked may open their own record of the vehicle, and a settings
+ * screen that quietly disabled that would be a way to lose your car's record by
+ * having tidied your notifications. Saying so here — where the switch is —
+ * is the difference between a documented exception and a broken promise.
+ */
+function SharingNotificationsCard() {
+  const { t } = useTranslation();
+  const categories = useNotifCategories();
+  const update = useUpdateNotifCategory("sharing");
+  const sharing = categories.data?.find((c) => c.category === "sharing");
+
+  if (!sharing) return null;
+
+  const toggle = async () => {
+    try {
+      await update.mutateAsync({ enabled: !sharing.enabled });
+    } catch {
+      pushToast({ variant: "danger", title: t("settings.updateFailed") });
+    }
+  };
+
+  return (
+    <Card>
+      <SectionHeader
+        icon={<Users className="h-3.5 w-3.5" />}
+        label={t("settings.sharingNotifications")}
+      />
+      <CardContent className="gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm text-muted dark:text-muted-dark">
+            {t("settings.sharingNotificationsDesc")}
+          </p>
+          <button
+            onClick={toggle}
+            disabled={update.isPending}
+            aria-pressed={sharing.enabled}
+            className={cn(
+              "shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition min-h-[44px] min-w-[44px]",
+              sharing.enabled
+                ? "bg-success/15 text-success"
+                : "bg-surface text-muted dark:bg-bg-dark dark:text-muted-dark",
+            )}
+          >
+            {sharing.enabled ? t("settings.on") : t("settings.off")}
+          </button>
+        </div>
+        <p className="text-xs text-muted dark:text-muted-dark">
+          {t("settings.sharingNotificationsAlways")}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
