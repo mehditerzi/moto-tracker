@@ -31,6 +31,20 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // The framework floor barely moves between releases, so it is split off
+        // from the app chunk: a deploy then only invalidates our own bytes
+        // instead of making every client re-download ~240 kB it already has
+        // (and re-precache it in the service worker).
+        manualChunks: {
+          react: ["react", "react-dom"],
+          motion: ["framer-motion"],
+        },
+      },
+    },
+  },
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   server: {
     port: 5173,

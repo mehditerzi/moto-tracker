@@ -1,6 +1,8 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -34,6 +36,11 @@ export function MagicLinkSentPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted dark:text-muted-dark">{t("auth.magicSentBody")}</p>
+            {/* Terminal screen with no navigation of its own: if the mail never
+                arrives, or the address was wrong, this is the only way out. */}
+            <Button asChild variant="outline" className="mt-1">
+              <Link to="/sign-in">{t("auth.backToSignIn")}</Link>
+            </Button>
           </CardContent>
         </Card>
       </motion.div>

@@ -5,7 +5,17 @@ import { env } from "@/env";
 import { isNative, getBearerToken } from "@/lib/nativeAuth";
 import type { Document } from "@mototracker/shared";
 
+/** Poll cadence for a pending scan, measured from when the review screen
+ *  mounted. We don't derive it from `document.createdAt`: sqlite returns a naive
+ *  "YYYY-MM-DD HH:MM:SS" that Safari reads as local time, which would put the
+ *  elapsed reading hours out on any non-UTC device. */
+const POLL_FAST_MS = 1500;
+const POLL_SLOW_MS = 4000;
+const POLL_FAST_UNTIL_MS = 30_000;
+const POLL_GIVE_UP_MS = 3 * 60_000;
+
 export function useDocument(id: string | undefined, opts?: { pollWhilePending?: boolean }) {
+  const startedAt = useRef(Date.now());
   return useQuery<Document>({
     queryKey: ["document", id],
     queryFn: () => api<Document>(`/api/documents/${id}`),
@@ -13,7 +23,16 @@ export function useDocument(id: string | undefined, opts?: { pollWhilePending?: 
     refetchInterval: (q) => {
       if (!opts?.pollWhilePending) return false;
       const data = q.state.data as Document | undefined;
-      return data && data.ocrStatus === "pending" ? 1500 : false;
+      if (!data || data.ocrStatus !== "pending") return false;
+      // The server's per-document ceiling is 120 s and only OCR_CONCURRENCY jobs
+      // run at a time across all users, so a document can legitimately sit
+      // pending for minutes. Polling every 1.5 s for all of that drains the
+      // phone for nothing; past the give-up point the review screen offers an
+      // explicit "check again" instead of an endless background poll.
+      const elapsed = Date.now() - startedAt.current;
+      if (elapsed < POLL_FAST_UNTIL_MS) return POLL_FAST_MS;
+      if (elapsed < POLL_GIVE_UP_MS) return POLL_SLOW_MS;
+      return false;
     },
   });
 }

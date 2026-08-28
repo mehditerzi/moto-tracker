@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  CheckCircle2, AlertTriangle, FileText, X, Pencil, Check, Plus,
+  CheckCircle2, AlertTriangle, FileText, X, Pencil, Check, Plus, RotateCw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
+import { Field } from "@/components/ui/field";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
 import { useDocument } from "@/hooks/useDocuments";
 import { useBike, useBikes, useUpdateBike, useCreateBike } from "@/hooks/useBikes";
@@ -22,7 +23,21 @@ import { PaywallSheet } from "@/components/PaywallSheet";
 import { track } from "@/lib/telemetry";
 import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
+import { cn } from "@/lib/cn";
 import type { Bike, VehicleType } from "@mototracker/shared";
+
+/**
+ * How long we wait before escalating the "still reading" copy. OCR is a queued
+ * job: the server's per-document ceiling is 120 s and only a couple run at a
+ * time across all users, so a scan can legitimately sit pending for minutes and
+ * we must not promise a duration we can't keep. Phase 1 acknowledges the wait;
+ * phase 2 hands over the escapes, because by then waiting has stopped being
+ * useful advice — the job is either queued behind other work or was lost to an
+ * API restart. Leaving is genuinely safe: the worker writes (and auto-applies)
+ * the result whether or not this screen is open.
+ */
+const SLOW_MS = 20_000;
+const VERY_SLOW_MS = 75_000;
 
 // ─── page shell ──────────────────────────────────────────────────────────────
 
@@ -31,16 +46,19 @@ export function DocumentReviewPage() {
   const { id } = useParams();
   const doc = useDocument(id, { pollWhilePending: true });
 
-  // Slow-network hint: after 20 s of pending, show a "taking longer" message.
   // Hooks must be unconditional — declared before any early return.
-  const [slow, setSlow] = useState(false);
+  const [waitPhase, setWaitPhase] = useState<0 | 1 | 2>(0);
   useEffect(() => {
     if (doc.data?.ocrStatus !== "pending") {
-      setSlow(false);
+      setWaitPhase(0);
       return;
     }
-    const timerId = setTimeout(() => setSlow(true), 20_000);
-    return () => clearTimeout(timerId);
+    const slow = setTimeout(() => setWaitPhase(1), SLOW_MS);
+    const verySlow = setTimeout(() => setWaitPhase(2), VERY_SLOW_MS);
+    return () => {
+      clearTimeout(slow);
+      clearTimeout(verySlow);
+    };
   }, [doc.data?.ocrStatus]);
 
   // Fire one telemetry event when OCR resolves — the core "did the scan work,
@@ -68,6 +86,13 @@ export function DocumentReviewPage() {
 
   const d = doc.data;
   const fileUrl = `${env.VITE_API_URL}/api/documents/${d.id}/file`;
+  // Where "do it by hand instead" leads. With a target vehicle the useful screen
+  // is its renewal form; without one the scan was an add-vehicle attempt, so the
+  // vehicle form is what the user was actually after.
+  const manualEntryTo = d.bikeId ? `/bikes/${d.bikeId}/dated-items/new` : "/bikes/new";
+  // Re-scanning keeps the same target vehicle — otherwise a retry silently turns
+  // "scan for my Monster" into "create a second vehicle".
+  const rescanTo = d.bikeId ? `/capture?bikeId=${d.bikeId}` : "/capture";
 
   if (d.ocrStatus === "pending") {
     return (
@@ -79,18 +104,37 @@ export function DocumentReviewPage() {
           </CardHeader>
           <CardContent><ScanFrame src={fileUrl} active /></CardContent>
         </Card>
-        <div className="mt-4 flex flex-col items-center gap-3 text-center">
-          <Link to="/dashboard" className="text-sm text-muted underline dark:text-muted-dark">
-            {t("common.back")}
-          </Link>
-          {slow && (
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-sm text-muted dark:text-muted-dark">{t("review.stillWorking")}</p>
-              <Link to="/capture" className="text-sm underline text-accent">
-                {t("review.retry")}
-              </Link>
+
+        <div className="mt-4 flex flex-col gap-3">
+          {waitPhase >= 1 && (
+            <p className="text-center text-sm text-muted dark:text-muted-dark">
+              {t("review.stillWorking")}
+            </p>
+          )}
+          {waitPhase >= 2 && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-border p-4 dark:border-border-dark">
+              <p className="text-[13px] leading-relaxed text-muted dark:text-muted-dark">
+                {t("review.backgroundHint")}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => void doc.refetch()}
+                  disabled={doc.isFetching}
+                >
+                  <RotateCw className={cn("h-4 w-4", doc.isFetching && "animate-spin")} />
+                  {t("review.checkAgain")}
+                </Button>
+                <Button asChild variant="accent" className="flex-1">
+                  <Link to={manualEntryTo}>{t("review.manualEntry")}</Link>
+                </Button>
+              </div>
             </div>
           )}
+          <Button asChild variant="ghost" className="self-center text-muted dark:text-muted-dark">
+            <Link to="/dashboard">{t("common.back")}</Link>
+          </Button>
         </div>
       </motion.div>
     );
@@ -109,13 +153,14 @@ export function DocumentReviewPage() {
             <CardDescription>{t("review.failedSub")}</CardDescription>
           </CardHeader>
           <CardContent className="gap-3">
-            <p className="text-sm text-muted dark:text-muted-dark">{d.ocrError ?? t("common.error")}</p>
+            {/* `ocrError` is a raw English exception ("OCR pipeline timed out
+                after 120000ms") — useless to the user and wrong for a Turkish
+                app. Show what they can actually do about it instead. */}
+            <p className="text-sm text-muted dark:text-muted-dark">{t("review.failedHint")}</p>
             <div className="flex gap-2">
-              <Button asChild variant="accent" className="flex-1"><Link to="/capture">{t("review.retry")}</Link></Button>
+              <Button asChild variant="accent" className="flex-1"><Link to={rescanTo}>{t("review.retry")}</Link></Button>
               <Button asChild variant="outline" className="flex-1">
-                <Link to={d.bikeId ? `/bikes/${d.bikeId}/dated-items/new` : "/bikes"}>
-                  {t("review.manualEntry")}
-                </Link>
+                <Link to={manualEntryTo}>{t("review.manualEntry")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -125,7 +170,32 @@ export function DocumentReviewPage() {
   }
 
   const ex = d.ocrExtracted;
-  if (!ex) return <Link to="/dashboard" className="block text-center text-sm underline">{t("review.close")}</Link>;
+  // "done" with nothing extracted is a server-side edge case, but it used to
+  // render a lone "Close" link with no explanation — treat it as a read failure
+  // so the user still gets the retry / manual-entry pair.
+  if (!ex)
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto max-w-md">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <span className="inline-flex items-center gap-2 text-danger">
+                <AlertTriangle className="h-5 w-5" /> {t("review.failedTitle")}
+              </span>
+            </CardTitle>
+            <CardDescription>{t("review.failedHint")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Button asChild variant="accent" className="flex-1"><Link to={rescanTo}>{t("review.retry")}</Link></Button>
+              <Button asChild variant="outline" className="flex-1">
+                <Link to={manualEntryTo}>{t("review.manualEntry")}</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
 
   const isRuhsat = ex.docType === "ruhsat";
 
@@ -242,8 +312,14 @@ function RuhsatReviewForm({
   const [saved, setSaved] = useState(false);
   const [paywall, setPaywall] = useState(false);
   const [createdBikeId, setCreatedBikeId] = useState<string | null>(null);
-  const [nickname, setNickname] = useState(extracted.plate || extracted.make || "");
-  const [showNicknameInput, setShowNicknameInput] = useState(false);
+  // Seeded from what OCR read, most specific first: "Ducati Monster" beats the
+  // plate, which beats nothing. The field is visible from the start — it used to
+  // stay hidden unless the seed came out empty, so a scan that found a plate
+  // silently created a vehicle called "34 ABC 123" and that name then appeared
+  // everywhere in the app.
+  const [nickname, setNickname] = useState(
+    [extracted.make, extracted.model].filter(Boolean).join(" ") || extracted.plate || "",
+  );
 
   const [values, setValues] = useState<ExtractedBikeFields>(extracted);
   const [accepted, setAccepted] = useState<Record<FieldKey, boolean>>(() => {
@@ -294,7 +370,7 @@ function RuhsatReviewForm({
   };
 
   const onCreateBike = async () => {
-    if (!nickname.trim()) { setShowNicknameInput(true); return; }
+    if (!nickname.trim()) return;
     const patch = buildPatch();
     try {
       const newBike = await create.mutateAsync({
@@ -388,26 +464,33 @@ function RuhsatReviewForm({
           {t("review.confidence")}: {Math.round(confidence * 100)}%
         </p>
 
-        {!bikeId && !saved && showNicknameInput && (
-          <Input
-            placeholder={t("bike.nickname")}
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            autoFocus
-          />
+        {!bikeId && !saved && (
+          <Field label={t("bike.nickname")} hint={t("bike.nicknameHint")}>
+            <Input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              autoCapitalize="words"
+              placeholder={t("bike.nickname")}
+            />
+          </Field>
         )}
 
         <div className="flex gap-2">
           {saved ? (
             <Button asChild variant="accent" className="flex-1">
-              <Link to="/dashboard"><CheckCircle2 className="mr-1 h-4 w-4" />{t("common.save")}</Link>
+              <Link to="/dashboard"><CheckCircle2 className="mr-1 h-4 w-4" />{t("review.done")}</Link>
             </Button>
           ) : bikeId ? (
             <Button onClick={onApply} variant="accent" disabled={update.isPending || !hasAnyAccepted} className="flex-1">
               {t("review.applySelected")}
             </Button>
           ) : (
-            <Button onClick={onCreateBike} variant="accent" disabled={create.isPending || !hasAnyAccepted} className="flex-1">
+            <Button
+              onClick={onCreateBike}
+              variant="accent"
+              disabled={create.isPending || !hasAnyAccepted || !nickname.trim()}
+              className="flex-1"
+            >
               <Plus className="mr-1 h-4 w-4" />{t("review.createBike")}
             </Button>
           )}
@@ -602,7 +685,7 @@ function CompareFieldRow({
                     : (q) => fetchModels(makeValue || "", q)
                 }
                 placeholder={label}
-                inputClassName="h-8 text-sm"
+                inputClassName="h-8 text-base sm:text-sm"
               />
             </div>
           ) : (
@@ -610,7 +693,7 @@ function CompareFieldRow({
               value={displayVal}
               onChange={(e) => onValueChange(e.target.value)}
               placeholder={label}
-              className="h-8 flex-1 text-sm"
+              className="h-8 flex-1 text-base sm:text-sm"
             />
           )}
         </div>
@@ -649,7 +732,7 @@ function CompareFieldRow({
                   onBlur={() => setEditing(false)}
                   onClick={(e) => e.stopPropagation()}
                   autoFocus
-                  className="h-7 w-28 text-right text-sm"
+                  className="h-7 w-28 text-right text-base sm:text-sm"
                 />
               ) : (
                 <span className="font-medium">{currentValue}</span>
@@ -768,11 +851,15 @@ function FuelReceiptReviewForm({
 
         {bikes.data && bikes.data.length > 1 && (
           <div className="flex flex-col gap-1.5">
-            <span className="label-micro text-muted dark:text-muted-dark">{t("review.vehicle")}</span>
+            <label htmlFor="fuel-bike" className="label-micro text-muted dark:text-muted-dark">
+              {t("review.vehicle")}
+            </label>
             <select
+              id="fuel-bike"
               value={selBike}
               onChange={(e) => setSelBike(e.target.value)}
-              className="h-10 rounded-xl border border-border bg-surface px-3 text-sm dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+              // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
+              className="h-10 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
             >
               {bikes.data.map((b) => (
                 <option key={b.id} value={b.id}>{b.nickname}</option>
@@ -856,7 +943,19 @@ function DateDocReviewForm({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const bikes = useBikes();
   const applied = !!appliedDatedItemId;
+
+  // OCR couldn't always match a plate to a vehicle. This screen used to answer
+  // that with a button labelled "add manually" that just dropped the user on the
+  // dashboard — the date they had just reviewed was thrown away. Let them say
+  // which vehicle it belongs to and carry on.
+  const [selBike, setSelBike] = useState(bikeId ?? "");
+  useEffect(() => {
+    if (!selBike && bikes.data && bikes.data.length > 0) setSelBike(bikes.data[0]!.id);
+  }, [bikes.data, selBike]);
+  const targetBikeId = bikeId ?? selBike;
+  const hasNoVehicles = bikes.data != null && bikes.data.length === 0;
 
   const detectedDate =
     docType === "sigorta" ? (dates?.sigortaExpiresOn ?? null) :
@@ -898,10 +997,10 @@ function DateDocReviewForm({
   }
 
   const onApply = () => {
-    if (!bikeId || !editedDate) return;
+    if (!targetBikeId || !editedDate) return;
     // Carry documentId so the confirmed record links back to its scan (provenance).
     navigate(
-      `/bikes/${bikeId}/dated-items/new?type=${itemType}&expiresOn=${editedDate}&documentId=${documentId}`,
+      `/bikes/${targetBikeId}/dated-items/new?type=${itemType}&expiresOn=${editedDate}&documentId=${documentId}`,
     );
   };
 
@@ -947,6 +1046,26 @@ function DateDocReviewForm({
           </div>
         )}
 
+        {/* Vehicle picker — only when the scan wasn't already tied to one. */}
+        {!bikeId && bikes.data && bikes.data.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="doc-bike" className="label-micro text-muted dark:text-muted-dark">
+              {t("review.pickVehicle")}
+            </label>
+            <select
+              id="doc-bike"
+              value={selBike}
+              onChange={(e) => setSelBike(e.target.value)}
+              // text-base on phones so iOS doesn't zoom on focus — see ui/input.tsx.
+              className="h-11 rounded-xl border border-border bg-surface px-3 text-base dark:border-border-dark dark:bg-surface-dark dark:text-text-dark sm:text-sm"
+            >
+              {bikes.data.map((b) => (
+                <option key={b.id} value={b.id}>{b.nickname}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Editable date — the main interaction */}
         <div className="flex flex-col items-center gap-2 py-2">
           <label className="label-micro text-muted dark:text-muted-dark" htmlFor="doc-date">
@@ -967,14 +1086,23 @@ function DateDocReviewForm({
           {t("review.confidence")}: {Math.round(confidence * 100)}%
         </p>
 
+        {hasNoVehicles && (
+          <p className="text-[13px] text-muted dark:text-muted-dark">{t("review.noVehicleYet")}</p>
+        )}
+
         <div className="flex gap-2">
-          {bikeId ? (
-            <Button onClick={onApply} variant="accent" className="flex-1" disabled={!editedDate}>
-              {t("review.applySelected")}
+          {hasNoVehicles ? (
+            <Button asChild variant="accent" className="flex-1">
+              <Link to="/bikes/new"><Plus className="mr-1 h-4 w-4" />{t("dashboard.addBike")}</Link>
             </Button>
           ) : (
-            <Button asChild variant="accent" className="flex-1">
-              <Link to="/dashboard">{t("items.manualAdd")}</Link>
+            <Button
+              onClick={onApply}
+              variant="accent"
+              className="flex-1"
+              disabled={!editedDate || !targetBikeId}
+            >
+              {t("review.applySelected")}
             </Button>
           )}
           <Button asChild variant="ghost">
@@ -983,16 +1111,5 @@ function DateDocReviewForm({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function FieldRow({ label, value }: { label: string; value: string | null }) {
-  return (
-    <li className="flex items-center justify-between gap-2 rounded-xl border border-border p-3 text-sm dark:border-border-dark">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted dark:text-muted-dark">
-        {label}
-      </span>
-      <span>{value ?? <em className="opacity-60">—</em>}</span>
-    </li>
   );
 }

@@ -75,6 +75,10 @@ export function DocumentCapturePage() {
         service_unavailable: t("capture.errorLimit"),
         file_required: t("capture.errorFileRequired"),
         bike_not_found: t("capture.errorBikeNotFound"),
+        // The multer fileFilter rejects these before the file is written: a
+        // PDF/other non-image pick (415) and anything over the 10 MB cap (413).
+        unsupported_media_type: t("capture.errorUnsupportedType"),
+        file_too_large: t("capture.errorTooLarge"),
       };
       pushToast({
         variant: "danger",

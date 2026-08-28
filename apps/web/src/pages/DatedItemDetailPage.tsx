@@ -1,13 +1,34 @@
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { addYears, format, parseISO } from "date-fns";
 import { Pencil, RotateCw, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { DatedItemType } from "@mototracker/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { useDatedItem, useDatedItemsForBike } from "@/hooks/useDatedItems";
+import { ApiError } from "@/lib/api";
 import { statusFor, statusColorClass } from "@/lib/datedItems";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
+
+/**
+ * "Renew" used to open an empty date picker, making the user scroll a calendar
+ * to a date that is nearly always knowable: a renewed policy runs from where the
+ * old one ended. Sigorta and kasko are annual in Turkey without exception, so
+ * we prefill expiry + 1 year (still editable). Muayene periods vary by vehicle
+ * age and class and MTV is paid in instalments, so those two are left blank
+ * rather than guessed wrong.
+ */
+function renewTo(bikeId: string, type: DatedItemType, expiresOn: string): string {
+  const base = `/bikes/${bikeId}/dated-items/new?type=${type}`;
+  if (type !== "sigorta" && type !== "kasko") return base;
+  const next = addYears(parseISO(expiresOn), 1);
+  if (Number.isNaN(next.getTime())) return base;
+  return `${base}&expiresOn=${format(next, "yyyy-MM-dd")}`;
+}
 
 export function DatedItemDetailPage() {
   const { t, i18n } = useTranslation();
@@ -16,10 +37,35 @@ export function DatedItemDetailPage() {
   const history = useDatedItemsForBike(item.data?.bikeId);
 
   if (item.isLoading) {
-    return <p className="text-center text-muted dark:text-muted-dark">{t("common.loading")}</p>;
+    return (
+      <div className="mx-auto flex max-w-md flex-col gap-4" aria-hidden>
+        <Skeleton className="h-8 w-20 rounded-xl" />
+        <Skeleton className="h-72 rounded-2xl" />
+        <div className="flex gap-2">
+          <Skeleton className="h-11 flex-1 rounded-xl" />
+          <Skeleton className="h-11 flex-1 rounded-xl" />
+        </div>
+      </div>
+    );
   }
+  // A deleted record reached from a stale notification or the widget used to
+  // land on a bare red sentence with no navigation at all — inside AppShell you
+  // could still tab away, but the screen itself was a dead end.
   if (item.isError || !item.data) {
-    return <p className="text-center text-danger">{t("common.notFound")}</p>;
+    const gone = item.error instanceof ApiError && item.error.status === 404;
+    return (
+      <ErrorState
+        onRetry={gone ? undefined : () => void item.refetch()}
+        title={gone ? t("common.notFound") : undefined}
+        description={gone ? t("errors.not_found") : undefined}
+      >
+        <Button asChild variant={gone ? "accent" : "ghost"} className={gone ? "" : "text-muted dark:text-muted-dark"}>
+          <Link to="/dashboard">
+            <ArrowLeft className="h-4 w-4" /> {t("notFound.home")}
+          </Link>
+        </Button>
+      </ErrorState>
+    );
   }
 
   const info = statusFor(item.data.expiresOn);
@@ -82,7 +128,7 @@ export function DatedItemDetailPage() {
 
       <div className="flex gap-2">
         <Button asChild variant="accent" className="flex-1">
-          <Link to={`/bikes/${item.data.bikeId}/dated-items/new?type=${item.data.type}`}>
+          <Link to={renewTo(item.data.bikeId, item.data.type, item.data.expiresOn)}>
             <RotateCw className="h-4 w-4" /> {t("items.renew")}
           </Link>
         </Button>

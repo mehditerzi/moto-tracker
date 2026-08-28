@@ -4,6 +4,7 @@ import { Navigation, Route as RouteIcon, MapPin, ChevronDown } from "lucide-reac
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { useTrips, useTrip } from "@/hooks/useTrips";
 import { useBikes } from "@/hooks/useBikes";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
@@ -46,7 +47,7 @@ export function TripsPage() {
           <Skeleton className="h-16 rounded-2xl" />
         </div>
       ) : trips.isError ? (
-        <p className="text-center text-danger">{t("dashboard.loadFailed")}</p>
+        <ErrorState onRetry={() => void trips.refetch()} />
       ) : !trips.data || trips.data.length === 0 ? (
         <EmptyTrips />
       ) : (

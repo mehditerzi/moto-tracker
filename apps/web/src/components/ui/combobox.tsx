@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useFieldControl } from "@/components/ui/field";
 
 export interface ComboboxProps {
   value: string;
@@ -47,6 +48,12 @@ export function Combobox({
   const [active, setActive] = React.useState(0);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const reqId = React.useRef(0);
+
+  // Inside a <Field> the id and the error wiring come from the field; an
+  // explicit `id` prop still wins.
+  const { id: fieldId, ...fieldAria } = useFieldControl();
+  const controlId = id ?? fieldId;
+  const listId = controlId ? `${controlId}-list` : undefined;
 
   const norm = React.useCallback((s: string) => (uppercase ? s.toUpperCase() : s), [uppercase]);
 
@@ -126,11 +133,12 @@ export function Combobox({
     <div ref={rootRef} className="relative">
       <div className="relative">
         <input
-          id={id}
+          id={controlId}
           type="text"
           role="combobox"
           aria-expanded={open}
-          aria-controls={id ? `${id}-list` : undefined}
+          aria-controls={listId}
+          {...fieldAria}
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
@@ -146,7 +154,8 @@ export function Combobox({
           }}
           onKeyDown={onKeyDown}
           className={cn(
-            "flex h-11 w-full rounded-xl border border-border bg-surface pl-3.5 pr-9 text-[15px] leading-none text-text transition",
+            // 16px on phones so iOS doesn't zoom on focus — see ui/input.tsx.
+            "flex h-11 w-full rounded-xl border border-border bg-surface pl-3.5 pr-9 text-base leading-none text-text transition sm:text-[15px]",
             "placeholder:text-muted dark:placeholder:text-muted-dark",
             "hover:border-border-strong dark:hover:border-border-strong-dark",
             "focus-visible:outline-none focus-visible:border-text/40 focus-visible:ring-2 focus-visible:ring-accent/40 dark:focus-visible:border-text-dark/40",
@@ -169,7 +178,7 @@ export function Combobox({
 
       {open && (
         <ul
-          id={id ? `${id}-list` : undefined}
+          id={listId}
           role="listbox"
           className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-border bg-surface py-1 shadow-lg dark:border-border-dark dark:bg-surface-elev-dark"
         >

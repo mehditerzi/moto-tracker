@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { PROVIDER_OPTIONS } from "@/lib/vehicleOptions";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
@@ -101,6 +101,9 @@ export function DatedItemFormPage({ mode }: Props) {
     if (!(await confirm({ title: t("items.confirmDelete"), confirmLabel: t("items.delete"), destructive: true }))) return;
     try {
       await deleteMut.mutateAsync(itemId);
+      // The record disappears and we leave the screen; without this the delete
+      // is indistinguishable from a mis-tap on "cancel".
+      pushToast({ variant: "success", title: t("items.deleted") });
       navigate("/dashboard");
     } catch (e) {
       pushToast({ variant: "danger", title: t("common.error"), description: friendlyError(e, t) });
@@ -155,6 +158,8 @@ export function DatedItemFormPage({ mode }: Props) {
                 value={expiresOn}
                 onChange={(e) => { setExpiresOn(e.target.value); setDateError(""); }}
                 required
+                aria-invalid={dateError ? true : undefined}
+                aria-describedby={dateError ? "expiresOn-error" : undefined}
                 className={`w-full rounded-2xl border bg-surface px-4 py-4 text-center text-[22px] font-semibold tracking-tight transition
                   focus:outline-none focus:ring-2 focus:ring-accent/50
                   dark:bg-surface-dark dark:text-text-dark
@@ -163,13 +168,18 @@ export function DatedItemFormPage({ mode }: Props) {
                     : "border-border dark:border-border-dark text-text"
                   }`}
               />
-              {dateError && <p className="text-xs text-danger">{dateError}</p>}
+              {dateError && (
+                <p id="expiresOn-error" role="alert" className="text-xs text-danger">
+                  {dateError}
+                </p>
+              )}
             </div>
 
-            {/* Provider — only for insurance; muayene and mtv have no provider */}
+            {/* Provider — only for insurance; muayene and mtv have no provider.
+                Both fields carry the same "optional" hint the vehicle form uses,
+                so the expiry date reads as the only thing actually required. */}
             {type !== "muayene" && type !== "mtv" && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="provider">{t("items.provider")}</Label>
+              <Field id="provider" label={t("items.provider")} hint={t("bike.optional")}>
                 <Combobox
                   id="provider"
                   value={provider}
@@ -177,11 +187,10 @@ export function DatedItemFormPage({ mode }: Props) {
                   options={PROVIDER_OPTIONS}
                   placeholder={t("items.provider")}
                 />
-              </div>
+              </Field>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cost">{t("items.cost")}</Label>
+            <Field id="cost" label={t("items.cost")} hint={t("bike.optional")}>
               <Input
                 id="cost"
                 type="number"
@@ -191,7 +200,7 @@ export function DatedItemFormPage({ mode }: Props) {
                 onChange={(e) => setCost(e.target.value)}
                 placeholder="0"
               />
-            </div>
+            </Field>
 
             <div className="flex gap-2">
               <Button asChild variant="ghost" className="flex-1">
