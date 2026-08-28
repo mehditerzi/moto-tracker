@@ -21,6 +21,12 @@ services:
       #   CROSS_SITE_COOKIES=true             (session cookie SameSite=None; Secure)
       WEB_ORIGIN: ${WEB_ORIGIN:-}
       CROSS_SITE_COOKIES: ${CROSS_SITE_COOKIES:-false}
+      # CSP ships report-only until it has been verified on a real device.
+      # The iOS wrapper loads this origin through Capacitor's server.url, so an
+      # over-strict script-src could disable StoreKit / push / geolocation on
+      # every installed phone at once. Flip to "false" to enforce once the
+      # device check is clean — see docs/operations.md.
+      CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-true}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-Garajım <noreply@example.com>}
       # Local SMTP fallback (used only when RESEND_API_KEY is empty). To catch
@@ -71,6 +77,10 @@ services:
       CRON_HOUR: ${CRON_HOUR:-9}
       CRON_ENABLED: ${CRON_ENABLED:-true}
     volumes:
+      # The image runs as the unprivileged `node` user (uid 1000). On Linux a
+      # bind mount keeps the host directory's ownership, so run this once:
+      #   mkdir -p data && sudo chown -R 1000:1000 data
+      # Docker Desktop (macOS/Windows) remaps ownership for you.
       - ./data:/data
     # Bind to loopback only — public access goes through the tunnel
     # (Cloudflare in production; ngrok is legacy/opt-in).
@@ -80,6 +90,20 @@ services:
     # (Docker Desktop has this built-in; Linux needs host-gateway).
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # morgan writes a line per request; without rotation the json-file driver
+    # grows until the disk is full. 30 MB ceiling per container.
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Ceilings, not reservations — enough headroom for sharp + Tesseract on a
+    # 10 MB upload. Override in .env if the box is smaller/larger.
+    deploy:
+      resources:
+        limits:
+          cpus: "${API_CPU_LIMIT:-2}"
+          memory: ${API_MEM_LIMIT:-2g}
 
   # Mailpit — local SMTP catcher for dev. Catches all outgoing mail (magic links,
   # password resets) and shows it in a web inbox. No real email account needed.
@@ -92,6 +116,7 @@ services:
     container_name: mototracker-mailpit
     restart: unless-stopped
     profiles: ["mail"]
+    logging: *default-logging
     ports:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
@@ -102,6 +127,7 @@ services:
     restart: unless-stopped
     # Opt-in: not started unless `docker compose --profile bundled-ollama up`.
     profiles: ["bundled-ollama"]
+    logging: *default-logging
     ports:
       - "127.0.0.1:11434:11434"
     volumes:
@@ -118,8 +144,13 @@ services:
     restart: unless-stopped
     profiles: ["cloudflare"]
     command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TOKEN}"]
+    logging: *default-logging
+    # Wait for the image's HEALTHCHECK (a real DB query) rather than just for
+    # the container to exist — otherwise the tunnel goes public while the API
+    # is still applying migrations and visitors get 502s.
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   # ngrok (legacy). Opt-in: `docker compose --profile ngrok up -d`.
   ngrok:
@@ -134,8 +165,10 @@ services:
     command: ["start", "--all", "--log=stdout", "--config", "/etc/ngrok.yml"]
     volumes:
       - ./ngrok.yml:/etc/ngrok.yml:ro
+    logging: *default-logging
     ports:
       # ngrok local web inspector — useful for debugging.
       - "127.0.0.1:4040:4040"
     depends_on:
-      - api
+      api:
+        condition: service_healthy

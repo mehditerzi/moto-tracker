@@ -19,9 +19,23 @@ const RIDE_MAX_AGE = "-24 hours";
 
 /** Code alphabet avoids 0/O/1/I lookalikes — it gets read out loud on rides. */
 const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+const CODE_LEN = 6;
+/**
+ * Rejection sampling: 256 isn't a multiple of 31, so a plain `byte % 31` would
+ * make the first 8 letters ~3% likelier than the rest. Bytes at or above the
+ * largest multiple of the alphabet length (248) are discarded instead.
+ */
+const CODE_BYTE_LIMIT = 256 - (256 % CODE_ALPHABET.length);
 function newCode(): string {
   let code = "";
-  for (const byte of crypto.randomBytes(6)) code += CODE_ALPHABET[byte % CODE_ALPHABET.length];
+  while (code.length < CODE_LEN) {
+    // Over-draw so the loop almost always finishes in one syscall.
+    for (const byte of crypto.randomBytes(CODE_LEN * 2)) {
+      if (byte >= CODE_BYTE_LIMIT) continue;
+      code += CODE_ALPHABET[byte % CODE_ALPHABET.length];
+      if (code.length === CODE_LEN) break;
+    }
+  }
   return code;
 }
 
@@ -96,15 +110,57 @@ rideGroupsRouter.get(
   }),
 );
 
+/**
+ * Drop groups nobody can use any more. Opportunistic (on create) rather than a
+ * background timer: rides are created a handful of times a day, the table is
+ * tiny, and a timer would be one more thing to unref/tear down at shutdown for
+ * no benefit. `ride_member` follows via ON DELETE CASCADE.
+ *
+ * The windows are deliberately looser than RIDE_MAX_AGE so a client still
+ * polling a just-expired ride sees "ended", not a row that vanished.
+ */
+const GROUP_RETENTION = "-48 hours";
+const ENDED_RETENTION = "-1 hour";
+export function pruneStaleGroups(): void {
+  getDb()
+    .prepare(
+      `DELETE FROM ride_group
+        WHERE created_at < datetime('now', ?)
+           OR (ended_at IS NOT NULL AND ended_at < datetime('now', ?))`,
+    )
+    .run(GROUP_RETENTION, ENDED_RETENTION);
+}
+
+/** UNIQUE(code) collisions are rare but real — retry rather than 500. */
+const CODE_ATTEMPTS = 5;
+function insertGroup(id: string, userId: string): string {
+  const stmt = getDb().prepare("INSERT INTO ride_group (id, owner_id, code) VALUES (?, ?, ?)");
+  for (let i = 0; i < CODE_ATTEMPTS; i++) {
+    const code = newCode();
+    try {
+      stmt.run(id, userId, code);
+      return code;
+    } catch (err) {
+      // Only a code collision is retryable — an FK/PK violation must surface.
+      const e = err as { code?: string; message?: string };
+      if (e.code !== "SQLITE_CONSTRAINT_UNIQUE" || !/ride_group\.code/.test(e.message ?? "")) {
+        throw err;
+      }
+    }
+  }
+  // Only reachable if the live code space is genuinely exhausted.
+  throw Object.assign(new Error("ride_code_unavailable"), { status: 503 });
+}
+
 rideGroupsRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
     leaveCurrent(userId); // one active ride per user
+    pruneStaleGroups();
     const db = getDb();
     const id = newId();
-    const code = newCode();
-    db.prepare("INSERT INTO ride_group (id, owner_id, code) VALUES (?, ?, ?)").run(id, userId, code);
+    insertGroup(id, userId);
     db.prepare("INSERT INTO ride_member (group_id, user_id) VALUES (?, ?)").run(id, userId);
     res.status(201).json(toJson(activeGroupFor(userId)!, userId));
   }),
