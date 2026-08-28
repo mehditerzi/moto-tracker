@@ -66,13 +66,21 @@ export function AppShell() {
   const wide = location.pathname === "/fleet" || location.pathname.startsWith("/fleet/");
   const container = wide ? "max-w-[1400px]" : "max-w-3xl";
 
+  // The ride map is the one screen that is not a document: a rider needs the
+  // road edge to edge, so /map — and only /map — drops the header and the
+  // content column and takes the whole viewport, with its own chrome floating
+  // over the map. The tab bar stays (it is the way back), and because there is
+  // no header to navigate from at desktop widths it stops being phone-only here.
+  const immersive = location.pathname === "/map";
+
   return (
-    <div className="min-h-dvh">
+    <div className={immersive ? "h-dvh overflow-hidden" : "min-h-dvh"}>
       {/* Trip recording is suspended while a monitoring notice is outstanding, so
           the acknowledgement genuinely happens BEFORE the first trip on a
           company vehicle rather than after it. */}
       {!disclosure.pending && <TripTracking />}
 
+      {!immersive && (
       <header className="sticky top-0 z-30 border-b border-border/80 bg-bg/85 backdrop-blur-md dark:border-border-dark/80 dark:bg-bg-dark/75">
         <div className={`mx-auto flex ${container} items-center justify-between gap-2 px-4 pl-safe pr-safe pt-safe pb-3`}>
           <Link
@@ -120,17 +128,26 @@ export function AppShell() {
           )}
         </div>
       </header>
-      <main className={`mx-auto ${container} px-4 pl-safe pr-safe pb-28 pt-6 sm:pb-16 sm:pt-8`}>
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-        >
+      )}
+      {immersive ? (
+        // No motion wrapper: a transform on the ancestor of a live MapKit
+        // canvas re-rasterises the whole map for the length of the animation.
+        <main className="fixed inset-0 overflow-hidden">
           <Outlet />
-        </motion.div>
-      </main>
-      {me.data && <MobileNav showFleet={fleet.canSeeFleet} />}
+        </main>
+      ) : (
+        <main className={`mx-auto ${container} px-4 pl-safe pr-safe pb-28 pt-6 sm:pb-16 sm:pt-8`}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            <Outlet />
+          </motion.div>
+        </main>
+      )}
+      {me.data && <MobileNav showFleet={fleet.canSeeFleet} alwaysVisible={immersive} />}
 
       {disclosure.pending && (
         <Suspense fallback={null}>
@@ -180,7 +197,14 @@ function NavIconLink({
   );
 }
 
-function MobileNav({ showFleet }: { showFleet: boolean }) {
+function MobileNav({
+  showFleet,
+  alwaysVisible = false,
+}: {
+  showFleet: boolean;
+  /** On the full-screen map there is no header, so the tab bar is the only nav. */
+  alwaysVisible?: boolean;
+}) {
   const { t } = useTranslation();
   const location = useLocation();
   const items = [
@@ -195,7 +219,9 @@ function MobileNav({ showFleet }: { showFleet: boolean }) {
   return (
     <nav
       aria-label={t("nav.primary")}
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-bg/90 px-safe pb-safe backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/90 sm:hidden"
+      className={`fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-bg/90 px-safe pb-safe backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/90 ${
+        alwaysVisible ? "" : "sm:hidden"
+      }`}
     >
       <div
         className={`mx-auto grid max-w-md px-2 pt-1.5 ${showFleet ? "grid-cols-6" : "grid-cols-5"}`}

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import http from "node:http";
 import request from "supertest";
 import WebSocket from "ws";
+import type { RideServerFrame } from "@mototracker/shared";
 import { buildTestApp } from "./helpers/buildApp.js";
 import { signUpAndSignIn } from "./helpers/authedRequest.js";
 import {
@@ -236,6 +237,139 @@ describe("ride WebSocket hub", () => {
         ws.send(JSON.stringify({ lat: 41, lng: 29, pad: "x".repeat(64 * 1024) }));
       });
       expect(closeCode).toBe(1009); // "message too big"
+    } finally {
+      await hub.close();
+      await new Promise((r) => server.close(r));
+    }
+  });
+
+  it("relays the leader's route and rally, ignores both from a follower", async () => {
+    const app = buildTestApp();
+    const server = http.createServer(app);
+    const hub = attachRideWs(server);
+    await new Promise<void>((r) => server.listen(0, r));
+    const port = (server.address() as { port: number }).port;
+
+    /**
+     * The listener goes on before the handshake completes: a socket joining a
+     * ride with shared state is sent that state during the upgrade itself, so
+     * attaching after `open` can genuinely miss it.
+     */
+    interface Peer {
+      ws: WebSocket;
+      frames: RideServerFrame[];
+    }
+    const connect = (ticket: string) =>
+      new Promise<Peer>((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/api/ride-ws?ticket=${ticket}`);
+        const frames: RideServerFrame[] = [];
+        ws.on("message", (d: unknown) => frames.push(JSON.parse(String(d)) as RideServerFrame));
+        ws.on("open", () => resolve({ ws, frames }));
+        ws.on("error", reject);
+      });
+
+    /** The most recent frame a peer holds that matches — i.e. current state. */
+    async function latest(
+      peer: Peer,
+      want: (m: RideServerFrame) => boolean,
+      timeoutMs = 2000,
+    ): Promise<RideServerFrame> {
+      const deadline = Date.now() + timeoutMs;
+      for (;;) {
+        const hit = [...peer.frames].reverse().find(want);
+        if (hit) return hit;
+        if (Date.now() > deadline) throw new Error("expected frame never arrived");
+        await new Promise((r) => setTimeout(r, 20));
+      }
+    }
+    const asState = (m: RideServerFrame) => {
+      if (m.type !== "state") throw new Error("expected a state frame");
+      return m;
+    };
+
+    const route = {
+      line: "_p~iF~ps|U_ulLnnqC",
+      stops: [{ id: "s1", name: "Kartepe", lat: 40.7, lng: 30.1, kind: "view" as const }],
+      distanceKm: 84.2,
+      durationMin: 96,
+    };
+
+    try {
+      const leader = await connect(createRideTicket("u_lead", "g_state", "Ali", true));
+      const follower = await connect(createRideTicket("u_follow", "g_state", "Barış", false));
+
+      leader.ws.send(JSON.stringify({ t: "route", route }));
+      const shared = asState(await latest(follower, (m) => m.type === "state" && !!m.route));
+      expect(shared.route?.stops[0]?.name).toBe("Kartepe");
+      expect(shared.rally).toBeNull();
+
+      // A follower speaking for the group is ignored — leadership is not a
+      // client-side claim. Their rally must never reach anyone.
+      follower.ws.send(JSON.stringify({ t: "rally", rally: { lat: 41, lng: 29 } }));
+      await new Promise((r) => setTimeout(r, 150));
+      expect(follower.frames.some((m) => m.type === "state" && !!m.rally)).toBe(false);
+
+      leader.ws.send(JSON.stringify({ t: "rally", rally: { lat: 40.9, lng: 30.2, name: "Mola" } }));
+      const withRally = asState(await latest(leader, (m) => m.type === "state" && !!m.rally));
+      // The leader's coordinates, not the follower's.
+      expect(withRally.rally?.lat).toBeCloseTo(40.9, 5);
+      expect(withRally.rally?.name).toBe("Mola");
+
+      // A rider who joins mid-ride gets the shared state on connect.
+      const late = await connect(createRideTicket("u_late", "g_state", "Can", false));
+      const onJoin = asState(await latest(late, (m) => m.type === "state"));
+      expect(onJoin.route?.line).toBe(route.line);
+      expect(onJoin.rally?.lat).toBeCloseTo(40.9, 5);
+
+      // Oversized payloads are refused by the schema, not merely by the frame
+      // cap: this one is well under 16 KiB but past MAX_SHARED_ROUTE_CHARS.
+      leader.ws.send(JSON.stringify({ t: "route", route: { ...route, line: "x".repeat(9000) } }));
+      leader.ws.send(JSON.stringify({ t: "rally", rally: { lat: 40.91, lng: 30.21 } }));
+      const after = asState(
+        await latest(late, (m) => m.type === "state" && m.rally?.lat === 40.91),
+      );
+      expect(after.route?.line).toBe(route.line); // the good route survives
+
+      leader.ws.close();
+      follower.ws.close();
+      late.ws.close();
+    } finally {
+      await hub.close();
+      await new Promise((r) => server.close(r));
+    }
+  });
+
+  it("still accepts the legacy bare position frame", async () => {
+    const app = buildTestApp();
+    const server = http.createServer(app);
+    const hub = attachRideWs(server);
+    await new Promise<void>((r) => server.listen(0, r));
+    const port = (server.address() as { port: number }).port;
+
+    try {
+      const connect = (ticket: string) =>
+        new Promise<WebSocket>((resolve, reject) => {
+          const s = new WebSocket(`ws://127.0.0.1:${port}/api/ride-ws?ticket=${ticket}`);
+          s.on("open", () => resolve(s));
+          s.on("error", reject);
+        });
+      const old = await connect(createRideTicket("u_old", "g_legacy", "Eski", false));
+      const watcher = await connect(createRideTicket("u_new", "g_legacy", "Yeni", false));
+
+      const seen = new Promise<number>((resolve) => {
+        watcher.on("message", (data: unknown) => {
+          const msg = JSON.parse(String(data)) as RideServerFrame;
+          if (msg.type !== "roster") return;
+          const them = msg.members.find((m) => m.userId === "u_old");
+          if (them?.pos) resolve(them.pos.lat);
+        });
+      });
+      // A phone running a cached bundle sends this shape, with no `t`.
+      old.send(JSON.stringify({ lat: 41.02, lng: 28.97, speed: 18 }));
+      expect(await seen).toBeCloseTo(41.02, 5);
+
+      old.close();
+      watcher.close();
     } finally {
       await hub.close();
       await new Promise((r) => server.close(r));

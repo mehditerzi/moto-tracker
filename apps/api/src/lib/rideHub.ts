@@ -1,17 +1,30 @@
 import crypto from "node:crypto";
 import type { Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
+import {
+  rideClientFrameSchema,
+  type RideRally,
+  type RideRoute,
+  type RideServerFrame,
+} from "@mototracker/shared";
 
 /**
- * Live-position fan-out for group rides. Everything here is in-memory and
- * ephemeral on purpose: positions are relayed, never persisted, so a group
- * ride leaves no server-side location trail. A restart just drops connections;
- * clients reconnect with a fresh ticket.
+ * Live fan-out for group rides. Everything here is in-memory and ephemeral on
+ * purpose: positions are relayed, never persisted, so a group ride leaves no
+ * server-side location trail. A restart just drops connections; clients
+ * reconnect with a fresh ticket.
+ *
+ * A room carries two more pieces of shared state besides the roster — the
+ * leader's planned route and a rally point — and both live under exactly the
+ * same rule: memory only, dropped when the room closes or the process
+ * restarts. They are destinations the leader chose, not observed positions,
+ * and nothing about them is written to disk.
  *
  * Auth: WebSocket upgrades can't reliably carry the session (native app uses
  * bearer headers; cookies are origin-bound), so the REST layer mints a
  * one-time short-lived ticket bound to (user, group) and the socket presents
- * it in the URL.
+ * it in the URL. The ticket also carries whether that user owns the group,
+ * which is what gates the leader-only frames without a DB read per message.
  */
 
 const TICKET_TTL_MS = 60_000;
@@ -40,6 +53,8 @@ interface Ticket {
   userId: string;
   groupId: string;
   name: string;
+  /** Owner of the ride group = the leader. Gates `route` and `rally` frames. */
+  isOwner: boolean;
   expiresAt: number;
 }
 
@@ -47,6 +62,7 @@ interface MemberState {
   ws: WebSocket;
   userId: string;
   name: string;
+  isOwner: boolean;
   pos: { lat: number; lng: number; speed: number | null; t: number } | null;
   /** Ingress budget, reset every MSG_WINDOW_MS. */
   msgWindowStart: number;
@@ -55,8 +71,19 @@ interface MemberState {
   awaitingPong: boolean;
 }
 
+/**
+ * One live ride. `members` is the roster; `route` and `rally` are the leader's
+ * shared state, re-sent to every socket as it connects so a rider who joins (or
+ * reconnects through a tunnel) is never the only one without the line.
+ */
+interface Room {
+  members: Map<string, MemberState>;
+  route: RideRoute | null;
+  rally: (RideRally & { at: number }) | null;
+}
+
 const tickets = new Map<string, Ticket>();
-const rooms = new Map<string, Map<string, MemberState>>();
+const rooms = new Map<string, Room>();
 
 let ticketSweep: ReturnType<typeof setInterval> | null = null;
 
@@ -85,9 +112,14 @@ function stopTicketSweep(): void {
   ticketSweep = null;
 }
 
-export function createRideTicket(userId: string, groupId: string, name: string): string {
+export function createRideTicket(
+  userId: string,
+  groupId: string,
+  name: string,
+  isOwner = false,
+): string {
   const ticket = crypto.randomBytes(24).toString("base64url");
-  tickets.set(ticket, { userId, groupId, name, expiresAt: Date.now() + TICKET_TTL_MS });
+  tickets.set(ticket, { userId, groupId, name, isOwner, expiresAt: Date.now() + TICKET_TTL_MS });
   ensureTicketSweep();
   return ticket;
 }
@@ -116,28 +148,56 @@ export function consumeRideTicket(ticket: string): Omit<Ticket, "expiresAt"> | n
   const t = tickets.get(ticket);
   tickets.delete(ticket);
   if (!t || t.expiresAt < Date.now()) return null;
-  return { userId: t.userId, groupId: t.groupId, name: t.name };
+  return { userId: t.userId, groupId: t.groupId, name: t.name, isOwner: t.isOwner };
 }
 
 const lastBroadcast = new Map<string, number>();
 const pendingBroadcast = new Map<string, ReturnType<typeof setTimeout>>();
 
+function frame(f: RideServerFrame): string {
+  return JSON.stringify(f);
+}
+
 function roster(groupId: string): string {
   const room = rooms.get(groupId);
   const members = room
-    ? [...room.values()].map((m) => ({ userId: m.userId, name: m.name, pos: m.pos }))
+    ? [...room.members.values()].map((m) => ({
+        userId: m.userId,
+        name: m.name,
+        isOwner: m.isOwner,
+        pos: m.pos,
+      }))
     : [];
-  return JSON.stringify({ type: "roster", members });
+  return frame({ type: "roster", members });
+}
+
+function sendTo(room: Room, msg: string): void {
+  for (const m of room.members.values()) {
+    if (m.ws.readyState === WebSocket.OPEN) m.ws.send(msg);
+  }
 }
 
 function broadcast(groupId: string): void {
   const room = rooms.get(groupId);
   if (!room) return;
-  const msg = roster(groupId);
-  for (const m of room.values()) {
-    if (m.ws.readyState === WebSocket.OPEN) m.ws.send(msg);
-  }
+  sendTo(room, roster(groupId));
   lastBroadcast.set(groupId, Date.now());
+}
+
+function stateFrame(room: Room): string {
+  return frame({ type: "state", route: room.route, rally: room.rally });
+}
+
+/**
+ * Shared-state fan-out. Not throttled with the roster: route and rally changes
+ * are rare, leader-only, and already bounded by the per-socket ingress cap —
+ * and a rally point that arrives a second late is a rally point in the wrong
+ * place. The roster stays on its own ≤1/s budget.
+ */
+function broadcastState(groupId: string): void {
+  const room = rooms.get(groupId);
+  if (!room) return;
+  sendTo(room, stateFrame(room));
 }
 
 /** Coalesce rapid position updates into at most one roster per second. */
@@ -162,8 +222,8 @@ function scheduleBroadcast(groupId: string): void {
 export function closeRideRoom(groupId: string): void {
   const room = rooms.get(groupId);
   if (!room) return;
-  const msg = JSON.stringify({ type: "ended" });
-  for (const m of room.values()) {
+  const msg = frame({ type: "ended" });
+  for (const m of room.members.values()) {
     if (m.ws.readyState === WebSocket.OPEN) {
       m.ws.send(msg);
       m.ws.close(1000, "ride_ended");
@@ -176,20 +236,17 @@ export function closeRideRoom(groupId: string): void {
   pendingBroadcast.delete(groupId);
 }
 
-const posSchema = {
-  ok(v: unknown): v is { lat: number; lng: number; speed?: number | null } {
-    const o = v as Record<string, unknown>;
-    return (
-      !!o &&
-      typeof o.lat === "number" &&
-      o.lat >= -90 &&
-      o.lat <= 90 &&
-      typeof o.lng === "number" &&
-      o.lng >= -180 &&
-      o.lng <= 180
-    );
-  },
-};
+/**
+ * The original protocol was a bare `{lat,lng,speed}` with no discriminator.
+ * That shape is still what a phone running a cached bundle sends, and a rider
+ * mid-ride must not silently stop appearing on the map because we shipped a
+ * new frame format — so a frame with no `t` is normalised into a `pos`.
+ */
+function normalizeFrame(v: unknown): unknown {
+  const o = v as Record<string, unknown> | null;
+  if (o && typeof o === "object" && o.t === undefined) return { ...o, t: "pos" };
+  return v;
+}
 
 /** Handle returned by attachRideWs so shutdown can drain the sockets. */
 export interface RideWsHandle {
@@ -218,20 +275,28 @@ export function attachRideWs(server: HttpServer): RideWsHandle {
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
-      const room = rooms.get(auth.groupId) ?? new Map<string, MemberState>();
+      const room: Room = rooms.get(auth.groupId) ?? {
+        members: new Map<string, MemberState>(),
+        route: null,
+        rally: null,
+      };
       rooms.set(auth.groupId, room);
       // A reconnect replaces the old socket for the same user.
-      room.get(auth.userId)?.ws.close(1000, "replaced");
+      room.members.get(auth.userId)?.ws.close(1000, "replaced");
       const state: MemberState = {
         ws,
         userId: auth.userId,
         name: auth.name,
+        isOwner: auth.isOwner,
         pos: null,
         msgWindowStart: Date.now(),
         msgCount: 0,
         awaitingPong: false,
       };
-      room.set(auth.userId, state);
+      room.members.set(auth.userId, state);
+      // Shared state first: a rider who joins mid-ride gets the route and the
+      // rally point on connect rather than waiting for the leader to re-share.
+      if (room.route || room.rally) ws.send(stateFrame(room));
       broadcast(auth.groupId);
 
       // Same reason as the upgrade socket above, and it fires for real: a
@@ -266,21 +331,37 @@ export function attachRideWs(server: HttpServer): RideWsHandle {
         } catch {
           return;
         }
-        if (!posSchema.ok(parsed)) return;
-        state.pos = {
-          lat: parsed.lat,
-          lng: parsed.lng,
-          speed: typeof parsed.speed === "number" ? parsed.speed : null,
-          t: now,
-        };
-        scheduleBroadcast(auth.groupId);
+        const decoded = rideClientFrameSchema.safeParse(normalizeFrame(parsed));
+        if (!decoded.success) return;
+        const msg = decoded.data;
+
+        if (msg.t === "pos") {
+          state.pos = {
+            lat: msg.lat,
+            lng: msg.lng,
+            speed: typeof msg.speed === "number" ? msg.speed : null,
+            t: now,
+          };
+          scheduleBroadcast(auth.groupId);
+          return;
+        }
+
+        // Everything below is the leader speaking for the whole group. A
+        // follower sending it is ignored outright — this is the only place the
+        // ride has an authority, and it is not negotiable client-side.
+        if (!state.isOwner) return;
+        const current = rooms.get(auth.groupId);
+        if (!current) return;
+        if (msg.t === "route") current.route = msg.route;
+        else current.rally = msg.rally ? { ...msg.rally, at: now } : null;
+        broadcastState(auth.groupId);
       });
 
       ws.on("close", () => {
         const r = rooms.get(auth.groupId);
-        if (r?.get(auth.userId)?.ws === ws) {
-          r.delete(auth.userId);
-          if (r.size === 0) rooms.delete(auth.groupId);
+        if (r?.members.get(auth.userId)?.ws === ws) {
+          r.members.delete(auth.userId);
+          if (r.members.size === 0) rooms.delete(auth.groupId);
           else broadcast(auth.groupId);
         }
       });
@@ -294,7 +375,7 @@ export function attachRideWs(server: HttpServer): RideWsHandle {
    */
   const heartbeat = setInterval(() => {
     for (const room of rooms.values()) {
-      for (const m of room.values()) {
+      for (const m of room.members.values()) {
         if (m.ws.readyState !== WebSocket.OPEN) continue;
         if (m.awaitingPong) {
           m.ws.terminate(); // fires 'close' → drops them from the roster
@@ -316,7 +397,7 @@ export function attachRideWs(server: HttpServer): RideWsHandle {
       // closeRideRoom sends: the rides aren't over, the clients should
       // reconnect once we're back.
       for (const room of rooms.values()) {
-        for (const m of room.values()) m.ws.close(1012, "server_restart");
+        for (const m of room.members.values()) m.ws.close(1012, "server_restart");
       }
       rooms.clear();
       lastBroadcast.clear();

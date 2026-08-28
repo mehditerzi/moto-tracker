@@ -140,6 +140,15 @@ const standalone = (element: ReactNode) => (
   <Suspense fallback={<FullPagePending />}>{element}</Suspense>
 );
 const pane = (element: ReactNode) => <Suspense fallback={<PanePending />}>{element}</Suspense>;
+/** The map owns the whole viewport, so its cold-start state has to as well —
+ *  card skeletons in the corner of a black screen read as a broken page. */
+const fullBleed = (element: ReactNode) => (
+  <Suspense
+    fallback={<div className="h-full w-full animate-pulse bg-surface-elev dark:bg-surface-elev-dark" />}
+  >
+    {element}
+  </Suspense>
+);
 
 const router = createBrowserRouter([
   { path: "/welcome", element: standalone(<OnboardingPage />) },
@@ -162,7 +171,7 @@ const router = createBrowserRouter([
       { path: "bikes", element: pane(<BikesPage />) },
       { path: "trips", element: pane(<TripsPage />) },
       { path: "fuel", element: pane(<FuelPage />) },
-      { path: "map", element: pane(<MapPage />) },
+      { path: "map", element: fullBleed(<MapPage />) },
       { path: "bikes/new", element: pane(<BikeFormPage />) },
       { path: "bikes/:id/edit", element: pane(<BikeFormPage />) },
       {

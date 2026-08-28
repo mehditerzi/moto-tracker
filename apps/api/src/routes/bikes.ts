@@ -244,6 +244,24 @@ function photoUrlOf(id: string): string | null {
   return row?.photo_url ?? null;
 }
 
+/**
+ * The 320×240 derivative that sits beside the 1280×960 master.
+ *
+ * A garage list draws 44px squares, and the switcher draws 20px ones; serving
+ * the full master for those meant ~200 KB per row — a megabyte to paint five
+ * thumbnails, on a phone, over Turkish mobile data. Written once at upload
+ * time, so serving it costs nothing at request time.
+ *
+ * Derived from the master's path rather than stored, so a photo uploaded before
+ * this existed simply has no thumb file and falls back (see GET below).
+ */
+function thumbPathOf(masterPath: string): string {
+  return masterPath.replace(/\.jpg$/, "-thumb.jpg");
+}
+
+const MASTER = { width: 1280, height: 960 };
+const THUMB = { width: 320, height: 240 };
+
 bikesRouter.post(
   "/:id/photo",
   photoUpload.single("file"),
@@ -258,14 +276,41 @@ bikesRouter.post(
     const dir = photoDirFor(facts, req.user!.id);
     await fs.mkdir(dir, { recursive: true });
     const outPath = path.join(dir, `bike-${req.params.id}.jpg`);
-    // A real photo — keep colour, a generous size, and a center-cropped 4:3 so it
-    // sits nicely as a hero/thumbnail.
-    const buf = await sharp(req.file.buffer)
-      .rotate()
-      .resize({ width: 1280, height: 960, fit: "cover" })
-      .jpeg({ quality: 82 })
-      .toBuffer();
-    await fs.writeFile(outPath, buf);
+
+    // A real photo — keep colour, a generous size, and a 4:3 crop so it sits
+    // predictably in a hero, a list row and a pill.
+    //
+    // `.rotate()` with no argument applies the EXIF orientation and drops the
+    // tag, which is what stops a phone-held-sideways shot arriving on its side.
+    // The crop uses sharp's attention strategy rather than the centre: phone
+    // photos of a vehicle are usually portrait, and a blind centre crop of a
+    // portrait frame throws away the roof and the wheels to keep a door.
+    let master: Buffer;
+    let thumb: Buffer;
+    try {
+      master = await sharp(req.file.buffer)
+        .rotate()
+        .resize({ ...MASTER, fit: "cover", position: sharp.strategy.attention })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer();
+      thumb = await sharp(master)
+        .resize({ ...THUMB, fit: "cover" })
+        .jpeg({ quality: 78, mozjpeg: true })
+        .toBuffer();
+    } catch {
+      // The mimetype said image; the decoder disagreed. The common real case is
+      // HEIC: iOS transcodes to JPEG when a photo is picked in a WebView, but a
+      // file chosen out of the Files app arrives as HEVC-coded HEIF, which the
+      // prebuilt libvips cannot decode. Answer with the same translatable code
+      // the mimetype filter uses, so the client can tell the user to pick a
+      // different photo instead of showing "500".
+      throw new ApiCodeError("unsupported_media_type", 415);
+    }
+
+    await fs.writeFile(outPath, master);
+    // A stale thumb next to a fresh master would be served for the list rows
+    // while the hero showed the new photo, so this is not best-effort.
+    await fs.writeFile(thumbPathOf(outPath), thumb);
     db.prepare("UPDATE bike SET photo_url = ?, updated_at = datetime('now') WHERE id = ?")
       .run(outPath, req.params.id);
     const row = db.prepare("SELECT * FROM bike WHERE id = ?").get(req.params.id) as BikeRow;
@@ -282,9 +327,19 @@ bikesRouter.get(
       res.status(404).json({ error: "not_found" });
       return;
     }
+    // Photos uploaded before the derivative existed have no thumb on disk; fall
+    // back to the master rather than 404-ing a vehicle's picture out of the list.
+    let file = path.resolve(photoUrl);
+    if (req.query.size === "thumb") {
+      const thumb = thumbPathOf(file);
+      if (await fs.access(thumb).then(() => true, () => false)) file = thumb;
+    }
     res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "private, max-age=300");
-    res.sendFile(path.resolve(photoUrl));
+    // The URL carries `?v=<updated_at>`, so a replaced photo is a different URL
+    // and a long cache is safe. `private` because an org vehicle's photo is
+    // authorized per caller and must never land in a shared cache.
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.sendFile(file);
   }),
 );
 
@@ -296,7 +351,11 @@ bikesRouter.delete(
     getDb()
       .prepare("UPDATE bike SET photo_url = NULL, updated_at = datetime('now') WHERE id = ?")
       .run(req.params.id);
-    if (photoUrl) await fs.rm(path.resolve(photoUrl), { force: true }).catch(() => {});
+    if (photoUrl) {
+      const file = path.resolve(photoUrl);
+      await fs.rm(file, { force: true }).catch(() => {});
+      await fs.rm(thumbPathOf(file), { force: true }).catch(() => {});
+    }
     res.status(204).end();
   }),
 );

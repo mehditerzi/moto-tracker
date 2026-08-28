@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { encodePolyline, decodePolyline, simplifyRoute, simplifyToBudget, type LatLng } from "./polyline";
+import {
+  encodePolyline,
+  decodePolyline,
+  encodeWithinBudget,
+  simplifyRoute,
+  simplifyToBudget,
+  type LatLng,
+} from "./polyline";
 
 describe("polyline encode/decode", () => {
   it("round-trips at 1e-5 precision", () => {
@@ -69,5 +76,38 @@ describe("simplifyToBudget", () => {
     expect(out.length).toBeLessThanOrEqual(100);
     expect(out[0]).toEqual(pts[0]);
     expect(out[out.length - 1]).toEqual(pts[pts.length - 1]);
+  });
+});
+
+describe("encodeWithinBudget", () => {
+  /** A long, wiggly route — the kind that would blow the ride hub's frame cap. */
+  function wiggly(n: number): LatLng[] {
+    return Array.from({ length: n }, (_, i): LatLng => [
+      40 + i * 0.001 + Math.sin(i / 3) * 0.0008,
+      29 + i * 0.001 + Math.cos(i / 5) * 0.0008,
+    ]);
+  }
+
+  it("stays inside the budget for a route that would otherwise overflow it", () => {
+    const pts = wiggly(4000);
+    expect(encodePolyline(pts).length).toBeGreaterThan(8000);
+    const encoded = encodeWithinBudget(pts, 8000);
+    expect(encoded.length).toBeLessThanOrEqual(8000);
+    // Still a route, and still the same route: the ends are untouched and the
+    // decoded line never wanders far from where it started.
+    const back = decodePolyline(encoded);
+    expect(back.length).toBeGreaterThan(2);
+    expect(back[0]![0]).toBeCloseTo(pts[0]![0], 4);
+    expect(back[back.length - 1]![0]).toBeCloseTo(pts[pts.length - 1]![0], 4);
+  });
+
+  it("leaves a route that already fits alone", () => {
+    const pts = wiggly(20);
+    expect(decodePolyline(encodeWithinBudget(pts, 8000)).length).toBeGreaterThan(1);
+  });
+
+  it("survives degenerate input", () => {
+    expect(encodeWithinBudget([], 8000)).toBe("");
+    expect(decodePolyline(encodeWithinBudget([[41, 29]], 8000))).toEqual([[41, 29]]);
   });
 });

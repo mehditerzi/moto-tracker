@@ -33,6 +33,15 @@ const VIDEO_CONSTRAINTS: MediaStreamConstraints = {
 
 type Phase = "starting" | "live" | "error" | "review";
 
+/** One shot already taken in this session, as the tray shows it. */
+export interface BurstShot {
+  id: string;
+  /** Object URL of the captured JPEG. */
+  url: string;
+  /** Uploading, safely stored, or failed — the tray says which. */
+  status: "uploading" | "uploaded" | "failed";
+}
+
 interface Props {
   /** Receives the cropped JPEG when the user accepts a shot. */
   onCapture: (file: File) => void;
@@ -40,6 +49,19 @@ interface Props {
   onClose: () => void;
   /** Opens the gallery picker instead (fallback path). */
   onPickGallery: () => void;
+  /**
+   * Burst mode: stay open after each shot so a stack of documents can be
+   * photographed without leaving the viewfinder. The caller owns the shots and
+   * passes them back for the tray.
+   */
+  burst?: boolean;
+  shots?: BurstShot[];
+  /** Drop a bad shot straight from the tray, before it matters. */
+  onRemoveShot?: (id: string) => void;
+  /** "I'm done shooting" — only meaningful in burst mode. */
+  onDone?: () => void;
+  /** Shown when the session is full (the per-batch ceiling). */
+  limitReached?: boolean;
 }
 
 /**
@@ -49,7 +71,16 @@ interface Props {
  * handing the JPEG to the caller. Uses only WebView-safe APIs so it survives
  * the eventual Capacitor iOS wrap.
  */
-export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
+export function CameraCapture({
+  onCapture,
+  onClose,
+  onPickGallery,
+  burst = false,
+  shots = [],
+  onRemoveShot,
+  onDone,
+  limitReached = false,
+}: Props) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -59,6 +90,8 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
   const [review, setReview] = useState<{ url: string; file: File; issues: QualityIssue[] } | null>(
     null,
   );
+  /** Brief white flash + count bump: the "got it" beat between burst shots. */
+  const [flash, setFlash] = useState(0);
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
@@ -177,13 +210,50 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
     const file = new File([blob], `ruhsat-${Date.now()}.jpg`, { type: "image/jpeg" });
 
     if (issues.length === 0) {
+      // In burst mode the stream stays live: the whole point is shoot, shoot,
+      // shoot. The confirmation is the flash and the tray count, not a screen.
+      if (burst) {
+        onCapture(file);
+        setFlash((n) => n + 1);
+        return;
+      }
       stop();
       onCapture(file);
       return;
     }
     setReview({ url: URL.createObjectURL(blob), file, issues });
     setPhase("review");
-  }, [box, guide, onCapture, stop]);
+  }, [box, guide, onCapture, stop, burst]);
+
+  /** Return to the viewfinder after a quality warning, without re-acquiring. */
+  const backToLive = useCallback(() => {
+    setReview((r) => {
+      if (r) URL.revokeObjectURL(r.url);
+      return null;
+    });
+    setPhase("live");
+    void (async () => {
+      if (!streamRef.current && typeof navigator.mediaDevices?.getUserMedia === "function") {
+        try {
+          streamRef.current = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
+        } catch {
+          setPhase("error");
+          return;
+        }
+      }
+      if (videoRef.current && streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        await videoRef.current.play().catch(() => {});
+      }
+    })();
+  }, []);
+
+  // The flash is purely decorative; clear it so it can fire again.
+  useEffect(() => {
+    if (flash === 0) return;
+    const timer = setTimeout(() => setFlash(0), 180);
+    return () => clearTimeout(timer);
+  }, [flash]);
 
   const issueLabel: Record<QualityIssue, string> = {
     blurry: t("capture.qualityBlurry"),
@@ -285,17 +355,88 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
         </div>
       )}
 
+      {/* Shot-taken flash. Decorative only — the tray below is the real receipt. */}
+      {flash > 0 && (
+        <motion.div
+          key={flash}
+          aria-hidden
+          initial={{ opacity: 0.75 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="pointer-events-none absolute inset-0 bg-white"
+        />
+      )}
+
+      {/* Burst tray: what you have shot so far, and a way to drop a bad one
+          before it costs anything. Announced politely so a screen-reader user
+          hears the count climb without the viewfinder stealing focus. */}
+      {burst && phase === "live" && shots.length > 0 && (
+        <div className="absolute inset-x-0 bottom-32 px-4">
+          <p aria-live="polite" className="mb-2 text-center text-[13px] font-medium text-white/90 drop-shadow">
+            {t("batch.shotCount", { count: shots.length })}
+          </p>
+          <ul className="flex gap-2 overflow-x-auto pb-1">
+            {shots.map((s, i) => (
+              <li key={s.id} className="relative shrink-0">
+                <img
+                  src={s.url}
+                  alt=""
+                  className={`h-16 w-16 rounded-lg object-cover ring-1 ${
+                    s.status === "failed" ? "opacity-50 ring-danger" : "ring-white/40"
+                  }`}
+                />
+                {s.status === "uploading" && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40"
+                  >
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </span>
+                )}
+                {s.status === "failed" && (
+                  <span aria-hidden className="absolute inset-0 flex items-center justify-center">
+                    <AlertTriangle className="h-5 w-5 text-danger" />
+                  </span>
+                )}
+                {onRemoveShot && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveShot(s.id)}
+                    aria-label={t("batch.removeShot", { index: i + 1 })}
+                    className="absolute -right-2 -top-2 inline-flex h-11 w-11 items-center justify-center"
+                  >
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-white ring-1 ring-white/50">
+                      <X className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {burst && phase === "live" && limitReached && (
+        <div className="absolute inset-x-0 bottom-32 px-6">
+          <p className="rounded-xl bg-amber-500/20 p-3 text-center text-[13px] text-amber-100">
+            {t("batch.full")}
+          </p>
+        </div>
+      )}
+
       {/* Shutter row */}
       {phase === "live" && (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-10 p-8 pb-safe">
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 p-8 pb-safe">
           <button
             type="button"
             onClick={() => {
-              stop();
+              // In burst mode the gallery is additive (multi-select), so the
+              // camera is left running to come back to.
+              if (!burst) stop();
               onPickGallery();
             }}
             aria-label={t("capture.gallery")}
-            className="rounded-full bg-black/40 p-3 text-white backdrop-blur"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
           >
             <Images className="h-6 w-6" />
           </button>
@@ -303,13 +444,28 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
             type="button"
             whileTap={{ scale: 0.9 }}
             onClick={() => void capture()}
+            disabled={limitReached}
             aria-label={t("capture.shutter")}
-            className="flex items-center justify-center rounded-full border-4 border-white p-1"
+            className="flex items-center justify-center rounded-full border-4 border-white p-1 disabled:opacity-40"
             style={{ height: 72, width: 72 }}
           >
             <span className="h-full w-full rounded-full bg-white" />
           </motion.button>
-          <span className="w-12" />
+          {burst && onDone ? (
+            <button
+              type="button"
+              onClick={() => {
+                stop();
+                onDone();
+              }}
+              disabled={shots.length === 0}
+              className="min-h-[44px] rounded-full bg-accent px-4 text-sm font-semibold text-black disabled:opacity-40"
+            >
+              {t("batch.doneShooting")}
+            </button>
+          ) : (
+            <span className="h-11 w-11" />
+          )}
         </div>
       )}
 
@@ -332,37 +488,22 @@ export function CameraCapture({ onCapture, onClose, onPickGallery }: Props) {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  URL.revokeObjectURL(review.url);
-                  setReview(null);
-                  setPhase("live");
-                  // Re-attach the (still running) stream to the video element.
-                  void (async () => {
-                    if (
-                      !streamRef.current &&
-                      typeof navigator.mediaDevices?.getUserMedia === "function"
-                    ) {
-                      try {
-                        streamRef.current = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
-                      } catch {
-                        setPhase("error");
-                        return;
-                      }
-                    }
-                    if (videoRef.current && streamRef.current) {
-                      videoRef.current.srcObject = streamRef.current;
-                      await videoRef.current.play().catch(() => {});
-                    }
-                  })();
-                }}
-                className="flex-1 rounded-full border border-white/30 py-3 text-sm font-medium text-white"
+                onClick={backToLive}
+                className="min-h-[44px] flex-1 rounded-full border border-white/30 py-3 text-sm font-medium text-white"
               >
                 {t("capture.retake")}
               </button>
               <button
                 type="button"
-                onClick={() => onCapture(review.file)}
-                className="flex-1 rounded-full bg-accent py-3 text-sm font-semibold text-black"
+                onClick={() => {
+                  onCapture(review.file);
+                  // Burst: keep shooting. Single: the caller closes us.
+                  if (burst) {
+                    backToLive();
+                    setFlash((n) => n + 1);
+                  }
+                }}
+                className="min-h-[44px] flex-1 rounded-full bg-accent py-3 text-sm font-semibold text-black"
               >
                 {t("capture.useAnyway")}
               </button>

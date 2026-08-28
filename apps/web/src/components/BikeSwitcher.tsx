@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import type { DashboardEntry } from "@mototracker/shared";
 import { cn } from "@/lib/cn";
-import { vehicleIcon } from "@/lib/vehicleType";
+import { VehicleAvatar } from "@/components/VehicleAvatar";
 import { OrgVehicleBadge } from "@/components/fleet/OrgVehicleBadge";
 
 interface Props {
@@ -28,7 +28,6 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect, orgNameFor }: Pr
     <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden">
       {entries.map((e) => {
         const active = e.bike.id === activeBikeId;
-        const Icon = vehicleIcon(e.bike.vehicleType);
         const orgName = orgNameFor?.(e.bike.id) ?? null;
         return (
           <button
@@ -50,7 +49,15 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect, orgNameFor }: Pr
                 transition={{ type: "spring", stiffness: 420, damping: 32 }}
               />
             )}
-            <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" strokeWidth={1.8} />
+            {/* The pill used to carry a bare grey glyph, which was identical on
+                every vehicle — the one thing the switcher exists to tell apart.
+                The tile is the same treatment as the hero and the list row, at
+                pill scale, so a red bike reads as the red one everywhere. */}
+            <VehicleAvatar
+              vehicle={e.bike}
+              size="thumb"
+              className="h-5 w-5 shrink-0 rounded-md"
+            />
             <span className="font-medium">{e.bike.nickname}</span>
             {e.bike.plate && (
               <span className="num text-[11px] uppercase tracking-wider opacity-70">

@@ -80,6 +80,9 @@ function toJson(g: GroupRow, userId: string) {
   return {
     id: g.id,
     code: g.code,
+    // The owner is the ride *leader*: the only member who may share a route or
+    // set a rally point, and the reference everyone else's gap is measured to.
+    ownerId: g.owner_id,
     isOwner: g.owner_id === userId,
     createdAt: g.created_at,
     members: memberList(g.id),
@@ -211,6 +214,10 @@ rideGroupsRouter.get(
       res.status(404).json({ error: "ride_not_found" });
       return;
     }
-    res.json({ ticket: createRideTicket(userId, g.id, displayName(userId)) });
+    // Leadership is stamped into the ticket, so the hub can refuse a
+    // follower's route/rally frame without touching the database per message.
+    res.json({
+      ticket: createRideTicket(userId, g.id, displayName(userId), g.owner_id === userId),
+    });
   }),
 );

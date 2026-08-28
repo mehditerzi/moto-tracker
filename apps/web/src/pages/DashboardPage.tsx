@@ -11,11 +11,11 @@ import { useUpdateBike } from "@/hooks/useBikes";
 import { useActiveBikeId } from "@/hooks/useActiveBike";
 import { vehicleIcon } from "@/lib/vehicleType";
 import { pushNextDeadline } from "@/lib/widget";
-import { env } from "@/env";
 import { StatusChip } from "@/components/StatusChip";
 import { ErrorState } from "@/components/ErrorState";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { BikeSwitcher } from "@/components/BikeSwitcher";
+import { VehicleAvatar } from "@/components/VehicleAvatar";
 import { TYPE_ORDER } from "@/lib/datedItems";
 import { statusFor } from "@/lib/datedItems";
 import { MaintenancePanel } from "@/components/MaintenancePanel";
@@ -149,15 +149,18 @@ export function DashboardPage() {
         transition={{ duration: 0.22 }}
         className="flex flex-col gap-5"
       >
-        {active.bike.photoUrl && (
-          <div className="overflow-hidden rounded-2xl border border-border dark:border-border-dark">
-            <img
-              src={`${env.VITE_API_URL}${active.bike.photoUrl}`}
-              alt={active.bike.nickname}
-              className="block h-40 w-full object-cover"
-            />
-          </div>
-        )}
+        {/* Always rendered, photo or not. It used to appear only when a photo
+            existed, which meant tapping between two vehicles in the switcher —
+            the most repeated interaction on the app's front door — jumped the
+            whole page by 160px. The tile reserves its space with an
+            aspect-ratio rather than a pixel height, so nothing reflows at any
+            width or while the photo loads. */}
+        <VehicleAvatar
+          vehicle={active.bike}
+          emphasis
+          label={t("bike.photoOf", { name: active.bike.nickname })}
+          className="aspect-[16/7] w-full rounded-2xl border border-border dark:border-border-dark"
+        />
 
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
