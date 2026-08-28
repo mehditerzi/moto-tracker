@@ -67,6 +67,27 @@ describe("locale key parity", () => {
   });
 
   /**
+   * The sharing-notification switch does NOT cover requests filed against a
+   * vehicle you keep records for — those are always delivered, because they
+   * start a three-week window. That exception has to be visible next to the
+   * switch, in both languages: a toggle whose stated scope is wider than its
+   * real one is worse than no toggle, and the sentence that says so is the only
+   * thing standing between the two.
+   */
+  it("states the always-delivered exception next to the sharing switch", () => {
+    for (const key of [
+      "settings.sharingNotifications",
+      "settings.sharingNotificationsDesc",
+      "settings.sharingNotificationsAlways",
+    ]) {
+      expect(trKeys.has(key), `tr is missing ${key}`).toBe(true);
+      expect(enKeys.has(key), `en is missing ${key}`).toBe(true);
+    }
+    expect(en.settings.sharingNotificationsAlways).toMatch(/always be delivered|always delivered/i);
+    expect(tr.settings.sharingNotificationsAlways).toMatch(/her zaman iletilir/i);
+  });
+
+  /**
    * Sharing is a CONSUMER feature, so its vocabulary belongs in the always-loaded
    * bundle rather than the lazy fleet chunk — and every string in it is a
    * disclosure of what another person will be able to see, which must never

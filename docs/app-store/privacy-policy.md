@@ -47,9 +47,17 @@ explains what is different, including what your employer can see.
 - **Usage events:** a small first-party log of in-app actions (for example "a
   trip was logged", "a scan failed") used to find bugs and improve the app.
 - **Notification token:** if you enable reminders, a push token/subscription for
-  your device so we can send expiry reminders.
+  your device so we can send expiry reminders and the sharing notifications
+  described under [Notifications about sharing](#notifications-about-sharing).
 - **Shared garages:** if you share a vehicle or accept somebody's invitation, we
   store who is in that shared garage, at what level, and which vehicles are in it.
+- **Email addresses you invite:** when you invite somebody to a shared garage you
+  give us **their** email address, and we store it and send an email to it. That
+  happens whether or not the address belongs to somebody who already uses
+  Garajım — including, if you mistype it, an address belonging to somebody who
+  has nothing to do with this app. See
+  [Notifications about sharing](#notifications-about-sharing) for what that email
+  does and does not say, and how long we keep the record.
 - **Access and ownership requests:** if you ask about a vehicle that is already
   tracked, we store your request, the identifier you supplied, the note you wrote
   and what was decided — and, once a vehicle changes hands, a record of the
@@ -104,8 +112,11 @@ organization that vehicle belongs to.
 
 You can share a vehicle — or a **shared garage** holding several vehicles — with
 other people. Nothing is shared unless you deliberately do it: you send an
-invitation to a specific email address, and the other person has to accept it.
-You can remove them, or stop sharing the vehicle, at any time.
+invitation to a specific email address, we email the invitation to that address,
+and the other person has to accept it. You can remove them, or stop sharing the
+vehicle, at any time. See
+[Notifications about sharing](#notifications-about-sharing) for what that email
+contains.
 
 There are two levels, and the difference between them is the whole point.
 
@@ -147,7 +158,51 @@ match on plate numbers, both because Turkish plates are reassigned to different
 vehicles over time and because a plate is something a stranger can read off a
 bumper. If you send such a request, the current holder sees your name, your email
 address and the short note you wrote, so that they can decide. They are never
-told anything about you otherwise, and you are never told anything about them.
+told anything about you otherwise, and you are never told anything about them —
+including in the notifications either of you receives about it, which are
+described under [Notifications about sharing](#notifications-about-sharing).
+
+## Notifications about sharing
+
+Sharing activity sends notifications, because all of it is somebody waiting on
+somebody else. Specifically:
+
+- **If you keep records for a vehicle** and somebody asks for access to it, or
+  says they bought it, we notify you on your devices. These two are always
+  delivered: they start a **three-week window** in which you can answer, and it
+  would not be fair to run that clock against somebody who was never told. They
+  are the only sharing notifications you cannot switch off.
+- **If you sent such a request**, we notify you when it is approved or declined.
+- **If somebody invites you to a shared garage**, we send an email to the address
+  they gave. This one goes to an address rather than to an account — usually
+  somebody who does not use Garajım yet — so there is no setting of yours for it
+  to consult. Ignoring it is how you decline, and it expires by itself.
+- The answers to requests you sent can be turned off in _Settings → Sharing_. The
+  two above cannot.
+
+**These notifications say as little as the rest of the feature does.** A request
+shown to you names your own vehicle but not the person asking — their name,
+address and note are on the decision screen inside the app, behind your passcode,
+rather than on your lock screen. An answer sent back to you repeats only the
+chassis or engine number _you_ typed: nothing about the vehicle, and nothing
+about the person who answered, whether they said yes or no.
+
+**An invitation email is deliberately almost empty.** It says that somebody has
+invited you to a shared garage, and it carries the link. It does **not** name the
+garage, the vehicles in it, or the person inviting you — because until the link
+is opened and signed into, all we know about that address is that somebody typed
+it. The name of the garage, how many vehicles are in it and exactly what you
+would be able to see are shown after you sign in with that address, which is
+where the decision to join actually gets made. If an invitation reaches you by
+mistake, ignoring it is enough: nothing has been shared with you and no account
+has been created.
+
+**How long we keep it.** We keep a record that a notification was sent — who it
+went to, which event it was about and when — so that a retry cannot deliver the
+same message twice and so that invitation emails can be rate-limited. Those
+records are deleted after 90 days. For an invited address that never became an
+account, that deletion is the only thing that removes it, so it is not optional:
+we do not keep invited addresses indefinitely.
 
 ## Ownership handover: what happens when a vehicle changes hands
 
@@ -278,7 +333,11 @@ them to build an advertising or cross-site profile.
 
 - To provide the core features: reading, storing, and reminding you about your
   document expiry dates; recording your trips; and showing group rides on a map.
-- To send the reminder notifications you opt into.
+- To send the reminder notifications you opt into, and the sharing notifications
+  described under [Notifications about sharing](#notifications-about-sharing).
+- To deliver an invitation to the email address you give us when you invite
+  somebody into a shared garage, and to limit how many such emails one account
+  can cause so that this cannot be used to send unwanted mail.
 - To authenticate you and keep your account secure.
 - To validate purchases and grant the vehicle allowance you paid for.
 - To fix bugs and improve the app, using the first-party usage events above.
@@ -297,9 +356,11 @@ We do **not** sell your data or share it with third parties for marketing.
 
 ## Third-party services
 
-- **Email delivery** (e.g. for sign-in links / password resets) may be sent via
-  a transactional email provider. Only your email address and the message are
-  shared, solely to deliver the email.
+- **Email delivery** (sign-in links, password resets, and invitations to a shared
+  garage) may be sent via a transactional email provider. Only the recipient's
+  email address and the message are shared, solely to deliver the email. For an
+  invitation the recipient is the person you invited, so it is _their_ address
+  that is passed to the provider.
 - **Apple Maps (MapKit).** Maps, tiles, and route directions are provided by
   Apple. Displaying a map or planning a route sends the relevant coordinates to
   Apple, subject to Apple's own privacy policy.

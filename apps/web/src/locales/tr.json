@@ -365,7 +365,10 @@
     "nativePushRegister": "Bildirimleri aç",
     "nativePushRegistering": "Apple'a kaydediliyor…",
     "nativePushError": "Bildirimlere kaydolunamadı",
-    "nativePushTimeout": "Apple yanıt vermedi. Bildirimler gerçek bir cihaz gerektirir — Simulator burada kaydolamaz."
+    "nativePushTimeout": "Apple yanıt vermedi. Bildirimler gerçek bir cihaz gerektirir — Simulator burada kaydolamaz.",
+    "sharingNotifications": "Paylaşım",
+    "sharingNotificationsDesc": "Gönderdiğin erişim veya sahiplik isteği yanıtlandığında bildirim al.",
+    "sharingNotificationsAlways": "Kayıtlarını tuttuğun bir araçla ilgili istekler, bu kapalı olsa da her zaman iletilir — yanıtlaman için üç haftan olur. Garaj davetleri, gönderildikleri e-posta adresine e-postayla iletilir."
   },
   "capture": {
     "title": "Belge yükle",

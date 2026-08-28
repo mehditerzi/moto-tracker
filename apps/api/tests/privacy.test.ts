@@ -117,4 +117,51 @@ describe("/privacy", () => {
       expect(text).toMatch(/no automatic transfer/i);
     });
   });
+
+  /**
+   * Notifications turned sharing from something that happens inside the app
+   * into something that leaves it — a push to a device, and an email to an
+   * address we were handed by somebody else. Both are disclosures in their own
+   * right and the policy has to carry them: the first because it says what
+   * appears on a lock screen, the second because it is the one place this
+   * service processes the personal data of somebody who is not a user and never
+   * agreed to anything.
+   */
+  describe("sharing notification disclosures", () => {
+    it("discloses that sharing activity triggers notifications", async () => {
+      const text = await policy();
+      expect(text).toContain('id="sharing-notifications"');
+      expect(text).toMatch(/asks for\s+access to it, or says they bought it, we notify you/i);
+      expect(text).toMatch(/approved or declined/i);
+    });
+
+    it("names the two notifications that cannot be switched off, and why", async () => {
+      const text = await policy();
+      expect(text).toMatch(/always be delivered|always\s+delivered/i);
+      expect(text).toMatch(/three-week window/i);
+      expect(text).toMatch(/only sharing notifications you\s+cannot switch off/i);
+    });
+
+    it("discloses that inviting somebody hands us their email address", async () => {
+      const text = await policy();
+      expect(text).toMatch(/Email addresses you invite/i);
+      expect(text).toMatch(/if you\s+mistype it/i);
+      // …and that we do not keep it forever.
+      expect(text).toMatch(/deleted after 90 days/i);
+    });
+
+    it("states that the invitation email describes nothing", async () => {
+      const text = await policy();
+      expect(text).toMatch(/does <strong>not<\/strong> name the\s+garage/i);
+      expect(text).toMatch(/nothing has been shared with you/i);
+    });
+
+    it("does not promise the notifications identify anybody", async () => {
+      const text = await policy();
+      // The section must keep the same line the duplicate check keeps.
+      const section = text.slice(text.indexOf('id="sharing-notifications"'), text.indexOf('id="handover"'));
+      expect(section).toMatch(/not the\s+person asking/i);
+      expect(section).toMatch(/nothing about the person\s+who answered/i);
+    });
+  });
 });

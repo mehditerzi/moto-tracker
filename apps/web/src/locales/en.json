@@ -365,7 +365,10 @@
     "nativePushRegister": "Enable notifications",
     "nativePushRegistering": "Registering with Apple…",
     "nativePushError": "Couldn't register for notifications",
-    "nativePushTimeout": "Apple didn't respond. Push needs a real device — the Simulator can't register here."
+    "nativePushTimeout": "Apple didn't respond. Push needs a real device — the Simulator can't register here.",
+    "sharingNotifications": "Sharing",
+    "sharingNotificationsDesc": "Get notified when someone answers an access or ownership request you sent.",
+    "sharingNotificationsAlways": "Requests about a vehicle you keep records for are always delivered, even with this off — they give you three weeks to answer. Garage invitations are sent by email to the address they are addressed to."
   },
   "capture": {
     "title": "Upload document",

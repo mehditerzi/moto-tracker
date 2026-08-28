@@ -90,10 +90,19 @@ const PAGE = `<!doctype html>
     (for example &ldquo;a trip was logged&rdquo;, &ldquo;a scan failed&rdquo;) used
     to find bugs and improve the app.</li>
     <li><strong>Notification token:</strong> if you enable reminders, a push
-    token/subscription for your device so we can send expiry reminders.</li>
+    token/subscription for your device so we can send expiry reminders and the
+    sharing notifications described under
+    <a href="#sharing-notifications">Notifications about sharing</a>.</li>
     <li><strong>Shared garages:</strong> if you share a vehicle or accept
     somebody&rsquo;s invitation, we store who is in that shared garage, at what
     level, and which vehicles are in it.</li>
+    <li><strong>Email addresses you invite:</strong> when you invite somebody to
+    a shared garage you give us <strong>their</strong> email address, and we
+    store it and send an email to it. That happens whether or not the address
+    belongs to somebody who already uses Garaj&#305;m &mdash; including, if you
+    mistype it, an address belonging to somebody who has nothing to do with this
+    app. See <a href="#sharing-notifications">Notifications about sharing</a> for
+    what that email does and does not say, and how long we keep the record.</li>
     <li><strong>Access and ownership requests:</strong> if you ask about a vehicle
     that is already tracked, we store your request, the identifier you supplied,
     the note you wrote and what was decided &mdash; and, once a vehicle changes
@@ -149,9 +158,11 @@ const PAGE = `<!doctype html>
   <h2 id="sharing">Sharing a vehicle with other people</h2>
   <p>You can share a vehicle &mdash; or a <strong>shared garage</strong> holding
   several vehicles &mdash; with other people. Nothing is shared unless you
-  deliberately do it: you send an invitation to a specific email address, and the
-  other person has to accept it. You can remove them, or stop sharing the vehicle,
-  at any time.</p>
+  deliberately do it: you send an invitation to a specific email address, we
+  email the invitation to that address, and the other person has to accept it.
+  You can remove them, or stop sharing the vehicle, at any time. See
+  <a href="#sharing-notifications">Notifications about sharing</a> for what that
+  email contains.</p>
 
   <p>There are two levels, and the difference between them is the whole point.</p>
 
@@ -198,7 +209,56 @@ const PAGE = `<!doctype html>
   because a plate is something a stranger can read off a bumper. If you send such a
   request, the current holder sees your name, your email address and the short note
   you wrote, so that they can decide. They are never told anything about you
-  otherwise, and you are never told anything about them.</p>
+  otherwise, and you are never told anything about them &mdash; including in the
+  notifications either of you receives about it, which are described under
+  <a href="#sharing-notifications">Notifications about sharing</a>.</p>
+
+  <h2 id="sharing-notifications">Notifications about sharing</h2>
+  <p>Sharing activity sends notifications, because all of it is somebody waiting
+  on somebody else. Specifically:</p>
+  <ul>
+    <li><strong>If you keep records for a vehicle</strong> and somebody asks for
+    access to it, or says they bought it, we notify you on your devices. These
+    two are always delivered: they start a <strong>three-week window</strong> in
+    which you can answer, and it would not be fair to run that clock against
+    somebody who was never told. They are the only sharing notifications you
+    cannot switch off.</li>
+    <li><strong>If you sent such a request</strong>, we notify you when it is
+    approved or declined.</li>
+    <li><strong>If somebody invites you to a shared garage</strong>, we send an
+    email to the address they gave. This one goes to an address rather than to
+    an account &mdash; usually somebody who does not use Garaj&#305;m yet &mdash;
+    so there is no setting of yours for it to consult. Ignoring it is how you
+    decline, and it expires by itself.</li>
+    <li>The answers to requests you sent can be turned off in
+    <em>Settings &rarr; Sharing</em>. The two above cannot.</li>
+  </ul>
+
+  <p><strong>These notifications say as little as the rest of the feature
+  does.</strong> A request shown to you names your own vehicle but not the
+  person asking &mdash; their name, address and note are on the decision screen
+  inside the app, behind your passcode, rather than on your lock screen. An
+  answer sent back to you repeats only the chassis or engine number
+  <em>you</em> typed: nothing about the vehicle, and nothing about the person
+  who answered, whether they said yes or no.</p>
+
+  <p><strong>An invitation email is deliberately almost empty.</strong> It says
+  that somebody has invited you to a shared garage, and it carries the link. It
+  does <strong>not</strong> name the garage, the vehicles in it, or the person
+  inviting you &mdash; because until the link is opened and signed into, all we
+  know about that address is that somebody typed it. The name of the garage, how
+  many vehicles are in it and exactly what you would be able to see are shown
+  after you sign in with that address, which is where the decision to join
+  actually gets made. If an invitation reaches you by mistake, ignoring it is
+  enough: nothing has been shared with you and no account has been created.</p>
+
+  <p><strong>How long we keep it.</strong> We keep a record that a notification
+  was sent &mdash; who it went to, which event it was about and when &mdash; so
+  that a retry cannot deliver the same message twice and so that invitation
+  emails can be rate-limited. Those records are deleted after 90 days. For an
+  invited address that never became an account, that deletion is the only thing
+  that removes it, so it is not optional: we do not keep invited addresses
+  indefinitely.</p>
 
   <h2 id="handover">Ownership handover: what happens when a vehicle changes hands</h2>
   <p>If a vehicle is sold, its record can move to the new owner &mdash; either
@@ -332,7 +392,12 @@ const PAGE = `<!doctype html>
   <ul>
     <li>To provide the core features: reading, storing, and reminding you about your
     document expiry dates; recording your trips; and showing group rides on a map.</li>
-    <li>To send the reminder notifications you opt into.</li>
+    <li>To send the reminder notifications you opt into, and the sharing
+    notifications described under
+    <a href="#sharing-notifications">Notifications about sharing</a>.</li>
+    <li>To deliver an invitation to the email address you give us when you
+    invite somebody into a shared garage, and to limit how many such emails one
+    account can cause so that this cannot be used to send unwanted mail.</li>
     <li>To authenticate you and keep your account secure.</li>
     <li>To validate purchases and grant the vehicle allowance you paid for.</li>
     <li>To fix bugs and improve the app, using the first-party usage events above.</li>
@@ -352,9 +417,12 @@ const PAGE = `<!doctype html>
 
   <h2 id="third-party">Third-party services</h2>
   <ul>
-    <li><strong>Email delivery</strong> (e.g. for sign-in links / password resets)
-    may be sent via a transactional email provider. Only your email address and the
-    message are shared, solely to deliver the email.</li>
+    <li><strong>Email delivery</strong> (sign-in links, password resets, and
+    invitations to a shared garage) may be sent via a transactional email
+    provider. Only the recipient&rsquo;s email address and the message are
+    shared, solely to deliver the email. For an invitation the recipient is the
+    person you invited, so it is <em>their</em> address that is passed to the
+    provider.</li>
     <li><strong>Apple Maps (MapKit).</strong> Maps, tiles, and route directions are
     provided by Apple. Displaying a map or planning a route sends the relevant
     coordinates to Apple, subject to Apple&rsquo;s own privacy policy.</li>

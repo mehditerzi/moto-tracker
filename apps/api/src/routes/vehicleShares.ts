@@ -39,6 +39,11 @@ import { canAddVehicle } from "../lib/entitlement.js";
 import { consumeClaimToken, readClaimToken } from "../lib/vehicleIdentity.js";
 import { handoverVehicle } from "../lib/vehicleHandover.js";
 import { claimLimiter, shareInviteLimiter } from "../lib/shareLimits.js";
+import {
+  notifyClaimCreated,
+  notifyClaimDecided,
+  notifyGarageInvite,
+} from "../notify/events.js";
 
 /**
  * Sharing a garage, and handing a vehicle over.
@@ -344,7 +349,15 @@ function createInvite(
  *
  * The response is identical whether or not the address belongs to an existing
  * account — an invite route that answered differently would be a free email
- * enumeration oracle for the whole user base.
+ * enumeration oracle for the whole user base. `notifyGarageInvite` is held to
+ * the same standard: it mails unconditionally and it does not wait, so neither
+ * the reply body nor the time it takes to arrive says anything about the
+ * address (notify/events.ts).
+ *
+ * The token still comes back in the response, and the app still offers the link
+ * to copy. Mailing it is an ADDITION, not a replacement — the inviter may be
+ * standing next to the person and about to hand them a phone, and the invitee
+ * may never see the mail.
  */
 vehicleSharesRouter.post(
   "/groups/:groupId/invites",
@@ -364,6 +377,13 @@ vehicleSharesRouter.post(
       return;
     }
     const invite = createInvite(orgId, body.email, orgRoleForShareRole(body.role), req.user!.id);
+    notifyGarageInvite({
+      orgId,
+      email: body.email,
+      token: invite.token,
+      actorId: req.user!.id,
+      ttlDays: INVITE_TTL_DAYS,
+    });
     res.status(201).json({
       id: invite.id,
       groupId: orgId,
@@ -631,6 +651,13 @@ vehicleSharesRouter.post(
       orgRoleForShareRole(body.role),
       req.user!.id,
     );
+    notifyGarageInvite({
+      orgId: groupId!,
+      email: body.email,
+      token: invite.token,
+      actorId: req.user!.id,
+      ttlDays: INVITE_TTL_DAYS,
+    });
     res.status(201).json({
       groupId,
       id: invite.id,
@@ -714,6 +741,14 @@ vehicleSharesRouter.post(
     );
     // Single-purpose: the token has done its job and must not be replayable.
     consumeClaimToken(db, body.claimToken);
+    // THE KNOCK HAS TO BE AUDIBLE. Everything downstream of this row assumes the
+    // holder had a fair chance to answer — most of all the unresponsive-holder
+    // fallback below, which lets the claimant open a competing record after
+    // CLAIM_RESPONSE_DAYS of silence. Silence only means something if somebody
+    // was told. Best-effort and outside the response path: a claim that was
+    // filed but not delivered is recoverable (it is in the holder's in-app
+    // inbox); a 500 on filing is not.
+    notifyClaimCreated(id);
     res.status(201).json({ id, status: "pending", expiresAt });
   }),
 );
@@ -840,6 +875,10 @@ vehicleSharesRouter.post(
       db.prepare(
         "UPDATE vehicle_claim SET status = 'approved', decided_at = datetime('now'), decided_by = ? WHERE id = ?",
       ).run(req.user!.id, claim.id);
+      // AFTER the handover transaction, never inside it. A vehicle that has
+      // changed hands must stay changed even if every push endpoint on the
+      // planet is refusing connections.
+      notifyClaimDecided(claim.id, "approved");
       res.json({ id: claim.id, status: "approved", handoverId: result.handoverId });
       return;
     }
@@ -888,6 +927,7 @@ vehicleSharesRouter.post(
       ).run(req.user!.id, claim.id);
     });
     approve();
+    notifyClaimDecided(claim.id, "approved");
     res.json({ id: claim.id, status: "approved", groupId });
   }),
 );
@@ -912,6 +952,10 @@ vehicleSharesRouter.post(
         "UPDATE vehicle_claim SET status = 'declined', decided_at = datetime('now'), decided_by = ? WHERE id = ?",
       )
       .run(req.user!.id, claim.id);
+    // "No" is an answer, and the requester is owed it — they are otherwise left
+    // watching a 21-day timer that will never fire, because a declined claim
+    // does not qualify for the separate-record fallback.
+    notifyClaimDecided(claim.id, "declined");
     res.json({ id: claim.id, status: "declined" });
   }),
 );

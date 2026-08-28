@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { config } from "../config.js";
 import { getDb } from "../db/index.js";
 import { dispatchForToday } from "./dispatcher.js";
-import { pruneEvents } from "./retention.js";
+import { pruneEvents, pruneNotificationEvents } from "./retention.js";
 
 /** app_meta key holding the last calendar day we dispatched for (yyyy-MM-dd). */
 const LAST_RUN_KEY = "notify_last_dispatch_on";
@@ -107,12 +107,19 @@ export function startCron(): void {
     () => {
       const removed = pruneEvents();
       if (removed > 0) console.log(`[cron] pruned ${removed} event row(s)`);
+      // The notification log ages out on the same tick. It carries email
+      // addresses belonging to people who may have no account here, so this is
+      // a retention obligation and not only housekeeping (notify/retention.ts).
+      const sends = pruneNotificationEvents();
+      if (sends > 0) console.log(`[cron] pruned ${sends} notification_event row(s)`);
     },
     { timezone: config.CRON_TIMEZONE },
   );
   try {
     const removed = pruneEvents();
     if (removed > 0) console.log(`[cron] pruned ${removed} event row(s) at boot`);
+    const sends = pruneNotificationEvents();
+    if (sends > 0) console.log(`[cron] pruned ${sends} notification_event row(s) at boot`);
   } catch (e) {
     console.error("[cron] event prune failed", e);
   }
