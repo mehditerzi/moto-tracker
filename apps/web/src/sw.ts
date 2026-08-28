@@ -1,9 +1,21 @@
 /// <reference lib="webworker" />
 /// <reference types="vite/client" />
-import { precacheAndRoute } from "workbox-precaching";
+import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 
 declare const self: ServiceWorkerGlobalScope;
 
+/**
+ * Delete precaches from previous builds BEFORE registering this one.
+ *
+ * Without this they accumulate, and the failure mode is a blank white screen:
+ * the old worker keeps serving its cached index.html, which references asset
+ * hashes that no longer exist on the server (Vite empties dist each build). If
+ * the browser has evicted part of that old precache — iOS/WKWebView is
+ * aggressive about this — those chunks miss the cache, 404 on the network, and
+ * the entry module graph fails to load. That happens outside React, so the
+ * ErrorBoundary never runs and the user gets an empty page with no way back.
+ */
+cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 self.addEventListener("install", () => {
