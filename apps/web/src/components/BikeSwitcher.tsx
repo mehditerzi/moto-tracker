@@ -2,11 +2,19 @@ import { motion } from "framer-motion";
 import type { DashboardEntry } from "@mototracker/shared";
 import { cn } from "@/lib/cn";
 import { vehicleIcon } from "@/lib/vehicleType";
+import { OrgVehicleBadge } from "@/components/fleet/OrgVehicleBadge";
 
 interface Props {
   entries: DashboardEntry[];
   activeBikeId: string | undefined;
   onSelect: (bikeId: string) => void;
+  /**
+   * Organization name for a company vehicle, or null for a personal one.
+   * A driver must be able to tell which garage a pill belongs to WITHOUT
+   * selecting it — the answer decides whether the routes they record are
+   * visible to their employer. Absent for consumers, who have no org vehicles.
+   */
+  orgNameFor?: (bikeId: string) => string | null;
 }
 
 /**
@@ -14,13 +22,14 @@ interface Props {
  * active bike — the underline is the "selected channel" indicator on a
  * radio dial.
  */
-export function BikeSwitcher({ entries, activeBikeId, onSelect }: Props) {
+export function BikeSwitcher({ entries, activeBikeId, onSelect, orgNameFor }: Props) {
   if (entries.length <= 1) return null;
   return (
     <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden">
       {entries.map((e) => {
         const active = e.bike.id === activeBikeId;
         const Icon = vehicleIcon(e.bike.vehicleType);
+        const orgName = orgNameFor?.(e.bike.id) ?? null;
         return (
           <button
             key={e.bike.id}
@@ -48,6 +57,7 @@ export function BikeSwitcher({ entries, activeBikeId, onSelect }: Props) {
                 {e.bike.plate}
               </span>
             )}
+            {orgName && <OrgVehicleBadge orgName={orgName} size="sm" className="max-w-[140px]" />}
           </button>
         );
       })}

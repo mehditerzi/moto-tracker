@@ -1,12 +1,15 @@
 {
   "brand": "Garajım",
   "nav": {
+    "primary": "Primary navigation",
+    "home": "Home",
     "bikes": "Vehicles",
     "trips": "Trips",
     "fuel": "Fuel",
     "map": "Map",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "fleet": "Fleet"
   },
   "map": {
     "title": "Map",
@@ -50,7 +53,10 @@
     "partial": "Partial",
     "pricePerLiter": "per litre",
     "spendByMonth": "Monthly fuel spend",
-    "economyTrend": "Consumption trend"
+    "economyTrend": "Consumption trend",
+    "noVehicleSub": "Fuel tracking needs at least one vehicle in your garage.",
+    "emptySub": "Add your first fill-up in the form above, or scan the receipt to fill it in.",
+    "deleteConfirm": "Delete this fuel-up?"
   },
   "services": {
     "title": "Official services",
@@ -79,7 +85,7 @@
   "auth": {
     "signIn": "Sign in",
     "signUp": "Create account",
-    "magicLink": "Send magic link",
+    "magicLink": "Email me a sign-in link",
     "magicLinkSubtitle": "No password — use a link emailed to you",
     "google": "Continue with Google",
     "welcomeBack": "Welcome back",
@@ -102,7 +108,6 @@
     "nameRequired": "Name required",
     "emailFirst": "Enter your email first",
     "signInFailed": "Sign-in failed",
-    "or": "or",
     "continueApple": "Continue with Apple",
     "continueGoogle": "Continue with Google",
     "signUpFailed": "Sign-up failed",
@@ -123,7 +128,9 @@
     "resetSave": "Save new password",
     "resetFailed": "Couldn't reset password",
     "resetSuccess": "Password updated — please sign in",
-    "resetInvalidLink": "Invalid or expired reset link."
+    "resetInvalidLink": "Invalid or expired reset link.",
+    "invalidCredentials": "That email or password isn't right.",
+    "emailTaken": "That email is already registered. Try signing in."
   },
   "dashboard": {
     "active": "Active vehicle",
@@ -169,7 +176,8 @@
     "expiresOn": "Expiry date",
     "newRecord": "New {{type}} record",
     "editRecord": "Edit record",
-    "currency": "TL"
+    "currency": "TL",
+    "deleted": "Record deleted"
   },
   "bike": {
     "newTitle": "New vehicle",
@@ -199,7 +207,13 @@
     "changePhoto": "Change",
     "removePhoto": "Remove photo",
     "documents": "Documents",
-    "scannedDocs": "Scanned documents"
+    "scannedDocs": "Scanned documents",
+    "nicknameRequired": "Give the vehicle a name",
+    "nicknameHint": "how it appears in the app",
+    "moreDetails": "Registration details",
+    "moreDetailsSub": "Colour, fuel, chassis and engine no",
+    "selectMakeFirst": "Pick a make first",
+    "archiveConfirmBody": "The vehicle leaves your garage. Its fuel, document and maintenance records are kept."
   },
   "maintenance": {
     "title": "Maintenance",
@@ -221,7 +235,8 @@
     "lastDoneKm": "Last done km",
     "intervalMonths": "Interval (months)",
     "intervalKm": "Interval (km)",
-    "deleteConfirm": "Delete?",
+    "cost": "Service cost (₺)",
+    "deleteConfirm": "Delete this maintenance record?",
     "due": "Due"
   },
   "settings": {
@@ -254,6 +269,8 @@
     "deleteAccountPasswordPlaceholder": "Password",
     "deleteAccountSubmit": "Permanently delete account",
     "deleteAccountWrongPassword": "Incorrect password.",
+    "deleteAccountConfirmPhraseMessage": "Type {{phrase}} to confirm.",
+    "deleteAccountWrongConfirmation": "Type {{phrase}} exactly as shown to confirm.",
     "deleteAccountSuccess": "Your account has been deleted.",
     "on": "On",
     "off": "Off",
@@ -296,11 +313,13 @@
     "errorLimit": "You've reached today's document upload limit. Try again tomorrow.",
     "errorFileRequired": "Please choose an image.",
     "errorBikeNotFound": "Vehicle not found.",
+    "errorUnsupportedType": "Only JPEG, PNG, WebP or HEIC images are supported — PDFs can't be scanned.",
+    "errorTooLarge": "That image is too large (max 10 MB). Try taking the photo again.",
     "errorGeneric": "Something went wrong. Please try again."
   },
   "review": {
     "reading": "Reading document",
-    "readingSub": "This takes a few seconds.",
+    "readingSub": "Usually 10–30 seconds. You don't have to wait on this screen.",
     "fieldsUpdated": "Updated {{count}} field(s)",
     "failedTitle": "Couldn't read",
     "failedSub": "We tried to read the document but something went wrong.",
@@ -352,7 +371,13 @@
     "lowConfidence": "Low confidence — please double-check the values.",
     "missingHint": "You can fill in anything that wasn't read.",
     "stillWorking": "This is taking longer than usual…",
-    "muayeneDetected": "Inspection date found on the document: {{date}} — tap “Add” to save it."
+    "muayeneDetected": "Inspection date found on the document: {{date}} — tap “Add” to save it.",
+    "backgroundHint": "Reading continues in the background — you can leave this screen and the result is saved to your vehicle. You can also enter the details by hand.",
+    "checkAgain": "Check again",
+    "failedHint": "This usually happens with blurry, dark or skewed photos. Lay the document flat and try again, or enter the details by hand.",
+    "pickVehicle": "Which vehicle is this document for?",
+    "noVehicleYet": "Add a vehicle first, then you can save this date.",
+    "done": "Done"
   },
   "common": {
     "save": "Save",
@@ -366,7 +391,8 @@
     "no": "No",
     "dash": "—",
     "dismiss": "Dismiss",
-    "close": "Close"
+    "close": "Close",
+    "retry": "Try again"
   },
   "paywall": {
     "title": "Add more vehicles",
@@ -399,7 +425,32 @@
     "restoreSuccess": "Purchases restored.",
     "restoreNone": "No previous purchases found.",
     "purchaseSuccess": "You're all set — add your vehicle.",
-    "legal": "Auto-renewable subscription. Renews each period until cancelled in the App Store. Manage or cancel anytime in your Apple ID settings."
+    "legal": "Auto-renewable subscription. Renews each period until cancelled in the App Store. Manage or cancel anytime in your Apple ID settings.",
+    "terms": "Terms of Use (EULA)",
+    "privacy": "Privacy Policy",
+    "garageState": "{{used}} of {{max}} vehicles used",
+    "vehiclesWord": "vehicles",
+    "unlock": "Unlock {{count}} vehicles",
+    "perVehicleMonth": "≈ {{price}} per vehicle / month",
+    "save": "Save {{percent}}%",
+    "termLabel": "Duration",
+    "termRenews": "auto-renews",
+    "termOneTime": "one-time payment",
+    "seeAll": "Compare all packs and durations",
+    "showLess": "Show fewer options",
+    "processing": "Processing…",
+    "loading": "Loading packs…",
+    "retry": "Try again",
+    "unavailableTitle": "Packs aren't available right now",
+    "unavailableBody": "The App Store didn't return any vehicle packs for your account. This is usually temporary — check your connection and try again in a moment.",
+    "partialNotice": "{{count}} pack(s) aren't offered on your App Store storefront and are hidden.",
+    "paymentsDisabled": "Purchases are turned off on this device. Check Screen Time → Content & Privacy Restrictions.",
+    "cancelled": "Purchase cancelled. Nothing was charged.",
+    "pendingTitle": "Waiting for approval",
+    "pendingBody": "Your purchase needs approval before it can go through — from Ask to Buy, or from your bank.",
+    "pendingNoCharge": "Nothing has been charged yet. Your vehicles unlock automatically the moment it's approved, even if you close this.",
+    "pendingClose": "Got it",
+    "opensExternally": "opens in your browser"
   },
   "install": {
     "title": "Add to Home Screen",
@@ -445,13 +496,48 @@
     "bad_item_type": "Invalid record type.",
     "vehicle_limit_reached": "You've reached your vehicle limit. Upgrade to add more.",
     "iap_plugin_missing": "Purchases aren't available in this app version — update the app from the App Store.",
-    "iap_unavailable": "Purchases are temporarily unavailable. Please try again later.",
+    "iap_unavailable": "Purchases are unavailable right now. Please try again later.",
     "verification_failed": "The purchase couldn't be verified. If you're testing in the simulator, use a sandbox account on a real device.",
     "unknown_product": "This product isn't recognized. Please update the app and try again.",
-    "no_valid_transaction": "The purchase couldn't be applied to your account.",
-    "ride_not_found": "No ride found with that code — it may have ended.",
-    "iap_unavailable": "Purchases are unavailable right now. Please try again later.",
     "no_valid_transaction": "We couldn't confirm your purchase. Please try again.",
-    "internal_error": "The server hit a problem. Please try again in a moment."
+    "ride_not_found": "No ride found with that code — it may have ended.",
+    "internal_error": "The server hit a problem. Please try again in a moment.",
+    "unsupported_media_type": "Only JPEG, PNG, WebP or HEIC images are supported.",
+    "file_too_large": "That image is too large (max 10 MB).",
+    "too_many_files": "Please upload one image at a time.",
+    "unexpected_file": "That file wasn't expected here. Please pick a photo and try again.",
+    "upload_error": "The upload didn't go through. Please try again.",
+    "iap_products_failed": "We couldn't load the vehicle packs from the App Store. Please try again.",
+    "iap_product_not_found": "That pack isn't available on the App Store yet. Please try another one or check back shortly.",
+    "iap_product_unavailable": "That pack isn't available for purchase right now.",
+    "iap_not_available_in_storefront": "That pack isn't sold in your App Store country.",
+    "iap_payment_not_allowed": "Purchases are restricted on this device. Check Screen Time → Content & Privacy Restrictions.",
+    "iap_network_error": "The App Store couldn't be reached. Check your internet and try again.",
+    "iap_not_entitled": "The App Store refused this request. Sign out and back in to your Apple Account, then try again.",
+    "iap_store_error": "The App Store hit a problem. Please try again in a moment.",
+    "iap_ineligible_for_offer": "You're not eligible for this offer.",
+    "iap_purchase_failed": "The purchase couldn't be completed. You have not been charged.",
+    "iap_restore_failed": "We couldn't restore your purchases. Please try again.",
+    "iap_cancelled": "Purchase cancelled. Nothing was charged.",
+    "iap_invalid_arguments": "The app sent an invalid request to the App Store. Please update the app.",
+    "iap_unsupported_os": "Purchases need iOS 15 or later. Please update your iPhone.",
+    "no_purchases": "No previous purchases found for this Apple Account.",
+    "iap_no_production_verifier": "Purchases are misconfigured on our side and can't be completed right now. We've been alerted — please try again later."
+  },
+  "fleet": {
+    "orgVehicle": {
+      "label": "Company vehicle",
+      "tooltip": "This vehicle belongs to {{org}}. What is recorded on it is visible to the organization."
+    },
+    "limits": {
+      "thisVehicle": "Only this vehicle. What you record on any other vehicle does not reach this organization.",
+      "whileAssigned": "Only while the vehicle is assigned to you. When it is handed back, your access to it ends.",
+      "neverPersonal": "Your personal vehicles are never visible to the organization, even though you are a member."
+    },
+    "policyLink": "Privacy Policy — Organizations and company vehicles",
+    "notice": {
+      "summary": "Trips you record on this company vehicle are visible to {{org}}.",
+      "more": "Details"
+    }
   }
 }
