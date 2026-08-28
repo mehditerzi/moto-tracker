@@ -2,6 +2,12 @@ import { describe, it, expect } from "vitest";
 import { buildTestApp } from "./helpers/buildApp.js";
 import request from "supertest";
 
+async function policy(): Promise<string> {
+  const res = await request(buildTestApp()).get("/privacy");
+  expect(res.status).toBe(200);
+  return res.text;
+}
+
 describe("/privacy", () => {
   it("serves the privacy policy as public HTML with no auth", async () => {
     const app = buildTestApp();
@@ -10,5 +16,57 @@ describe("/privacy", () => {
     expect(res.headers["content-type"]).toMatch(/html/);
     expect(res.text).toContain("Privacy Policy");
     expect(res.text).toContain("mehditerzi32@hotmail.com");
+  });
+
+  it("stays self-contained: no script, no external asset, no login needed", async () => {
+    const text = await policy();
+    // App Review opens this URL logged out, from a browser we do not control.
+    expect(text).not.toMatch(/<script/i);
+    expect(text).not.toMatch(/src\s*=\s*["']https?:/i);
+    expect(text).not.toMatch(/<link[^>]+stylesheet/i);
+  });
+
+  /**
+   * The fleet layer put two new kinds of personal data in the product:
+   * employees' GPS routes, readable by their managers, and renter records that
+   * belong to a customer of ours rather than to a user. Neither may be left
+   * undisclosed, so the disclosures are asserted rather than trusted.
+   */
+  describe("fleet disclosures", () => {
+    it("discloses that a company vehicle's trips and routes are visible to management", async () => {
+      const text = await policy();
+      expect(text).toContain('id="organizations"');
+      expect(text).toMatch(/employer can see where a company vehicle went/i);
+      expect(text).toMatch(/including the route/i);
+      // …and that a personal vehicle is not part of it.
+      expect(text).toMatch(/company vehicles only/i);
+    });
+
+    it("states the controller/processor split for an organization's data", async () => {
+      const text = await policy();
+      expect(text).toMatch(/data controller/i);
+      expect(text).toMatch(/veri sorumlusu/);
+      expect(text).toMatch(/processor/i);
+    });
+
+    it("explains what an organization holds about its renters and how it is deleted", async () => {
+      const text = await policy();
+      expect(text).toContain('id="org-customers"');
+      expect(text).toMatch(/rental contracts/i);
+      expect(text).toMatch(/delete a customer/i);
+    });
+
+    it("explains what account deletion does and does not remove for an org member", async () => {
+      const text = await policy();
+      expect(text).toMatch(/stay with the organization/i);
+      expect(text).toMatch(/last remaining member/i);
+    });
+
+    it("carries no fleet sales pitch — disclosure only", async () => {
+      const text = await policy();
+      // docs/fleet-design.md: no price, no acquisition path, anywhere a
+      // consumer can reach. A privacy disclosure must not become one.
+      expect(text).not.toMatch(/contact sales|upgrade to fleet|pricing|per vehicle\/month/i);
+    });
   });
 });
