@@ -10,7 +10,9 @@
     "dev:web": "pnpm --filter @mototracker/web dev",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
-    "moto:catalog": "node scripts/fetch-moto-catalog.mjs"
+    "moto:catalog": "node scripts/fetch-moto-catalog.mjs",
+    "fleet": "node scripts/fleet-admin.mjs",
+    "fleet:demo": "node scripts/seed-demo-fleet.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
