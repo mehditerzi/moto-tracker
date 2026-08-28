@@ -22,6 +22,7 @@ import {
   countActiveOrgBikes,
   getMaxVehicles,
   getOrgMaxVehicles,
+  resolveEntitlement,
 } from "../lib/entitlement.js";
 import { inferVehicleType } from "../ocr/catalog.js";
 import { suggestBikeForScan } from "../ocr/autoApply.js";
@@ -52,6 +53,24 @@ import { ApiCodeError } from "../middleware/errorHandler.js";
  * Exported so tests can lower them instead of uploading sixty JPEGs.
  */
 export const documentLimits = { perDay: 60, perBatch: 25 };
+
+/**
+ * Tier granted out-of-band (operator, not App Store) that lifts the scanning
+ * caps. Those caps are abuse guards sized for a normal user, not a licence
+ * term, so an account the operator has explicitly uncapped should not trip
+ * them while testing or demoing.
+ *
+ * This is deliberately NOT any purchased tier: a paying customer's ceiling is
+ * still a real ceiling, and a bug that let a subscription bypass the daily cap
+ * would be an OCR-cost hole. `internal.unlimited` is only ever set by hand.
+ *
+ * The HTTP rate limiter on POST /api/documents (see server.ts) still applies —
+ * it runs before requireUser so it cannot see the tier, and at 90/hour it is
+ * far above any real scanning session.
+ */
+function scanCapsLifted(userId: string, db = getDb()): boolean {
+  return resolveEntitlement(userId, db).tier === "unlimited";
+}
 
 /**
  * Admission control around sharp. An upload is a 10 MB buffer in memory plus a
@@ -654,7 +673,7 @@ documentsRouter.post(
     const { cnt } = db
       .prepare("SELECT COUNT(*) AS cnt FROM document WHERE user_id = ? AND date(created_at) = date('now')")
       .get(req.user!.id) as { cnt: number };
-    if (cnt >= documentLimits.perDay) {
+    if (cnt >= documentLimits.perDay && !scanCapsLifted(req.user!.id, db)) {
       res.status(429).json({ error: "service_unavailable" });
       return;
     }
@@ -677,7 +696,7 @@ documentsRouter.post(
       const { n } = db
         .prepare("SELECT COUNT(*) AS n FROM document WHERE batch_id = ?")
         .get(batch.id) as { n: number };
-      if (n >= documentLimits.perBatch) {
+      if (n >= documentLimits.perBatch && !scanCapsLifted(req.user!.id, db)) {
         // Named, not silent: unlike the daily cap this is a shape-of-the-task
         // limit the user can act on — finish this pile, then start another.
         res.status(409).json({ error: "batch_full", limit: documentLimits.perBatch });
