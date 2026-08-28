@@ -74,6 +74,27 @@ docker compose down          # remove containers (keeps volumes)
 docker compose down -v       # ☢️  also delete ./data and ./ollama
 ```
 
+### Backups
+
+Everything that matters is `./data` — the SQLite database and the scanned
+documents. A dead disk and that `-v` up there are equally final, so take
+snapshots:
+
+```bash
+./scripts/backup.sh                    # → ~/garajim-backups/, keeps 30 days
+./scripts/restore.sh <archive>         # verify → stop → restore → start
+```
+
+A plain `cp data/app.db` is **not** a backup: the database runs in WAL mode, so
+the newest writes are still in `app.db-wal`. The script takes a real SQLite
+snapshot — by default from inside the running container, where the writer is —
+archives `uploads/` alongside it, and writes a checksummed `.tar.gz`. Nothing
+leaves the machine; the archive holds ruhsat scans, so treat it like the
+database itself.
+
+Cron setup, retention, restore drills and the unhealthy-app checklist are in
+**[docs/operations.md](docs/operations.md)**.
+
 ---
 
 ## Features
@@ -111,10 +132,15 @@ In dev the React app fetches `/api/*` through Vite's proxy, so it behaves same-o
 ### Tests
 
 ```bash
-pnpm --filter @mototracker/api test
+pnpm -r run test                      # everything
+pnpm --filter @mototracker/api test   # just the api
 ```
 
-48 vitest + supertest tests covering auth, bikes, dated items, dashboard, maintenance, push subs, prefs, document upload, OCR parser, and notification dispatcher (Ollama and `web-push` are stubbed via test seams).
+~200 vitest + supertest tests covering auth, bikes, dated items, dashboard, maintenance, push subs, prefs, document upload, OCR parser, notification dispatcher, trips, ride groups, fuel logs, IAP entitlements and account deletion (Ollama and `web-push` are stubbed via test seams). The api suite runs against an in-memory database and never touches `./data`.
+
+### CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request: typecheck → test → build for both apps, a `shellcheck` pass over `scripts/`, and a build of `apps/api/Dockerfile` — because the image is what actually ships, and a broken Dockerfile is invisible to the test suite. Verification only: nothing is deployed or published from CI. The exact commands, and the gotchas if you run them by hand, are in [docs/operations.md](docs/operations.md#ci).
 
 ---
 
@@ -180,15 +206,26 @@ packages/
   shared/                    # zod schemas shared between api and web
 scripts/
   bootstrap.sh               # one-shot setup
+  backup.sh                  # WAL-safe SQLite snapshot + uploads → timestamped archive
+  restore.sh                 # verify → stop → restore → start
+.github/workflows/
+  ci.yml                     # typecheck · test · build · docker image · shellcheck
 docker-compose.yml           # api + ollama + ngrok
-docs/superpowers/
-  specs/                     # design doc
-  plans/                     # phase implementation plans
+docs/
+  operations.md              # CI, backup/restore, unhealthy-app checklist
+  superpowers/
+    specs/                   # design doc
+    plans/                   # phase implementation plans
 ```
 
 ---
 
 ## Troubleshooting
+
+The symptom-first list below covers setup and OCR. For the operational side —
+"is it the app or the tunnel?", disk, a runaway WAL, locked database, missed
+reminders — work down the checklist in
+[docs/operations.md](docs/operations.md#when-the-app-is-unhealthy).
 
 **`docker compose up` fails with `APP_BASE_URL` / `SESSION_SECRET` missing**
 You haven't run `./scripts/bootstrap.sh` yet, or your `.env` was deleted. Run the bootstrap script — it's idempotent.
