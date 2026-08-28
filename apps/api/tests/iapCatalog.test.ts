@@ -10,9 +10,28 @@ import {
 } from "@mototracker/shared";
 
 describe("IAP catalog — terms", () => {
-  it("exposes 42 products: 7 packs × 6 terms", () => {
-    expect(IAP_TIERS).toHaveLength(42);
-    expect(new Set(IAP_PRODUCT_IDS).size).toBe(42);
+  it("offers 14 products: 7 packs × 2 auto-renewable terms", () => {
+    // The four non-renewing multi-year terms are retired. They were never
+    // approved in App Store Connect, and production serves only APPROVED
+    // products, so StoreKit silently omitted them on real devices while
+    // resolving them in sandbox — the paywall rendered buttons that died on
+    // tap. Nobody ever completed a purchase, so nothing was lost.
+    expect(IAP_TIERS).toHaveLength(14);
+    expect(new Set(IAP_PRODUCT_IDS).size).toBe(14);
+    expect(IAP_TIERS.every((t) => t.renewable)).toBe(true);
+  });
+
+  it("does not offer a retired term, but still honours a receipt for one", () => {
+    // The products still exist in App Store Connect. If one were ever approved
+    // and bought, /api/iap/verify must still map it — otherwise the customer
+    // pays and gets nothing.
+    const retired = "com.mehditerzi.mototracker.garage.3.2yr";
+    expect(IAP_PRODUCT_IDS).not.toContain(retired);
+    expect(tierForProductId(retired)).toMatchObject({
+      maxVehicles: 3,
+      termMonths: 24,
+      renewable: false,
+    });
   });
 
   it("resolves every term token, renewable and non-renewing", () => {

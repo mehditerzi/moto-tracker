@@ -3,14 +3,13 @@ import { z } from "zod";
 /**
  * Monetization: the FIRST vehicle is free; more are sold as vehicle PACKS
  * (pack size = total active-vehicle ceiling). Each pack is offered over several
- * TERMS. Two kinds of term:
+ * TERMS.
  *
  *   - **Auto-renewable** (6 months, 1 year) — normal App Store subscriptions in
  *     the "Garaj Aboneliği" group; Apple renews them and sends notifications.
- *   - **Non-renewing** (2, 3, 5, 10 years) — one-time In-App Purchases. Apple
- *     does NOT auto-renew or restore these; access lasts `months` from purchase
- *     and OUR server is the source of truth (it stores the entitlement + expiry,
- *     which survives a reinstall / new device because the user has an account).
+ *     These are APPROVED and are the only thing we sell.
+ *   - **Non-renewing** (2, 3, 5, 10 years) — RETIRED, see ALL_TERMS below. Kept
+ *     resolvable so a stray receipt is still honoured, but never offered.
  *
  * Price is per vehicle per term, with a pack volume discount baked in (10% at
  * 10+, 20% at 20+, 30% from 30). Apple has no per-quantity billing, so each
@@ -35,14 +34,38 @@ export interface IapTerm {
   renewable: boolean;
 }
 
-export const IAP_TERMS: readonly IapTerm[] = [
+/**
+ * Every term the server can RESOLVE. Not the same as what we sell — see
+ * IAP_TERMS below.
+ *
+ * The four non-renewing multi-year terms are retired. They were created in App
+ * Store Connect but never approved, and production only serves APPROVED
+ * products, so StoreKit silently omitted them on real devices while resolving
+ * them fine in sandbox — the paywall rendered buttons that died on tap. Nobody
+ * ever completed a purchase (zero iap_transaction rows), so nothing is lost by
+ * dropping them.
+ *
+ * They stay resolvable on purpose. The products still exist in App Store
+ * Connect, so if one were ever approved and bought, `tierForProductId` must
+ * still map it — otherwise /api/iap/verify would reject the receipt as
+ * `unknown_product` and the customer would have paid for nothing.
+ */
+const ALL_TERMS: readonly IapTerm[] = [
   { key: "6mo", months: 6, perVehicleTry: 60, renewable: true },
   { key: "yearly", months: 12, perVehicleTry: 100, renewable: true },
+  // ---- retired: not offered, still honoured ----
   { key: "2yr", months: 24, perVehicleTry: 200, renewable: false },
   { key: "3yr", months: 36, perVehicleTry: 300, renewable: false },
   { key: "5yr", months: 60, perVehicleTry: 500, renewable: false },
   { key: "10yr", months: 120, perVehicleTry: 1000, renewable: false },
 ];
+
+/**
+ * The terms we actually SELL. This is what the paywall iterates and what the
+ * client asks StoreKit for, so retiring a term removes it from the app without
+ * touching a line of UI code.
+ */
+export const IAP_TERMS: readonly IapTerm[] = ALL_TERMS.filter((t) => t.renewable);
 
 /** Pack sizes offered on the paywall (must exist in App Store Connect). */
 export const PACK_SIZES: readonly number[] = [3, 5, 10, 20, 30, 40, 50];
@@ -55,8 +78,17 @@ export function discountFor(packSize: number): number {
   return 0;
 }
 
+/**
+ * Resolves against ALL_TERMS, not just the offered ones — a receipt for a
+ * retired term must still map to a tier so we honour what the customer bought.
+ */
 export function termFor(key: string): IapTerm | undefined {
-  return IAP_TERMS.find((t) => t.key === key);
+  return ALL_TERMS.find((t) => t.key === key);
+}
+
+/** True when a product id maps to a term we no longer sell. */
+export function isRetiredTerm(termKey: string): boolean {
+  return !IAP_TERMS.some((t) => t.key === termKey) && ALL_TERMS.some((t) => t.key === termKey);
 }
 
 /** Formula price in ₺ (whole lira) — the App Store price should match this. */

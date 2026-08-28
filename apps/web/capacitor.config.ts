@@ -22,6 +22,24 @@ const config: CapacitorConfig = {
   server: {
     url: "https://mototracker.mehditerzi.com",
     cleartext: false,
+    /**
+     * Keep the Sign in with Apple hand-off INSIDE the WebView.
+     *
+     * Without this, Capacitor treats appleid.apple.com as an off-host
+     * top-level navigation and hands it to Safari via UIApplication.open.
+     * Apple then authenticates in Safari and the callback sets the session
+     * cookie in SAFARI's cookie jar — which the WKWebView cannot read. The
+     * user lands back in the app still signed out, which is exactly the
+     * "it opens Safari and says it couldn't log in" symptom.
+     *
+     * Because server.url already points at the production origin, the WebView
+     * is on the same origin as the auth callback, so once the flow stays
+     * inside it the cookie is set on the right origin and sign-in completes.
+     *
+     * Only the Apple ID hosts are listed — this allowlist decides what may
+     * navigate inside the app, so it stays as narrow as possible.
+     */
+    allowNavigation: ["appleid.apple.com", "account.apple.com"],
   },
   ios: {
     // The web app handles safe areas itself via CSS env() insets (pt-safe /
