@@ -106,14 +106,18 @@ const PAGE = `<!doctype html>
     your device during the ride; only the finished trip is sent to the server.</li>
     <li><strong>Live group rides.</strong> While you are in a group ride, your
     position is sent to the server and relayed to the other members of that ride so
-    you can see each other on the map. These live positions are held
-    <strong>in memory only and are never written to disk</strong>. They disappear the
-    moment you leave the ride, and a server restart drops them entirely. We keep no
+    you can see each other on the map. The same applies to the route and the rally
+    point the ride leader shares with the group. All of it is held
+    <strong>in memory only and is never written to disk</strong>. It disappears the
+    moment the ride ends, and a server restart drops it entirely. We keep no
     location trail from a group ride beyond the trip you recorded yourself.</li>
-    <li><strong>Route planning.</strong> When you plan a route on the map, the start
-    and destination are sent to Apple Maps to compute directions (see
-    <a href="#third-party">Third-party services</a>). We do not store planned
-    routes.</li>
+    <li><strong>Route planning.</strong> When you plan a route on the map, the start,
+    destination and any stops are sent to Apple Maps to compute directions and to
+    look up place names (see <a href="#third-party">Third-party services</a>). Your
+    planned route and your recently used places are saved
+    <strong>on your device only</strong> so they survive closing the app; they are
+    never sent to us. Clearing the app's data removes them. We do not store planned
+    routes on our servers.</li>
     <li><strong>Trips on a company vehicle.</strong> If you record a trip on a
     vehicle that belongs to an organization you are a member of, that trip &mdash;
     <strong>including the route you drove</strong> &mdash; is visible to that

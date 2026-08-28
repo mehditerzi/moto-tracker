@@ -20,7 +20,6 @@ import {
   type RidePlace,
 } from "@mototracker/shared";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { useMe } from "@/hooks/useMe";
 import {
@@ -38,7 +37,8 @@ import { buildRoster, nextCheckpoint, useDecodedRoute } from "@/hooks/useRideRos
 import { MapSurface, type MapState } from "@/components/ride/MapSurface";
 import { PlaceSearch, type PickedPlace } from "@/components/ride/PlaceSearch";
 import { RideSheet } from "@/components/ride/RideSheet";
-import { RiderList, formatKm } from "@/components/ride/RiderList";
+import { GroupJoin, GroupPanel } from "@/components/ride/GroupPanel";
+import { formatKm } from "@/components/ride/RiderList";
 import { RideSummary } from "@/components/ride/RideSummary";
 import { StopList } from "@/components/ride/StopList";
 import { CHECKPOINT_KIND_ORDER, CHECKPOINT_META } from "@/components/ride/checkpointMeta";
@@ -167,7 +167,6 @@ function RideScreen() {
   const [sheetOpen, setSheetOpen] = useState(true);
   const [tab, setTab] = useState<"route" | "group">("route");
   const [summary, setSummary] = useState<RideStats | null>(null);
-  const [code, setCode] = useState("");
   const [recalc, setRecalc] = useState(0);
   const [refit, setRefit] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -818,89 +817,43 @@ function RideScreen() {
           )}
 
           {inRide && tab === "group" && (
-            <div className="flex flex-col gap-3">
-              <RiderList riders={riders} />
-              <div className="flex flex-col gap-2">
-                {isLeader && (
-                  <Button
-                    variant={channel.rally ? "outline" : "accent"}
-                    size="lg"
-                    className="h-14 w-full"
-                    onClick={toggleRally}
-                  >
-                    <Users className="h-5 w-5" />
-                    {channel.rally ? t("map.rallyClear") : t("map.rallyAction")}
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-14 w-full"
-                  onClick={endRide}
-                  disabled={leave.isPending}
-                >
-                  <LogOut className="h-5 w-5" />
-                  {isLeader ? t("map.endRide") : t("map.leaveRide")}
-                </Button>
-              </div>
-            </div>
+            <GroupPanel
+              riders={riders}
+              isLeader={isLeader}
+              hasRally={!!channel.rally}
+              onToggleRally={toggleRally}
+              onLeave={endRide}
+              leaving={leave.isPending}
+            />
           )}
 
           {!inRide && (
-            <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 dark:border-border-dark">
-              <p className="text-[13px] leading-relaxed text-muted dark:text-muted-dark">
-                {t("map.togetherIntro")}
-              </p>
-              <Button
-                variant="accent"
-                size="lg"
-                className="h-14 w-full"
-                disabled={create.isPending}
-                onClick={() =>
-                  create.mutate(undefined, {
-                    onSuccess: () => {
-                      setSummary(null);
-                      setTab("group");
-                      hapticSuccess();
-                      track("ride_created");
-                    },
-                    onError: (e) => pushToast({ variant: "danger", title: friendlyError(e, t) }),
-                  })
-                }
-              >
-                <Users className="h-5 w-5" /> {t("map.startRide")}
-              </Button>
-              <div className="flex gap-2">
-                <Input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder={t("map.codePlaceholder")}
-                  className="num h-14 text-center text-[18px] uppercase tracking-[0.2em]"
-                  maxLength={8}
-                  aria-label={t("map.codePlaceholder")}
-                />
-                <Button
-                  variant="default"
-                  size="lg"
-                  className="h-14 px-6"
-                  disabled={join.isPending || code.trim().length < 4}
-                  onClick={() =>
-                    join.mutate(code.trim(), {
-                      onSuccess: () => {
-                        setSummary(null);
-                        setCode("");
-                        setTab("group");
-                        hapticSuccess();
-                        track("ride_joined");
-                      },
-                      onError: (e) => pushToast({ variant: "danger", title: friendlyError(e, t) }),
-                    })
-                  }
-                >
-                  {t("map.join")}
-                </Button>
-              </div>
-            </div>
+            <GroupJoin
+              starting={create.isPending}
+              joining={join.isPending}
+              onStart={() =>
+                create.mutate(undefined, {
+                  onSuccess: () => {
+                    setSummary(null);
+                    setTab("group");
+                    hapticSuccess();
+                    track("ride_created");
+                  },
+                  onError: (e) => pushToast({ variant: "danger", title: friendlyError(e, t) }),
+                })
+              }
+              onJoin={(code) =>
+                join.mutate(code, {
+                  onSuccess: () => {
+                    setSummary(null);
+                    setTab("group");
+                    hapticSuccess();
+                    track("ride_joined");
+                  },
+                  onError: (e) => pushToast({ variant: "danger", title: friendlyError(e, t) }),
+                })
+              }
+            />
           )}
         </RideSheet>
       )}

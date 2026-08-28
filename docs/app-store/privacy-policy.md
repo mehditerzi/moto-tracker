@@ -63,13 +63,17 @@ and maintenance. You can revoke the permission at any time in iOS Settings.
   trip is sent to the server.
 - **Live group rides.** While you are in a group ride, your position is sent to
   the server and relayed to the other members of that ride so you can see each
-  other on the map. These live positions are held **in memory only and are never
-  written to disk**. They disappear the moment you leave the ride, and a server
-  restart drops them entirely. We keep no location trail from a group ride beyond
+  other on the map. The same applies to the route and the rally point the ride
+  leader shares with the group. All of it is held **in memory only and is never
+  written to disk**. It disappears the moment the ride ends, and a server
+  restart drops it entirely. We keep no location trail from a group ride beyond
   the trip you recorded yourself.
-- **Route planning.** When you plan a route on the map, the start and destination
-  are sent to Apple Maps to compute directions (see
-  [Third-party services](#third-party-services)). We do not store planned routes.
+- **Route planning.** When you plan a route on the map, the start, destination
+  and any stops are sent to Apple Maps to compute directions and to look up place
+  names (see [Third-party services](#third-party-services)). Your planned route
+  and your recently used places are saved **on your device only** so they survive
+  closing the app; they are never sent to us. Clearing the app's data removes
+  them. We do not store planned routes on our servers.
 - **Trips on a company vehicle.** If you record a trip on a vehicle that belongs
   to an organization you are a member of, that trip — **including the route you
   drove** — is visible to that organization's management. This is monitoring in a
