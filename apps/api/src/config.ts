@@ -1,6 +1,40 @@
 import "dotenv/config";
 import { z } from "zod";
 
+/**
+ * An Ollama model reference, normalised to an explicit tag.
+ *
+ * `OLLAMA_VISION_MODEL=gemma4` in production resolved to `gemma4:latest` — an
+ * 8B model — while this file's documented default said `gemma4:26b`, a 26B one.
+ * Nothing anywhere reported which had actually been loaded, so "the vision
+ * model" meant two different things depending on where you looked, and the
+ * pipeline was tuned against neither.
+ *
+ * Normalise rather than reject: an untagged name is legal Ollama input that
+ * does work, and refusing to boot over it would take a running deployment down
+ * to make a point. Appending `:latest` makes the resolution explicit in logs,
+ * in `ocr_model` on every document row, and in this config — which is all that
+ * was missing. `loadConfig` warns when it has to do this.
+ */
+const modelRef = (fallback?: string) =>
+  z.preprocess((v) => {
+    // Empty string = unset: docker-compose `${VAR:-}` passes "" when absent,
+    // and that must land on the default rather than switching the stage off.
+    const s = v == null ? "" : String(v).trim();
+    if (s === "") return fallback;
+    // Explicit opt-out, so a stage can be disabled without knowing a sentinel
+    // model name.
+    if (/^(none|off|false|0)$/i.test(s)) return undefined;
+    return s.includes(":") ? s : `${s}:latest`;
+  }, z.string().optional());
+
+/** Was this env var written without a tag? Reported once, at boot. */
+export function isUntaggedModelRef(raw: string | undefined): boolean {
+  if (!raw) return false;
+  const s = raw.trim();
+  return s !== "" && !s.includes(":") && !/^(none|off|false|0)$/i.test(s);
+}
+
 const Env = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().int().positive().default(8787),
@@ -70,31 +104,50 @@ const Env = z.object({
   APPLE_CLIENT_SECRET: z.string().optional(),
   UPLOADS_DIR: z.string().default("./data/uploads"),
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
-  OLLAMA_VISION_MODEL: z.string().default("gemma4:26b"),
-  // Empty string = unset (docker-compose `${VAR:-}` passes "" when absent).
-  OLLAMA_PARSE_MODEL: z.preprocess(
-    (v) => (v === "" ? undefined : v),
-    z.string().optional(),
-  ),
   /**
-   * Dedicated image→text OCR model (e.g. glm-ocr:latest). When set, it becomes
-   * the primary text-extraction stage; Tesseract stays as the fallback when
-   * the model errors. Unset → Tesseract only (previous behavior).
+   * STAGE 1 — image → text. The whole pipeline is built around this stage
+   * winning: a purpose-built OCR model reads a registration card better and an
+   * order of magnitude faster than a general model asked to reason about a
+   * photo. Measured on the production corpus, glm-ocr:latest reads the plate on
+   * 25/25 documents and the inspection date on 23/23 in ~3.7s (see docs/ocr.md).
+   *
+   * It used to default to unset, i.e. Tesseract-only, which is also how the
+   * container shipped — and Tesseract needs `tesseract-ocr-tur` installed to
+   * produce anything at all on a Turkish document.
    */
-  OLLAMA_OCR_MODEL: z.preprocess(
-    (v) => (v === "" ? undefined : v),
-    z.string().optional(),
-  ),
+  OLLAMA_OCR_MODEL: modelRef("glm-ocr:latest"),
   /**
-   * Second-opinion parse model (e.g. qwen3.6:35b-mlx). When the primary parse
-   * is unsure — doc_type unknown or confidence below OCR_AUTO_APPLY_THRESHOLD —
-   * the extracted text is re-parsed with this model and the better result wins.
-   * Unset → no verification pass.
+   * STAGE 2 — extracted text → structured JSON. This is the hot path: it runs
+   * on every document, so its latency is the user's latency.
+   *
+   * It used to have no default of its own and fell back to OLLAMA_VISION_MODEL,
+   * which meant the busiest stage in the pipeline was configured by a variable
+   * named after a different one — and every document row recorded the vision
+   * model's name whether or not vision had run, which is why production
+   * telemetry read as "the vision model handled all 25 documents" when it had
+   * in fact handled none of them.
    */
-  OLLAMA_VERIFY_MODEL: z.preprocess(
-    (v) => (v === "" ? undefined : v),
-    z.string().optional(),
-  ),
+  OLLAMA_PARSE_MODEL: modelRef("gemma4:e2b"),
+  /**
+   * STAGE 4 (fallback) — image → JSON in one shot, for photos stage 1 could not
+   * read at all. Rare, so it may be slower than the hot path — but not
+   * unbounded: qwen3.6:35b-mlx blew through a 120s deadline on this task while
+   * gemma4:e4b read the same card's plate correctly in 13s.
+   *
+   * It must actually be able to see. `runVisionOcr` preflights the model's
+   * `vision` capability via /api/show and skips the stage rather than spending
+   * the whole timeout on a model that will hand back an empty string.
+   */
+  OLLAMA_VISION_MODEL: modelRef("gemma4:e4b"),
+  /**
+   * STAGE 4 (escalation) — a second opinion on documents that are genuinely
+   * ambiguous: doc_type unknown, or confidence below OCR_AUTO_APPLY_THRESHOLD.
+   * Unset → no verification pass, which is the default deliberately. On the
+   * production corpus this stage was never once reached, so a large model here
+   * costs resident memory and buys nothing; set it only if your documents are
+   * harder than that. See docs/ocr.md.
+   */
+  OLLAMA_VERIFY_MODEL: modelRef(),
   OCR_AUTO_APPLY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   /**
    * Hard ceiling (ms) on a single document's OCR pipeline. Guards against a
@@ -203,6 +256,17 @@ export function loadConfig(env = process.env): AppEnv {
   if (!parsed.success) {
     console.error("Invalid environment:\n" + parsed.error.toString());
     throw new Error("Invalid environment configuration");
+  }
+  // Say out loud which model each stage actually resolved to. The single most
+  // expensive misconfiguration in this pipeline's history was invisible in
+  // exactly this spot.
+  for (const key of ["OLLAMA_OCR_MODEL", "OLLAMA_PARSE_MODEL", "OLLAMA_VISION_MODEL", "OLLAMA_VERIFY_MODEL"] as const) {
+    if (isUntaggedModelRef(env[key])) {
+      console.warn(
+        `[config] ${key}="${env[key]}" has no tag — resolved to "${parsed.data[key]}". ` +
+          `Pin the tag: an untagged name follows whatever :latest points at.`,
+      );
+    }
   }
   return parsed.data;
 }

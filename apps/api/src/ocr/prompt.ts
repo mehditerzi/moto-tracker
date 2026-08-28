@@ -17,8 +17,11 @@ Türk ruhsatlarında standart alan kodları vardır. Bu kodlara göre eşle:
   (P.1)  → cylinder_cc  — SİLİNDİR HACMİ, birimi cm³/cc (847 gibi)
   (P.3)  → fuel_type    — YAKIT TÜRÜ (BENZİN, DİZEL, LPG, ELEKTRİK, HİBRİT vb.)
            (G.1) NET AĞIRLIĞI ile KARIŞTIRILMAMALI — o kg cinsinden ağırlık, cylinder_cc değil!
-  mua.gec.th / mua.geç.trh / Mua.Geç.Trh. / Muayene Geçerlilik Tarihi
+  (Z.2)  DİĞER BİLGİLER alanındaki "mua.geç.trh: 19-08-2026" ibaresi
            → muayene_expires_on  — muayene bitiş tarihi
+           OCR bu küçük yazıyı sık bozar: "nua ge; thr", "tua ge: th",
+           "mua.gec. th", "no geq trh", hatta sadece "tih:" kalabilir.
+           (Z.2) alanındaki TEK tarih her zaman muayene bitiş tarihidir.
 
 === sigorta ===
 Sigorta poliçesi. Plaka ve sigorta bitiş tarihini (sigorta_expires_on) içerir.
@@ -27,7 +30,10 @@ Sigorta poliçesi. Plaka ve sigorta bitiş tarihini (sigorta_expires_on) içerir
 Kasko poliçesi. Plaka ve kasko bitiş tarihini (kasko_expires_on) içerir.
 
 === muayene ===
-Muayene belgesi. Plaka ve muayene bitiş tarihini (muayene_expires_on) içerir.
+Muayene (fenni muayene) belgesi. İKİ tarih taşır ve karıştırılmamalıdır:
+  muayene yapılış / kontrol tarihi  → HİÇBİR alana yazma
+  geçerlilik sonu / gelecek muayene → muayene_expires_on
+İkisinden İLERİ olanı (gelecekteki tarih) muayene_expires_on'dur.
 
 === yakit ===
 Akaryakıt pompa fişi / benzin istasyonu fişi (POMPA, LİTRE, TUTAR, B.FİYAT gibi
@@ -46,8 +52,25 @@ Hiçbirine uymuyorsa.
 KURALLAR:
 - (V) T.C. KİMLİK NO, VERGİ NO, adres, sahip adı/soyadı gibi kişisel bilgileri hiçbir alana yazma.
 - cylinder_cc = (P.1) SİLİNDİR HACMİ cm³. (G.1) NET AĞIRLIĞI kg değeri farklı bir alandır — karıştırma.
-- Plakayı boşluksuz yaz: "46 AHL 973" → "46AHL973".
-- Tarihler ISO 8601 (YYYY-MM-DD). dd.mm.yyyy veya dd-mm-yyyy formatını dönüştür.
+- Plakayı boşluksuz yaz: "46 AHL 973" → "46AHL973". Plaka yapısı: 2 haneli il
+  kodu (01–81) + 1–3 HARF + 2–5 RAKAM. Harf grubunda rakam, rakam grubunda harf
+  olamaz. 4 harfli plaka YOKTUR.
+
+TARİH KURALLARI (en sık yapılan hata burada):
+- Türk belgelerinde tarih dd.mm.yyyy / dd/mm/yyyy / dd-mm-yyyy yazılır:
+  BİRİNCİ sayı GÜN, İKİNCİ sayı AY, ÜÇÜNCÜ sayı YIL.
+  "19-08-2026" → "2026-08-19"  (2026-02-19 DEĞİL, 2025-08-19 DEĞİL)
+  "04/01/2016" → "2016-01-04"
+- (B) İLK TESCİL TARİHİ ve (I) TESCİL TARİHİ birer YENİLEME tarihi DEĞİLDİR.
+  Bunları dates.* alanlarının HİÇBİRİNE yazma. (B) yalnızca
+  first_registration_date alanına gider; (I) hiçbir alana gitmez.
+- (Y.2) TESCİL SIRA NO bir tarih değil, uzun bir numaradır.
+- dates.sigorta_expires_on / kasko_expires_on yalnızca belgede gerçekten bir
+  sigorta/kasko bitiş tarihi yazıyorsa doldurulur. Sıradan bir ruhsatta bu iki
+  alan null'dır.
+- Bir tarihten emin değilsen null bırak. Yanlış bir son kullanma tarihi,
+  eksik bir tarihten çok daha kötüdür — kullanıcıya yanlış günde hatırlatma
+  gönderilmesine sebep olur.
 - Okunamayan veya belgede olmayan alanları null bırak.
 - confidence: çıkardığın bilgiye güvenin (0.0–1.0).
 
