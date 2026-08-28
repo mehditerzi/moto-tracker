@@ -41,6 +41,26 @@ describe("/api/catalog", () => {
     expect(cars.body).toContain("Civic");
   });
 
+  it("still matches mid-word substrings through the FTS path (3+ chars)", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    // "dav" only appears in the middle of "Harley-Davidson" → this is the case
+    // the trigram index has to answer exactly like the old full scan did.
+    const mid = await request(app).get("/api/catalog/makes?q=dav").set("Cookie", cookie);
+    expect(mid.status).toBe(200);
+    expect(mid.body.some((n: string) => /davidson/i.test(n))).toBe(true);
+    // 1–2 character queries take the plain scan and must behave the same.
+    const short = await request(app).get("/api/catalog/makes?q=ya").set("Cookie", cookie);
+    expect(short.body).toContain("Yamaha");
+  });
+
+  it("ranks an exact match first, then prefix matches", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const res = await request(app).get("/api/catalog/makes?q=honda").set("Cookie", cookie);
+    expect(res.body[0]).toBe("Honda");
+  });
+
   it("resolves models via make alias", async () => {
     const app = buildTestApp();
     const { cookie } = await signUpAndSignIn(app);

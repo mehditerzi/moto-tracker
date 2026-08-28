@@ -17,6 +17,22 @@ function typeFilter(req: { query: Record<string, unknown> }): "car" | "motorcycl
   return t === "car" || t === "motorcycle" ? t : null;
 }
 
+/**
+ * `norm LIKE '%q%'` has a leading wildcard, so no b-tree index can serve it and
+ * every keystroke scans the whole make table. vehicle_make_fts (FTS5, trigram
+ * tokenizer — see migration 020) answers exactly the same substring predicate
+ * from an index, so we narrow to the matching ids first and keep the ranking
+ * ORDER BY untouched. Trigrams need at least 3 characters; below that FTS5
+ * falls back to a linear scan of its own index, so we keep the plain scan for
+ * 1–2 character queries (cheaper, and the result set is identical either way).
+ */
+const FTS_MIN_CHARS = 3;
+function makeMatchClause(q: string): string {
+  return q.length >= FTS_MIN_CHARS
+    ? "id IN (SELECT rowid FROM vehicle_make_fts WHERE norm LIKE ?)"
+    : "norm LIKE ?";
+}
+
 // GET /api/catalog/makes?q=ya&type=car  → up to 50 make names, prefix-then-substring ranked
 catalogRouter.get(
   "/makes",
@@ -36,7 +52,7 @@ catalogRouter.get(
     const rows = db
       .prepare(
         `SELECT name, norm FROM vehicle_make
-          WHERE norm LIKE ? ${typeClause}
+          WHERE ${makeMatchClause(q)} ${typeClause}
           ORDER BY (norm = ?) DESC, (norm LIKE ?) DESC, (source='overlay') DESC, length(name) ASC
           LIMIT 50`,
       )
