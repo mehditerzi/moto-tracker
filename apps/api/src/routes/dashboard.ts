@@ -3,6 +3,7 @@ import { requireUser } from "../middleware/requireUser.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { rowToDatedItem } from "./datedItems.js";
+import { bikeScope } from "../lib/orgAccess.js";
 
 interface BikeRow {
   id: string;
@@ -27,18 +28,23 @@ dashboardRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const db = getDb();
+    // Exactly the vehicles the caller may read: their own garage, the fleets they
+    // help run, or — for a driver — only the vehicle currently in their hands.
+    const scope = bikeScope(req.user!.id, db);
     const bikes = db
       .prepare(
         `SELECT id, vehicle_type, nickname, plate, make, model, year, color, photo_url, current_km, updated_at
          FROM bike
-         WHERE user_id = ? AND archived = 0
+         WHERE id IN (${scope.sql}) AND archived = 0
          ORDER BY created_at ASC`,
       )
-      .all(req.user!.id) as BikeRow[];
+      .all(...scope.params) as BikeRow[];
 
+    // Scoped by vehicle, not by author: the vehicle above is already authorised,
+    // and on an org vehicle the latest policy may have been entered by anyone.
     const latestStmt = db.prepare(
       `SELECT * FROM dated_item
-       WHERE bike_id = ? AND user_id = ? AND type = ?
+       WHERE bike_id = ? AND type = ?
        ORDER BY expires_on DESC, created_at DESC
        LIMIT 1`,
     );
@@ -51,7 +57,7 @@ dashboardRouter.get(
         mtv: null,
       };
       for (const t of ITEM_TYPES) {
-        const row = latestStmt.get(b.id, req.user!.id, t) as
+        const row = latestStmt.get(b.id, t) as
           | Parameters<typeof rowToDatedItem>[0]
           | undefined;
         items[t] = row ? rowToDatedItem(row) : null;

@@ -9,6 +9,8 @@ import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { config } from "../config.js";
 import { enqueueDocument } from "../ocr/worker.js";
+import { authorizeBike, authorizeRecord, bikeScope } from "../lib/orgAccess.js";
+import { ApiCodeError } from "../middleware/errorHandler.js";
 
 interface DocRow {
   id: string;
@@ -61,7 +63,8 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.mimetype)) {
-      cb(new Error("Yalnızca jpeg / png / webp / heic kabul ediliyor"));
+      // Machine code, not prose — the client is bilingual and translates it.
+      cb(new ApiCodeError("unsupported_media_type", 415));
       return;
     }
     cb(null, true);
@@ -71,20 +74,38 @@ const upload = multer({
 export const documentsRouter: Router = Router();
 documentsRouter.use(requireUser);
 
+/** The row shape `authorizeRecord` needs: which vehicle, and who uploaded it. */
+function recordOf(r: { bike_id: string | null; user_id: string }) {
+  return { bikeId: r.bike_id, userId: r.user_id };
+}
+
 // GET /api/documents?bikeId=… → a vehicle's scanned documents (the wallet).
+//
+// A document attached to a vehicle is visible to whoever can read that vehicle
+// (so a fleet's insurance scans are not trapped behind the driver who took the
+// photo); a document uploaded with NO vehicle is purely personal and stays with
+// its uploader. `bikeId` is client-supplied and therefore authorised.
 documentsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const db = getDb();
     const bikeId = typeof req.query.bikeId === "string" ? req.query.bikeId : null;
+    const opts = { db, notFoundCode: "bike_not_found" };
+    if (bikeId && !authorizeBike(req, res, bikeId, "read", opts)) return;
+    const scope = bikeScope(req.user!.id, db);
     const rows = (
       bikeId
         ? db
-            .prepare("SELECT * FROM document WHERE user_id = ? AND bike_id = ? ORDER BY created_at DESC LIMIT 100")
-            .all(req.user!.id, bikeId)
+            .prepare("SELECT * FROM document WHERE bike_id = ? ORDER BY created_at DESC LIMIT 100")
+            .all(bikeId)
         : db
-            .prepare("SELECT * FROM document WHERE user_id = ? ORDER BY created_at DESC LIMIT 100")
-            .all(req.user!.id)
+            .prepare(
+              `SELECT * FROM document
+                WHERE bike_id IN (${scope.sql})
+                   OR (bike_id IS NULL AND user_id = ?)
+                ORDER BY created_at DESC LIMIT 100`,
+            )
+            .all(...scope.params, req.user!.id)
     ) as DocRow[];
     res.json(rows.map(rowToDocument));
   }),
@@ -110,20 +131,23 @@ documentsRouter.post(
     }
 
     const bikeId = typeof req.query.bikeId === "string" ? req.query.bikeId : null;
-    if (bikeId) {
-      const exists = db
-        .prepare("SELECT id FROM bike WHERE id = ? AND user_id = ?")
-        .get(bikeId, req.user!.id);
-      if (!exists) {
-        res.status(404).json({ error: "bike_not_found" });
-        return;
-      }
-    }
+    // Attaching a scan to a vehicle is a day-to-day act, so "write": the driver
+    // holding a van may photograph its insurance; a driver who is not holding it
+    // cannot even name it.
+    const facts = bikeId
+      ? authorizeBike(req, res, bikeId, "write", { db, notFoundCode: "bike_not_found" })
+      : null;
+    if (bikeId && !facts) return;
 
     const id = newId();
-    const userDir = path.join(config.UPLOADS_DIR, req.user!.id);
-    await fs.mkdir(userDir, { recursive: true });
-    const outPath = path.join(userDir, `${id}.jpg`);
+    // Org scans go under org/<orgId>, NOT the uploader's directory: DELETE
+    // /api/me removes UPLOADS_DIR/<userId> wholesale, and a member closing their
+    // account must not take the company's documents with them.
+    const dir = facts?.orgId
+      ? path.join(config.UPLOADS_DIR, "org", facts.orgId)
+      : path.join(config.UPLOADS_DIR, req.user!.id);
+    await fs.mkdir(dir, { recursive: true });
+    const outPath = path.join(dir, `${id}.jpg`);
 
     const buf = await sharp(req.file.buffer)
       .rotate()
@@ -149,13 +173,14 @@ documentsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
     const db = getDb();
-    const row = db
-      .prepare("SELECT * FROM document WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id) as DocRow | undefined;
+    const row = db.prepare("SELECT * FROM document WHERE id = ?").get(req.params.id) as
+      | DocRow
+      | undefined;
     if (!row) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(row), "read", { db })) return;
     res.json(rowToDocument(row));
   }),
 );
@@ -165,14 +190,15 @@ documentsRouter.get(
   asyncHandler(async (req, res) => {
     const db = getDb();
     const row = db
-      .prepare("SELECT id, user_id, file_path, mime_type FROM document WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id) as
-      | { id: string; user_id: string; file_path: string; mime_type: string }
+      .prepare("SELECT id, user_id, bike_id, file_path, mime_type FROM document WHERE id = ?")
+      .get(req.params.id) as
+      | { id: string; user_id: string; bike_id: string | null; file_path: string; mime_type: string }
       | undefined;
     if (!row) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(row), "read", { db })) return;
     res.setHeader("Content-Type", row.mime_type);
     // The image at a given id never changes, so it's safe to cache hard.
     res.setHeader("Cache-Control", "private, max-age=300, immutable");
@@ -188,16 +214,21 @@ documentsRouter.delete(
   asyncHandler(async (req, res) => {
     const db = getDb();
     const row = db
-      .prepare("SELECT id, user_id, file_path FROM document WHERE id = ? AND user_id = ?")
-      .get(req.params.id, req.user!.id) as { id: string; file_path: string } | undefined;
+      .prepare("SELECT id, user_id, bike_id, file_path FROM document WHERE id = ?")
+      .get(req.params.id) as
+      | { id: string; user_id: string; bike_id: string | null; file_path: string }
+      | undefined;
     if (!row) {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (!authorizeRecord(req, res, recordOf(row), "write", { db })) return;
     // Drop the provenance link first so the FK ON DELETE SET NULL isn't relied on
-    // across SQLite configs, then remove the row and the file.
-    db.prepare("UPDATE dated_item SET source_document_id = NULL WHERE source_document_id = ? AND user_id = ?").run(row.id, req.user!.id);
-    db.prepare("DELETE FROM document WHERE id = ? AND user_id = ?").run(row.id, req.user!.id);
+    // across SQLite configs, then remove the row and the file. The link is
+    // cleared by document id alone: on an org vehicle the dated item may have
+    // been recorded by a different member than the one deleting the scan.
+    db.prepare("UPDATE dated_item SET source_document_id = NULL WHERE source_document_id = ?").run(row.id);
+    db.prepare("DELETE FROM document WHERE id = ?").run(row.id);
     await fs.rm(path.resolve(row.file_path), { force: true }).catch(() => {});
     res.status(204).end();
   }),
