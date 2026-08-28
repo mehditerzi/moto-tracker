@@ -62,20 +62,30 @@ export function VehicleAvatar({
   const remote = vehiclePhotoSrc(vehicle.photoUrl, env.VITE_API_URL, size);
   const src = previewSrc ?? remote;
 
-  // Reset on a new source so a replaced photo fades in rather than swapping a
-  // half-loaded frame, and so a previous failure never suppresses a new upload.
   const [failed, setFailed] = React.useState(false);
-  const [loaded, setLoaded] = React.useState(false);
+  // Sticky once anything has painted, and deliberately NOT reset when `src`
+  // changes. The same <img> element keeps showing its previous frame while a
+  // new src decodes, so holding opacity at 1 means swapping a local upload
+  // preview for the stored photo — or replacing a photo outright — is a
+  // straight cut. Resetting it flashed the bare tint in between.
+  const [painted, setPainted] = React.useState(false);
   React.useEffect(() => {
+    // A failure must not outlive the source that caused it, or a retry after a
+    // 404 would never render. Losing the source entirely (photo removed) starts
+    // the fade over.
     setFailed(false);
-    setLoaded(false);
+    if (!src) setPainted(false);
   }, [src]);
 
   return (
     <div
       className={cn("relative isolate overflow-hidden", className)}
       style={{ background: tintGradient(tint) }}
-      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
+      // Announced only when there is a real photograph to announce, and only
+      // where the caller says no adjacent text already names the vehicle. The
+      // tint by itself is decoration — "Photo of Monster" on a vehicle with no
+      // photo would be a plain untruth.
+      {...(label && src ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
     >
       {/* A single soft highlight. Enough to read as a surface with a light on
           it rather than a flat swatch, at zero asset cost. */}
@@ -104,11 +114,11 @@ export function VehicleAvatar({
           aria-hidden
           loading="lazy"
           decoding="async"
-          onLoad={() => setLoaded(true)}
+          onLoad={() => setPainted(true)}
           onError={() => setFailed(true)}
           className={cn(
             "absolute inset-0 h-full w-full object-cover transition-opacity duration-200",
-            loaded ? "opacity-100" : "opacity-0",
+            painted ? "opacity-100" : "opacity-0",
           )}
         />
       )}

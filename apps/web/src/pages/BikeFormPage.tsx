@@ -800,38 +800,42 @@ function VehiclePhotoSection({
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {/* Default size, not `sm`: these are the photo affordances now, and
+            `sm` is 36px — under the 44px touch target the rest of the app
+            holds itself to. */}
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="flex-1"
+          className="min-w-0 flex-1 text-[13px]"
           onClick={() => cameraRef.current?.click()}
           disabled={busy}
         >
-          <Camera className="h-3.5 w-3.5" /> {t("bike.takePhoto")}
+          <Camera className="h-4 w-4 shrink-0" />
+          <span className="truncate">{t("bike.takePhoto")}</span>
         </Button>
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="flex-1"
+          className="min-w-0 flex-1 text-[13px]"
           onClick={() => libraryRef.current?.click()}
           disabled={busy}
         >
-          <ImageIcon className="h-3.5 w-3.5" />{" "}
-          {hasPhoto ? t("bike.changePhoto") : t("bike.choosePhoto")}
+          <ImageIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">
+            {hasPhoto ? t("bike.changePhoto") : t("bike.choosePhoto")}
+          </span>
         </Button>
         {hasPhoto && (
           <Button
             type="button"
-            size="sm"
+            size="icon"
             variant="outline"
-            className="border-danger/40 text-danger hover:border-danger/60 hover:bg-danger/10"
+            className="h-11 w-11 shrink-0 border-danger/40 text-danger hover:border-danger/60 hover:bg-danger/10"
             onClick={() => remove.mutate()}
             disabled={busy}
             aria-label={t("bike.removePhoto")}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
       </div>
