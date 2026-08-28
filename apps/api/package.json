@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/db/migrate.ts",
     "test": "vitest run",
+    "ocr:eval": "tsx tests/eval/runEval.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

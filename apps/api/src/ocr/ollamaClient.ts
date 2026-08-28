@@ -60,12 +60,62 @@ const OCR_FORMAT_SCHEMA = {
   ],
 };
 
+/**
+ * Can this model actually look at an image?
+ *
+ * Asking matters because getting it wrong is silent and expensive. Sending a
+ * base64 photo to a text-only model does not error — Ollama accepts the request
+ * and the model answers about an image it never saw, which under a JSON grammar
+ * means a well-formed object full of nulls with a confident-looking score, and
+ * without a grammar means an empty string that blows up the parser. Both cost
+ * the full generation time first.
+ *
+ * `/api/show` is the authority here; the capability list in `/api/tags` is not
+ * always populated. Cached per model+host: it is a property of the installed
+ * weights, and a boot-time answer stays true until someone re-pulls the model.
+ */
+const visionCapability = new Map<string, Promise<boolean>>();
+
+export function __resetVisionCapabilityCacheForTests(): void {
+  visionCapability.clear();
+}
+
+export async function modelSupportsVision(model: string, baseUrl = config.OLLAMA_URL): Promise<boolean> {
+  const key = `${baseUrl}|${model}`;
+  const cached = visionCapability.get(key);
+  if (cached) return cached;
+  const probe = (async () => {
+    try {
+      const res = await fetch(`${baseUrl}/api/show`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) return true; // Can't tell — don't block the fallback on a probe failure.
+      const json = (await res.json()) as { capabilities?: string[] };
+      if (!Array.isArray(json.capabilities)) return true;
+      return json.capabilities.includes("vision");
+    } catch {
+      return true;
+    }
+  })();
+  visionCapability.set(key, probe);
+  return probe;
+}
+
 export async function runVisionOcr(
   imagePath: string,
   model = config.OLLAMA_VISION_MODEL,
   baseUrl = config.OLLAMA_URL,
   signal?: AbortSignal,
 ): Promise<{ rawText: string; model: string }> {
+  if (!model) throw new Error("No vision model configured");
+  if (!(await modelSupportsVision(model, baseUrl))) {
+    throw new Error(
+      `Vision model "${model}" has no vision capability — set OLLAMA_VISION_MODEL to a model that does`,
+    );
+  }
   const buf = await fs.readFile(imagePath);
   const base64 = buf.toString("base64");
 
@@ -76,7 +126,7 @@ export async function runVisionOcr(
     format: OCR_FORMAT_SCHEMA,
     stream: false,
     keep_alive: "10m",
-    options: { num_predict: 1024 },
+    options: { num_predict: 1536 },
   };
 
   const res = await fetch(`${baseUrl}/api/generate`, {
@@ -157,13 +207,19 @@ export async function runTextOcr(
   model?: string,
   baseUrl = config.OLLAMA_URL,
   signal?: AbortSignal,
-  // num_predict counts thinking tokens too. Reasoning models (the qwen3.6
-  // verify pass) can burn >1k tokens thinking before the JSON and need a big
-  // cap; plain models get a tight one — given room, they occasionally ramble
-  // inside a grammar-string until the cap truncates the JSON mid-value.
-  numPredict = 1024,
+  // num_predict counts thinking tokens too, and hitting the cap does not fail
+  // the request — it returns a JSON object cut off mid-value, which is where
+  // "Unexpected end of JSON input" came from. The grammar already bounds how
+  // long the model can ramble (every string field carries maxLength: 80), so
+  // the cap only has to cover the object itself plus any thinking: ~1.5k is
+  // comfortable for a plain model. Reasoning models can burn well over 1k
+  // tokens thinking before the first brace and get VERIFY_NUM_PREDICT instead.
+  numPredict = 1536,
 ): Promise<{ rawText: string; model: string }> {
-  const resolvedModel = model ?? config.OLLAMA_PARSE_MODEL ?? config.OLLAMA_VISION_MODEL;
+  // Stage 2 has its own model. It used to fall through to OLLAMA_VISION_MODEL,
+  // which is how the parse stage came to be governed by the vision setting.
+  const resolvedModel = model ?? config.OLLAMA_PARSE_MODEL;
+  if (!resolvedModel) throw new Error("No parse model configured (OLLAMA_PARSE_MODEL)");
   const body = {
     model: resolvedModel,
     prompt: buildTextParsePrompt(extractedText),

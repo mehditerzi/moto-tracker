@@ -94,9 +94,16 @@ describe("validateAndCorrect", () => {
     expect(issues.some((i) => i.field === "engineNo" && i.kind === "suspect")).toBe(true);
   });
 
-  it("flags an implausible cylinder capacity for a motorcycle app", () => {
-    const { issues } = validateAndCorrect(base({ cylinderCc: 9000 }));
-    expect(issues.some((i) => i.field === "cylinderCc" && i.kind === "suspect")).toBe(true);
+  it("discards an implausible cylinder capacity instead of failing the document", () => {
+    // 16 cm³ is (P.2) MOTOR GÜCÜ misread as (P.1) SİLİNDİR HACMİ. Drop the
+    // impossible number and keep the scan usable — nobody gets a reminder from
+    // a displacement, and the plate and expiry date on the same card were right.
+    const { parsed, issues } = validateAndCorrect(base({ cylinderCc: 16, confidence: 0.95 }));
+    expect(parsed.cylinderCc).toBeNull();
+    expect(issues.some((i) => i.field === "cylinderCc" && i.kind === "corrected")).toBe(true);
+    expect(parsed.confidence).toBe(0.95);
+
+    expect(validateAndCorrect(base({ cylinderCc: 9000 })).parsed.cylinderCc).toBeNull();
   });
 
   it("does not flag a valid clean ruhsat and preserves confidence", () => {

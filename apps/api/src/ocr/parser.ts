@@ -161,26 +161,150 @@ export function normalizeDate(s: string | null | undefined): string | null {
   return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-export function parseOcr(rawText: string): ParsedOcr {
-  let jsonText = rawText.trim();
-  if (jsonText.startsWith("```")) {
-    jsonText = jsonText.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+/** A parse that identified nothing — the floor a failed parse degrades to. */
+export function emptyParsedOcr(): ParsedOcr {
+  return {
+    docType: "unknown",
+    plate: null,
+    make: null,
+    model: null,
+    year: null,
+    firstRegistrationDate: null,
+    color: null,
+    chassisNo: null,
+    engineNo: null,
+    cylinderCc: null,
+    fuelType: null,
+    dates: { sigortaExpiresOn: null, kaskoExpiresOn: null, muayeneExpiresOn: null },
+    fuel: null,
+    confidence: 0,
+  };
+}
+
+/**
+ * `parseOcr` that never throws.
+ *
+ * A model that returns prose, an empty string or a truncated object used to
+ * fail the whole document — 16% of production scans died this way, and the user
+ * got "tarama başarısız" for a photo whose plate and expiry date were sitting
+ * right there in the OCR text. Degrading to an empty parse instead lets the
+ * deterministic backstop recover those fields; a document the model fumbled is
+ * then merely low-confidence (manual review) rather than lost.
+ */
+export function safeParseOcr(rawText: string): { parsed: ParsedOcr; error?: string } {
+  try {
+    return { parsed: parseOcr(rawText) };
+  } catch (e) {
+    return { parsed: emptyParsedOcr(), error: (e as Error).message };
   }
-  if (!jsonText.startsWith("{")) {
-    const start = jsonText.indexOf("{");
-    const end = jsonText.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) {
-      console.error("[ocr] no JSON found in response:", rawText.slice(0, 300));
-      throw new Error("OCR response did not contain a JSON object");
+}
+
+/**
+ * Pull the JSON object out of whatever the model actually said.
+ *
+ * Models wrap their answer in ```json fences, in Turkish prose ("Belgeye
+ * baktım: {...} umarım doğrudur"), or in both. Take the outermost brace pair
+ * and let the repair pass below deal with what is inside.
+ */
+function isolateJsonObject(rawText: string): string | null {
+  let t = rawText.trim();
+  // Fences may be unterminated when generation was cut off mid-object.
+  t = t.replace(/^```(?:json|JSON)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  const start = t.indexOf("{");
+  if (start === -1) return null;
+  const end = t.lastIndexOf("}");
+  return end > start ? t.slice(start, end + 1) : t.slice(start);
+}
+
+/**
+ * Best-effort repair of malformed model JSON.
+ *
+ * Two shapes account for essentially all of it:
+ *
+ *   trailing commas   `{"a":1,}` — a grammar-free model imitating JS.
+ *   truncation        generation hit num_predict mid-object, so the text just
+ *                     stops: `{"plate":"34ABC12` with nothing after it.
+ *
+ * For truncation the safe repair is to discard the member that was cut off
+ * rather than to close the quote around it. Closing the quote would "recover"
+ * `"34ABC12` as a plate that is one digit short of the real one — a plausible
+ * wrong answer, which is the worst thing a document scanner can produce. So we
+ * cut back to the last completed member and close the brackets; the field
+ * simply comes back null and the deterministic backstop gets its turn.
+ */
+export function repairJson(src: string): unknown | null {
+  const attempt = (s: string): unknown | null => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return null;
     }
-    jsonText = jsonText.slice(start, end + 1);
+  };
+
+  const direct = attempt(src);
+  if (direct !== null) return direct;
+
+  // 1. trailing commas before a closer
+  const noTrailing = src.replace(/,\s*([}\]])/g, "$1");
+  const fixed = attempt(noTrailing);
+  if (fixed !== null) return fixed;
+
+  // 2. truncation — walk the text tracking string/bracket state
+  const stack: string[] = [];
+  let inStr = false;
+  let esc = false;
+  /** Index just past the last point at which the object was structurally whole. */
+  let lastComplete = -1;
+  for (let i = 0; i < noTrailing.length; i++) {
+    const ch = noTrailing[i]!;
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
+    else if (ch === "}" || ch === "]") {
+      stack.pop();
+      lastComplete = i + 1;
+    } else if (ch === ",") lastComplete = i;
+  }
+  if (lastComplete > 0) {
+    // Re-derive the bracket depth at the cut so we close exactly what is open.
+    const head = noTrailing.slice(0, lastComplete);
+    const closers: string[] = [];
+    let s2 = false;
+    let e2 = false;
+    for (const ch of head) {
+      if (s2) {
+        if (e2) e2 = false;
+        else if (ch === "\\") e2 = true;
+        else if (ch === '"') s2 = false;
+        continue;
+      }
+      if (ch === '"') s2 = true;
+      else if (ch === "{") closers.push("}");
+      else if (ch === "[") closers.push("]");
+      else if (ch === "}" || ch === "]") closers.pop();
+    }
+    const repaired = attempt(head + closers.reverse().join(""));
+    if (repaired !== null && typeof repaired === "object") return repaired;
+  }
+  return null;
+}
+
+export function parseOcr(rawText: string): ParsedOcr {
+  const jsonText = isolateJsonObject(rawText);
+  if (jsonText === null) {
+    console.error("[ocr] no JSON found in response:", rawText.slice(0, 300));
+    throw new Error("OCR response did not contain a JSON object");
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(jsonText);
-  } catch (e) {
-    throw new Error(`OCR response was not valid JSON: ${(e as Error).message}`);
+  const raw = repairJson(jsonText);
+  if (raw === null || typeof raw !== "object") {
+    console.error("[ocr] unrepairable JSON in response:", rawText.slice(0, 300));
+    throw new Error("OCR response was not valid JSON");
   }
 
   const parsed = RawSchema.parse(raw);

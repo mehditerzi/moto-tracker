@@ -329,6 +329,34 @@ const TYPE_TO_KEY = {
   muayene: "muayeneExpiresOn",
 } as const;
 
+export type DatedType = keyof typeof TYPE_TO_KEY;
+export interface DatedApplication {
+  type: DatedType;
+  expiresOn: string;
+}
+
+/**
+ * Every renewal deadline this scan warrants, regardless of what KIND of
+ * document it is.
+ *
+ * This used to be "the one date whose name matches doc_type", which threw away
+ * the single most common deadline in the corpus: a Turkish ruhsat prints the
+ * inspection expiry in its (Z.2) DİĞER BİLGİLER field ("mua.geç.trh:
+ * 19-08-2026"), and `doc_type` for a ruhsat is `ruhsat`, so `autoApply`
+ * returned `doc_type_not_dated` and dropped it. 24 of 25 production documents
+ * were ruhsat photos carrying a visible muayene date; none of them ever became
+ * a reminder. A date is a date wherever it was printed — the document type
+ * decides which FIELDS to look for, not whether a deadline counts.
+ */
+export function applicableDatedItems(parsed: ParsedOcr): DatedApplication[] {
+  const out: DatedApplication[] = [];
+  for (const type of ["muayene", "sigorta", "kasko"] as const) {
+    const expiresOn = parsed.dates[TYPE_TO_KEY[type]];
+    if (expiresOn) out.push({ type, expiresOn });
+  }
+  return out;
+}
+
 export function autoApply(input: AutoApplyInput): AutoApplyOutput {
   const { db, userId, documentId, bikeIdHint, parsed, threshold } = input;
 
@@ -347,17 +375,13 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
     }
   }
 
-  // Ruhsat / unknown stop here — they don't carry an expiry date.
-  if (parsed.docType === "ruhsat" || parsed.docType === "unknown") {
-    return {
-      appliedDatedItemId: null,
-      appliedFuelLogId: null,
-      appliedBikeId: bike?.bikeId ?? null,
-      bikeAction,
-      reason: bike ? "bike_only" : "doc_type_not_dated",
-    };
-  }
-
+  // A ruhsat or an unidentified document used to stop here, on the theory that
+  // "they don't carry an expiry date". A Turkish ruhsat does: the inspection
+  // deadline is printed in its (Z.2) DİĞER BİLGİLER field, and 24 of the 25
+  // documents in the production corpus were ruhsat photos showing one. This
+  // early return is why auto-apply had never once fired. What remains true is
+  // that such a document may carry NO deadline — that case is now decided by
+  // looking (`applicableDatedItems` below), not by assuming from the type.
   if (parsed.confidence < threshold) {
     return {
       appliedDatedItemId: null,
@@ -406,15 +430,25 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
     };
   }
 
-  const dateKey = TYPE_TO_KEY[parsed.docType];
-  const expiresOn = parsed.dates[dateKey];
-  if (!expiresOn) {
+  // Every deadline the document carries — not just the one named after its
+  // doc_type. See `applicableDatedItems`: this is what took auto-apply from
+  // never firing to firing on nearly every ruhsat in the corpus.
+  const dated = applicableDatedItems(parsed);
+  if (dated.length === 0) {
     return {
       appliedDatedItemId: null,
       appliedFuelLogId: null,
       appliedBikeId: bike?.bikeId ?? null,
       bikeAction,
-      reason: "no_matching_date",
+      // A ruhsat with no readable deadline still did its main job when it
+      // matched or created the vehicle, so it reports `bike_only` rather than
+      // the flat "no date" a policy document would.
+      reason:
+        parsed.docType === "ruhsat" || parsed.docType === "unknown"
+          ? bike
+            ? "bike_only"
+            : "doc_type_not_dated"
+          : "no_matching_date",
     };
   }
 
@@ -428,14 +462,37 @@ export function autoApply(input: AutoApplyInput): AutoApplyOutput {
     };
   }
 
-  const id = newId();
-  db.prepare(
-    `INSERT INTO dated_item
-       (id, bike_id, user_id, type, expires_on, source_document_id, ocr_confidence, needs_review)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-  ).run(id, bike.bikeId, userId, parsed.docType, expiresOn, documentId, parsed.confidence);
+  // The document row holds ONE applied_dated_item_id, so when a scan yields
+  // several, the one that matches its doc_type is the headline; a ruhsat's
+  // inspection date is the headline on a ruhsat.
+  const ordered = [...dated].sort((a, b) => Number(b.type === parsed.docType) - Number(a.type === parsed.docType));
+
+  let primaryId: string | null = null;
+  for (const { type, expiresOn } of ordered) {
+    // A user photographs the same registration card repeatedly — twenty times,
+    // in this corpus — and every photo carries the same inspection date. Each
+    // one used to be a fresh row; the garage would fill with identical
+    // reminders for the same deadline. The deadline is the thing, not the
+    // photo of it: if this vehicle already has this renewal on this date,
+    // there is nothing to add.
+    const existing = db
+      .prepare("SELECT id FROM dated_item WHERE bike_id = ? AND type = ? AND expires_on = ?")
+      .get(bike.bikeId, type, expiresOn) as { id: string } | undefined;
+    if (existing) {
+      primaryId ??= existing.id;
+      continue;
+    }
+    const id = newId();
+    db.prepare(
+      `INSERT INTO dated_item
+         (id, bike_id, user_id, type, expires_on, source_document_id, ocr_confidence, needs_review)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+    ).run(id, bike.bikeId, userId, type, expiresOn, documentId, parsed.confidence);
+    primaryId ??= id;
+  }
+
   return {
-    appliedDatedItemId: id,
+    appliedDatedItemId: primaryId,
     appliedFuelLogId: null,
     appliedBikeId: bike.bikeId,
     bikeAction,

@@ -48,13 +48,22 @@ services:
       # container instead, set OLLAMA_URL=http://ollama:11434 in .env and
       # `docker compose --profile bundled-ollama up -d`.
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:26b}
-      OLLAMA_PARSE_MODEL: ${OLLAMA_PARSE_MODEL:-}
-      # Dedicated OCR text-extraction model + second-opinion verify model.
-      OLLAMA_OCR_MODEL: ${OLLAMA_OCR_MODEL:-}
+      # OCR model defaults — measured, see docs/ocr.md. Tags are pinned on
+      # purpose: an untagged name silently follows :latest, which is how
+      # production came to run an 8B model while the docs said 26B.
+      # 1. image → text (purpose-built, ~2GB, ~4s; Tesseract is the backup)
+      OLLAMA_OCR_MODEL: ${OLLAMA_OCR_MODEL:-glm-ocr:latest}
+      # 2. text → JSON, runs on every document, chosen for latency + accuracy
+      OLLAMA_PARSE_MODEL: ${OLLAMA_PARSE_MODEL:-gemma4:e2b}
+      # 4. image → JSON, only for photos stage 1 could not read; must see
+      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:e4b}
+      # 3. second opinion — off by default; it never fired on the real corpus
       OLLAMA_VERIFY_MODEL: ${OLLAMA_VERIFY_MODEL:-}
       OCR_AUTO_APPLY_THRESHOLD: ${OCR_AUTO_APPLY_THRESHOLD:-0.7}
       OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-120000}
+      # Ceiling on parallel documents. Limited by Ollama's memory rather than
+      # CPU — see docs/ocr.md before raising it.
+      OCR_CONCURRENCY: ${OCR_CONCURRENCY:-2}
       # In-App Purchases — numeric App Store app id (production notifications).
       IAP_APP_APPLE_ID: ${IAP_APP_APPLE_ID:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
