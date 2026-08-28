@@ -25,6 +25,7 @@ const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage").then((m
 const MagicLinkSentPage = lazy(() => import("@/pages/MagicLinkSentPage").then((m) => ({ default: m.MagicLinkSentPage })));
 const AuthCallbackPage = lazy(() => import("@/pages/AuthCallbackPage").then((m) => ({ default: m.AuthCallbackPage })));
 const BikesPage = lazy(() => import("@/pages/BikesPage").then((m) => ({ default: m.BikesPage })));
+const GroupsPage = lazy(() => import("@/pages/GroupsPage").then((m) => ({ default: m.GroupsPage })));
 const BikeFormPage = lazy(() => import("@/pages/BikeFormPage").then((m) => ({ default: m.BikeFormPage })));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const TripsPage = lazy(() => import("@/pages/TripsPage").then((m) => ({ default: m.TripsPage })));
@@ -169,6 +170,10 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: pane(<DashboardPage />) },
       { path: "bikes", element: pane(<BikesPage />) },
+      // Groups live under the garage, not in the tab bar: they are a way of
+      // looking at vehicles, so they are reached from the vehicle list that
+      // they organise (and from Settings).
+      { path: "groups", element: pane(<GroupsPage />) },
       { path: "trips", element: pane(<TripsPage />) },
       { path: "fuel", element: pane(<FuelPage />) },
       { path: "map", element: fullBleed(<MapPage />) },

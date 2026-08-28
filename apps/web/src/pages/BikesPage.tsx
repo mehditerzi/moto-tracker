@@ -12,6 +12,7 @@ import { PaywallSheet } from "@/components/PaywallSheet";
 import { useBikes } from "@/hooks/useBikes";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { VehicleAvatar } from "@/components/VehicleAvatar";
+import { EmptyGroup, GroupFilterBar, useGroupFilter } from "@/components/groups/GroupFilterBar";
 import { ClaimInbox } from "@/components/share/ClaimInbox";
 import { ShareInviteAccept } from "@/components/share/ShareInviteAccept";
 import { SharedVehicleBadge } from "@/components/share/SharedVehicleBadge";
@@ -51,6 +52,10 @@ function GarageFullBanner() {
 export function BikesPage() {
   const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useBikes();
+  // Renders nothing at all until the user has made a group, so the garage is
+  // unchanged for anyone not using the feature.
+  const groups = useGroupFilter(data);
+  const list = groups.filtered ?? [];
 
   // A skeleton in the shape of the list, not a centred "Loading…" — the text
   // version collapsed the page to one line and then shoved everything down.
@@ -126,8 +131,22 @@ export function BikesPage() {
           must not be something you scroll past. */}
       <ClaimInbox />
 
+      <GroupFilterBar
+        groups={groups.groups}
+        groupId={groups.groupId}
+        onChange={groups.setGroupId}
+        total={data.length}
+      />
+
+      {/* "You have no vehicles" and "this collection is empty" are different
+          states. The `data.length === 0` branch above owns the first; showing
+          it here — when a filter is simply excluding everything — is how a
+          filter convinces someone their data has been deleted. */}
+      {list.length === 0 && groups.groupId !== null ? (
+        <EmptyGroup onClear={() => groups.setGroupId(null)} />
+      ) : (
       <div className="grid gap-2.5">
-        {data.map((b, i) => (
+        {list.map((b, i) => (
           <motion.div
             key={b.id}
             initial={{ opacity: 0, y: 6 }}
@@ -167,6 +186,7 @@ export function BikesPage() {
           </motion.div>
         ))}
       </div>
+      )}
     </div>
   );
 }

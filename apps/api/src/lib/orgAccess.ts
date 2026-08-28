@@ -13,11 +13,9 @@ import type { OrgMode, OrgRole } from "@mototracker/shared";
  * The model, in three paragraphs:
  *
  *   A vehicle is either PERSONAL (`bike.org_id IS NULL`) or ORGANIZATIONAL.
- *   A personal vehicle belongs to `bike.user_id` and to nobody else — exactly
- *   today's behaviour, which is why existing single-user accounts see no change.
- *   An org vehicle is governed by `org_member`, and for it `bike.user_id` means
- *   custodian ("who registered it"), NOT "who may see it" — never use it as an
- *   access check on an org row.
+ *   A personal vehicle belongs to `bike.user_id`; an org vehicle is governed by
+ *   `org_member`, and for it `bike.user_id` means custodian ("who registered
+ *   it"), NOT "who may see it" — never use it as an access check on an org row.
  *
  *   A BUSINESS org (`mode` 'fleet' or 'rental') is an employer's fleet. Owners
  *   and managers can do everything, staff can do everything day-to-day except
@@ -26,10 +24,22 @@ import type { OrgMode, OrgRole } from "@mototracker/shared";
  *   one: their access comes from an OPEN `vehicle_assignment` row and disappears
  *   the moment it is closed.
  *
- *   A PERSONAL org (`mode: 'personal'`) is a garage GROUP: a household, a couple,
- *   a rider and their mechanic. Same tables, same roles column, same function
+ *   A PERSONAL org (`mode: 'personal'`) is a garage GROUP: "my Ducatis", a
+ *   household, a rider and their mechanic. Its vehicles are still PERSONAL
+ *   vehicles — `bike.org_id` stays NULL — and membership is recorded in the
+ *   `bike_group` join table, so ONE VEHICLE MAY BE IN SEVERAL GROUPS (029). The
+ *   rule is "a group's members see the group's vehicles", so a group nobody else
+ *   is in is simply a folder. Same tables, same roles column, same function
  *   below — but a different permission row, because a family garage is not an
  *   employer and must not behave like one. See `permits`.
+ *
+ *   WHY `bike.org_id` IS NOT THE GROUP ANY MORE. It used to carry two unrelated
+ *   ideas ("owned by a company" and "filed in a garage group") in one column,
+ *   which capped a vehicle at one group and made the entitlement rule depend on
+ *   a LEFT JOIN remembering to re-admit personal-group rows. Separating them
+ *   makes a grouped vehicle an ordinary personal vehicle again, so it cannot
+ *   fall off its custodian's ceiling however many groups it joins. The reasoning
+ *   in full is in 029_vehicle_groups.sql.
  *
  * ───────────────────────────────────────────────────────────────────────────
  * THE TWO LAYERS, which is the idea most of this file exists to protect.
@@ -82,6 +92,37 @@ export type BikeAction = "read" | "write" | "manage" | "delete";
 
 /** Roles with blanket access to every vehicle in their org (i.e. not `driver`). */
 const FLEET_WIDE_ROLES: readonly OrgRole[] = ["owner", "manager", "staff"] as const;
+
+/**
+ * How the four roles rank when a caller reaches one vehicle through SEVERAL
+ * groups at once — a bike in both "Ducatis" (which I own) and "Aile Garajı"
+ * (where I am a guest). The strongest wins.
+ *
+ * The alternative, intersecting, would mean adding a vehicle to a second group
+ * could REMOVE access the user already had, which is both surprising and
+ * unimplementable in a scope subquery. Union is the only rule that stays
+ * monotonic, and monotonic is what makes the feature explainable: putting a car
+ * in one more group can widen who sees it, never narrow it.
+ */
+const ROLE_RANK: Record<OrgRole, number> = { owner: 0, manager: 1, staff: 2, driver: 3 };
+
+/** The same ranking as a SQL `CASE`, generated from `ROLE_RANK` rather than
+ *  written out again — two copies of a permission ordering is one copy too many,
+ *  and the one that drifts would silently hand somebody the wrong tier. */
+const ROLE_RANK_SQL = `CASE m.role ${Object.entries(ROLE_RANK)
+  .map(([role, rank]) => `WHEN '${role}' THEN ${rank}`)
+  .join(" ")} ELSE ${Object.keys(ROLE_RANK).length} END`;
+
+/** SQL yielding the caller's STRONGEST role over the personal groups holding a
+ *  vehicle, or NULL when they are in none of them. Takes one `?` (the user id). */
+const GROUP_ROLE_SQL = `
+  SELECT m.role
+    FROM bike_group bg
+    JOIN org_member m
+      ON m.org_id = bg.org_id AND m.user_id = ? AND m.status = 'active'
+   WHERE bg.bike_id = b.id
+   ORDER BY ${ROLE_RANK_SQL}
+   LIMIT 1`;
 
 interface MemberRow {
   org_id: string;
@@ -229,11 +270,18 @@ export function bikeScope(userId: string, db: DB = getDb()): { sql: string; para
   // partner into your garage means, and the invite screen says so. A GUEST
   // (stored 'driver') contributes nothing here, which is the entire mechanism
   // that keeps a mechanic out of your journey log.
+  //
+  // A vehicle reached through more than one of these groups appears once: `IN`
+  // over a join table is a set, so the union is free.
   const personalFull = orgs
     .filter((o) => o.mode === "personal" && FLEET_WIDE_ROLES.includes(o.role))
     .map((o) => o.orgId);
   if (personalFull.length > 0) {
-    clauses.push(`b.org_id IN (${personalFull.map(() => "?").join(", ")})`);
+    clauses.push(
+      `b.id IN (SELECT bg.bike_id FROM bike_group bg WHERE bg.org_id IN (${personalFull
+        .map(() => "?")
+        .join(", ")}))`,
+    );
     params.push(...personalFull);
   }
 
@@ -266,7 +314,11 @@ export function readableBikeScope(
   // are on the list.
   const personal = orgs.filter((o) => o.mode === "personal").map((o) => o.orgId);
   if (personal.length > 0) {
-    clauses.push(`b.org_id IN (${personal.map(() => "?").join(", ")})`);
+    clauses.push(
+      `b.id IN (SELECT bg.bike_id FROM bike_group bg WHERE bg.org_id IN (${personal
+        .map(() => "?")
+        .join(", ")}))`,
+    );
     params.push(...personal);
   }
 
@@ -287,6 +339,12 @@ export interface BikeAccessFacts {
   archived: boolean;
   /** The caller's ACTIVE role in the vehicle's org; null when personal or not a member. */
   role: OrgRole | null;
+  /**
+   * The caller's STRONGEST role over the personal garage groups this vehicle is
+   * filed in, or null when it is in none of them (or none they belong to). This
+   * is the only thing that grants a non-custodian access to a personal vehicle.
+   */
+  groupRole: OrgRole | null;
   /** The caller currently holds this vehicle (open `vehicle_assignment`). */
   assigned: boolean;
 }
@@ -306,6 +364,7 @@ export function bikeFacts(userId: string, bikeId: string, db: DB = getDb()): Bik
               (SELECT ${MODE_SQL} FROM organization o WHERE o.id = b.org_id) AS mode,
               (SELECT m.role FROM org_member m
                 WHERE m.org_id = b.org_id AND m.user_id = ? AND m.status = 'active') AS role,
+              (${GROUP_ROLE_SQL}) AS group_role,
               EXISTS (SELECT 1 FROM vehicle_assignment va
                        JOIN org_member m2
                          ON m2.org_id = va.org_id AND m2.user_id = va.user_id AND m2.status = 'active'
@@ -314,7 +373,7 @@ export function bikeFacts(userId: string, bikeId: string, db: DB = getDb()): Bik
          FROM bike b
         WHERE b.id = ?`,
     )
-    .get(userId, userId, bikeId) as
+    .get(userId, userId, userId, bikeId) as
     | {
         id: string;
         user_id: string;
@@ -322,6 +381,7 @@ export function bikeFacts(userId: string, bikeId: string, db: DB = getDb()): Bik
         archived: number;
         mode: OrgMode | null;
         role: OrgRole | null;
+        group_role: OrgRole | null;
         assigned: number;
       }
     | undefined;
@@ -333,6 +393,7 @@ export function bikeFacts(userId: string, bikeId: string, db: DB = getDb()): Bik
     custodianId: row.user_id,
     archived: row.archived === 1,
     role: row.role,
+    groupRole: row.group_role,
     assigned: row.assigned === 1,
   };
 }
@@ -341,54 +402,75 @@ export function bikeFacts(userId: string, bikeId: string, db: DB = getDb()): Bik
  * True when the caller reaches this vehicle only as a personal-group GUEST — the
  * mechanic tier. The one predicate that separates the two layers, so it is
  * written once and consulted from `canAccessRecord` and `canAttachRecord`.
+ *
+ * The custodian check is not decoration: a user may be a mere guest in a group
+ * somebody else added their OWN car to, and their own car's trips are obviously
+ * still theirs. Ownership beats every group.
  */
-export function isGuestOnly(facts: BikeAccessFacts): boolean {
-  return facts.mode === "personal" && facts.role === "driver";
+export function isGuestOnly(facts: BikeAccessFacts, userId: string): boolean {
+  if (facts.orgId === null) {
+    return facts.custodianId !== userId && facts.groupRole === "driver";
+  }
+  // A business fleet has no guest tier — its `driver` is gated by an assignment,
+  // not by the personal layer.
+  return false;
+}
+
+/**
+ * What a personal GARAGE GROUP's role conveys on somebody else's vehicle.
+ *
+ * A household is not an employer, so the fleet row would be wrong twice over: a
+ * family member is not "staff" who must not delete anything, and a guest is not
+ * a "driver" whose access hangs off a dispatch record a personal group has none
+ * of.
+ */
+function personalGroupPermits(role: OrgRole, action: BikeAction): boolean {
+  switch (role) {
+    case "owner":
+      // The person who made the group. Everything — including removing a
+      // vehicle, which is the power they already have over the group itself.
+      return true;
+    case "manager":
+      // Not offered by any invite route; treated as owner if hand-created.
+      return true;
+    case "staff":
+      // MEMBER — a partner, a parent, an adult child. Everything about the
+      // group's vehicles except removing one: deleting a car out of a shared
+      // garage takes its whole history with it, and that stays with whoever
+      // built the group. (The custodian can always pull their own vehicle back
+      // out of the group — see routes/vehicleShares.ts — so nobody is trapped.)
+      return action !== "delete";
+    case "driver":
+      // GUEST — a mechanic, an inspection agency, a friend borrowing the bike.
+      // Read and write the CAR'S FACTS: renewal dates, service records, the
+      // odometer. Never `manage` (they may not rename or re-plate somebody
+      // else's vehicle) and never `delete`. What keeps them out of the trips,
+      // the fuel spending and the scanned documents is not this line — those
+      // are the personal layer, gated by `bikeScope` and `canAccessRecord`.
+      return action === "read" || action === "write";
+  }
 }
 
 /** The permission table itself, applied to already-resolved facts. */
 export function permits(facts: BikeAccessFacts, userId: string, action: BikeAction): boolean {
-  // Personal vehicle: unchanged from the pre-organization app.
-  if (facts.orgId === null) return facts.custodianId === userId;
+  // ── personal vehicle, possibly filed in one or more garage groups ─────────
+  if (facts.orgId === null) {
+    // Ownership first, and it is absolute. A vehicle you registered is yours
+    // whatever groups it has since been filed in — including groups somebody
+    // else runs, where your own role might be `guest`. Without this line,
+    // accepting an invitation could downgrade you on your own car.
+    if (facts.custodianId === userId) return true;
+    // Otherwise the only way in is a group you share with the custodian.
+    if (facts.groupRole === null) return false;
+    return personalGroupPermits(facts.groupRole, action);
+  }
 
   // Org vehicle: membership is mandatory. Note what is deliberately absent —
   // being `bike.user_id` grants nothing once a vehicle belongs to an org, so a
   // member who leaves loses the vehicles they registered.
   if (facts.role === null) return false;
 
-  // ── personal garage group ────────────────────────────────────────────────
-  //
-  // A household is not an employer, so the fleet row would be wrong twice over:
-  // a family member is not "staff" who must not delete anything, and a guest is
-  // not a "driver" whose access hangs off a dispatch record that a personal
-  // group has none of.
-  if (facts.mode === "personal") {
-    switch (facts.role) {
-      case "owner":
-        // The person who made the group. Everything.
-        return true;
-      case "manager":
-        // Not offered by any invite route; treated as owner if hand-created.
-        return true;
-      case "staff":
-        // MEMBER — a partner, a parent, an adult child. Everything about the
-        // group's vehicles except removing one: deleting a car out of a shared
-        // garage takes its whole history with it, and that stays with whoever
-        // built the group. (The custodian can always pull their own vehicle back
-        // out of the group — see routes/vehicleShares.ts — so nobody is trapped.)
-        return action !== "delete";
-      case "driver":
-        // GUEST — a mechanic, an inspection agency, a friend borrowing the bike.
-        // Read and write the CAR'S FACTS: renewal dates, service records, the
-        // odometer. Never `manage` (they may not rename or re-plate somebody
-        // else's vehicle) and never `delete`. What keeps them out of the trips,
-        // the fuel spending and the scanned documents is not this line — those
-        // are the personal layer, gated by `bikeScope` and `canAccessRecord`.
-        return action === "read" || action === "write";
-    }
-  }
-
-  // ── business fleet: unchanged ────────────────────────────────────────────
+  // ── business fleet ───────────────────────────────────────────────────────
   switch (facts.role) {
     case "owner":
     case "manager":
@@ -427,7 +509,7 @@ export function canAccessBike(
 export function canAttachRecord(userId: string, bikeId: string, db: DB = getDb()): boolean {
   const facts = bikeFacts(userId, bikeId, db);
   if (!facts || !permits(facts, userId, "write")) return false;
-  return !isGuestOnly(facts);
+  return !isGuestOnly(facts, userId);
 }
 
 /**
@@ -460,7 +542,7 @@ export function canAccessRecord(
   // documents on a vehicle that was merely shared with them are out of reach
   // whoever wrote them — one rule, no exceptions to remember, and the same
   // sentence the privacy policy has to make true.
-  if (!opts.vehicleFact && isGuestOnly(facts)) return false;
+  if (!opts.vehicleFact && isGuestOnly(facts, userId)) return false;
   return true;
 }
 
@@ -477,7 +559,7 @@ export function canAccessRecord(
 export function canReadPersonalLayer(userId: string, bikeId: string, db: DB = getDb()): boolean {
   const facts = bikeFacts(userId, bikeId, db);
   if (!facts || !permits(facts, userId, "read")) return false;
-  return !isGuestOnly(facts);
+  return !isGuestOnly(facts, userId);
 }
 
 /**
@@ -528,7 +610,7 @@ export function authorizeBike(
   // which is exactly how the document wallet stays shut without documents.ts
   // needing to know that sharing exists. 404, not 403: they are not being
   // refused a resource, this resource is not part of what they were shown.
-  if (isGuestOnly(facts) && !opts.vehicleFact) {
+  if (isGuestOnly(facts, userId) && !opts.vehicleFact) {
     res.status(404).json({ error: opts.notFoundCode ?? "not_found" });
     return null;
   }
@@ -574,6 +656,46 @@ export function orgOfBike(bikeId: string, db: DB = getDb()): string | null | und
   return row === undefined ? undefined : row.org_id;
 }
 
+// ─── garage groups ────────────────────────────────────────────────────────────
+
+/**
+ * Which garage groups each of these vehicles is filed in, restricted to groups
+ * the CALLER belongs to.
+ *
+ * Restricted, because a vehicle shared with me may also sit in three groups of
+ * its owner's that I am not in, and their names are none of my business — a
+ * group called "Boşanma öncesi" is a fact about its owner, not about the car.
+ *
+ * Batched over the whole list on purpose: the garage screen renders every
+ * vehicle with its groups, and doing this per row is the N+1 that would make
+ * `GET /api/bikes` scale with the size of the garage.
+ */
+export function groupIdsForBikes(
+  userId: string,
+  bikeIds: readonly string[],
+  db: DB = getDb(),
+): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  if (bikeIds.length === 0) return out;
+  const rows = db
+    .prepare(
+      `SELECT bg.bike_id, bg.org_id
+         FROM bike_group bg
+         JOIN org_member m
+           ON m.org_id = bg.org_id AND m.user_id = ? AND m.status = 'active'
+         JOIN organization o ON o.id = bg.org_id AND o.is_personal = 1
+        WHERE bg.bike_id IN (${bikeIds.map(() => "?").join(", ")})
+        ORDER BY o.name ASC`,
+    )
+    .all(userId, ...bikeIds) as { bike_id: string; org_id: string }[];
+  for (const r of rows) {
+    const list = out.get(r.bike_id);
+    if (list) list.push(r.org_id);
+    else out.set(r.bike_id, [r.org_id]);
+  }
+  return out;
+}
+
 /**
  * Who may DECIDE an ownership claim on this vehicle.
  *
@@ -593,6 +715,23 @@ export function approversOfBike(bikeId: string, db: DB = getDb()): string[] {
     | undefined;
   if (!bike) return [];
   const ids = new Set<string>([bike.user_id]);
+  if (bike.org_id === null) {
+    // A PERSONAL vehicle. Its custodian is always an approver, and so is anyone
+    // running a garage group it has been filed in — those are exactly the people
+    // `permits` gives `delete` to, so they could destroy the record anyway.
+    // Members ('staff') and guests ('driver') are deliberately absent: seeing a
+    // car is not authority to give it away.
+    const rows = db
+      .prepare(
+        `SELECT DISTINCT m.user_id
+           FROM bike_group bg
+           JOIN org_member m ON m.org_id = bg.org_id AND m.status = 'active'
+          WHERE bg.bike_id = ? AND m.role IN ('owner','manager')`,
+      )
+      .all(bikeId) as { user_id: string }[];
+    for (const r of rows) ids.add(r.user_id);
+    return [...ids];
+  }
   if (bike.org_id) {
     const rows = db
       .prepare(

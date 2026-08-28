@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2, Crown, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,6 +189,21 @@ export function SettingsPage() {
       </header>
 
       <SubscriptionCard />
+
+      {/* Groups are reached from the garage they organise, but Settings is
+          where people look for "where do I set this up?" — so the entry point
+          exists in both places. */}
+      <Card>
+        <SectionHeader icon={<Users className="h-3.5 w-3.5" />} label={t("groups.title")} />
+        <CardContent>
+          <p className="text-sm text-muted dark:text-muted-dark">{t("groups.intro")}</p>
+          <Button asChild variant="outline" size="sm" className="mt-3">
+            <Link to="/groups">
+              {t("groups.manage")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <SectionHeader icon={<Globe className="h-3.5 w-3.5" />} label={t("settings.language")} />

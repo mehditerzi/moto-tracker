@@ -23,19 +23,33 @@ export function SharedVehicleBadge({ bike }: { bike: Bike }) {
   const { t } = useTranslation();
   const me = useMe();
   // Only asks the server when there is something to ask about. A consumer with
-  // no shared vehicle at all never issues this request.
-  const groups = useShareGroups({ enabled: !!bike.orgId });
-  if (!bike.orgId) return null;
-  const group = groups.data?.find((g) => g.id === bike.orgId);
-  if (!group) return null;
+  // no grouped vehicle at all never issues this request.
+  const groups = useShareGroups({ enabled: bike.groupIds.length > 0 });
+  if (bike.groupIds.length === 0) return null;
 
-  const mine = me.data?.user.id === bike.userId;
+  const mine = groups.data?.filter((g) => bike.groupIds.includes(g.id)) ?? [];
+  // ONLY GROUPS WITH OTHER PEOPLE IN THEM. Since a vehicle may now be in several
+  // groups (029), most of them are private collections — "Ducatiler" — and
+  // labelling those "paylaşımda" would cry wolf on every row until the word
+  // stopped meaning anything. `memberCount > 1` is the whole test: a group you
+  // are alone in discloses nothing.
+  const shared = mine.filter((g) => g.memberCount > 1);
+  if (shared.length === 0) return null;
+
+  // Named when there is one, counted when there are several — a badge that
+  // listed three Turkish group names would be wider than the row it sits in.
+  const isMine = me.data?.user.id === bike.userId;
+  const label =
+    shared.length === 1
+      ? isMine
+        ? t("share.badgeShared", { name: shared[0]!.name })
+        : t("share.badgeSharedWithMe", { name: shared[0]!.name })
+      : t("groups.badgeSharedGroups", { count: shared.length });
+
   return (
     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted dark:text-muted-dark">
       <Users className="h-3 w-3 shrink-0" />
-      <span className="truncate">
-        {mine ? t("share.badgeShared", { name: group.name }) : t("share.badgeSharedWithMe", { name: group.name })}
-      </span>
+      <span className="truncate">{label}</span>
     </div>
   );
 }

@@ -19,6 +19,21 @@ export const bikeSchema = z.object({
    * way to know which garage a row is in.
    */
   orgId: z.string().nullable(),
+  /**
+   * The garage GROUPS this vehicle is filed in — "Ducatis", "Aile Garajı" — of
+   * which there may be several (migration 029). Restricted to groups the CALLER
+   * belongs to: a vehicle shared with me may also sit in collections of its
+   * owner's whose names are a fact about them, not about the car.
+   *
+   * Distinct from `orgId`, which after 029 means BUSINESS tenancy only. A
+   * grouped vehicle is an ordinary personal vehicle with `orgId === null`, which
+   * is what keeps it on its custodian's entitlement however many groups it
+   * joins.
+   *
+   * Defaulted rather than required so a cached response written by an older
+   * server still parses instead of blanking the garage.
+   */
+  groupIds: z.array(z.string()).default([]),
   vehicleType: vehicleTypeSchema,
   nickname: z.string().min(1).max(80),
   plate: z.string().max(20).nullable(),

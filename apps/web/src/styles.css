@@ -12,6 +12,26 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
+  /* ── Bottom tab bar (AppShell → MobileNav) ──────────────────────────────
+   * One source of truth for the bar's geometry. It used to be guessed in three
+   * places at three different values (main's `pb-28` = 112px, the toaster's
+   * "~58px", MapPage's 78px), which is how it drifted.
+   *
+   * `--tabbar-pb` is the clearance UNDER the touch rows, not the full safe-area
+   * inset. The bar itself is flush at `bottom: 0`, but padding it by the whole
+   * inset (34px on a home-indicator iPhone) parks 34px of empty bar beneath the
+   * labels — that dead band is the "20-30px gap at the bottom of the screen".
+   * The indicator glyph only occupies the lowest ~13px of the inset, so reserve
+   * `inset - 14px`: the 52px touch rows still sit clear of the indicator (and
+   * clear of its swipe-up region), and the dead band goes away. The 12px floor
+   * is unchanged, so a non-notched device and iPad look exactly as before. */
+  --tabbar-pb: max(theme(spacing.3), calc(var(--safe-bottom) - 14px));
+  /* 1px top border + 6px (`pt-1.5`) + 52px (`min-h-[52px]`) touch row.
+   * Keep in sync with MobileNav in components/AppShell.tsx. */
+  --tabbar-h: calc(59px + var(--tabbar-pb));
+  /* What scrolling page content pads by so its last element clears the bar. */
+  --tabbar-clear: calc(var(--tabbar-h) + theme(spacing.6));
+
   /* Single source of truth for the grid texture — keeps body::before tidy. */
   --dot-color: rgba(10, 10, 15, 0.06);
   --dot-size: 18px;

@@ -210,7 +210,10 @@ function SummaryCard({ summary }: { summary: ReturnType<typeof fuelSummary> }) {
   const dash = "—";
   return (
     <Card>
-      <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+      {/* No padding here: `Card` already pads itself (p-5 / sm:p-6). Setting
+          p-4 as well inset the content 36px either side, which on a 320px
+          phone spent a quarter of the viewport on padding. */}
+      <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
           label={t("fuel.economy")}
           value={summary.avgL100 != null ? `${summary.avgL100.toFixed(1)} L` : dash}
@@ -236,7 +239,7 @@ function CostsCard({ fuelTotal, premiumTotal }: { fuelTotal: number; premiumTota
   const tl = (n: number) => `₺${Math.round(n).toLocaleString()}`;
   return (
     <Card>
-      <CardContent className="flex flex-col gap-2 p-4">
+      <CardContent className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted dark:text-muted-dark">{t("fuel.totalSpend")}</span>
           <span className="num text-[20px] font-semibold leading-none">{tl(total)}</span>
@@ -309,7 +312,9 @@ function AddFuelForm({ bikeId, vehicleName }: { bikeId: string; vehicleName: str
 
   return (
     <Card>
-      <CardContent className="p-4">
+      {/* `Card` pads itself; the p-4 that used to be here made it 36px a side.
+          Those 32px are what the two-up rows below need to stay two-up. */}
+      <CardContent>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-0.5">
             <h2 className="text-[15px] font-semibold leading-tight">{t("fuel.addTitle")}</h2>
@@ -320,8 +325,17 @@ function AddFuelForm({ bikeId, vehicleName }: { bikeId: string; vehicleName: str
             </p>
           </div>
 
+          {/* Row budget, phone, Turkish. A card's inner width is
+              viewport − 32 (AppShell px-4) − 2 (hairline) − 40 (Card p-5):
+              246px @320, 301px @375, 319px @393. FormRow's gap is 12px.
+              This row needs 168 (`date`) + 12 + 108 (`tiny`) = 288 — two-up
+              from 375 up, wrapping to two full rows at 320. */}
           <FormRow>
-            <Field label={t("fuel.date")} width="grow">
+            {/* `date`, not `grow`: WebKit lays out its own gg.aa.yyyy segments
+                and clips them rather than scrolling, so a date field squeezed
+                under ~10.5rem prints the year under the picker glyph. `grow`'s
+                9rem floor is inside that failure range. */}
+            <Field label={t("fuel.date")} width="date">
               <DateInput
                 value={filledOn}
                 onChange={(e) => setFilledOn(e.target.value)}
@@ -345,8 +359,10 @@ function AddFuelForm({ bikeId, vehicleName }: { bikeId: string; vehicleName: str
             </Field>
           </FormRow>
 
+          {/* 128 (`moneyGrow`) + 12 + 152 (`number`) = 292, so this row is
+              two-up from 375 up as well and the two rows stay the same shape. */}
           <FormRow>
-            <Field label={t("fuel.cost")} optional width="grow">
+            <Field label={t("fuel.cost")} optional width="moneyGrow">
               <MoneyInput
                 value={totalCost}
                 onChange={(e) => setTotalCost(e.target.value)}
@@ -354,7 +370,11 @@ function AddFuelForm({ bikeId, vehicleName }: { bikeId: string; vehicleName: str
                 enterKeyHint="next"
               />
             </Field>
-            <Field label={t("fuel.odometer")} optional width="short">
+            {/* `number`, not `short`. Two reasons, either one sufficient:
+                "Kilometre" + the optional hint measures 144px and `short` is
+                128px, so the hint used to spill out of the column; and an
+                odometer is up to 7 digits, which is what `number` is for. */}
+            <Field label={t("fuel.odometer")} optional width="number">
               <NumberInput
                 suffix="km"
                 value={odo}
