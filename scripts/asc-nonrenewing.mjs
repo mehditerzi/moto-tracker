@@ -152,10 +152,26 @@ for (const n of PACKS) {
     if (av.status !== 201 && av.status !== 409) console.error(`  availability FAILED ${av.status} ${JSON.stringify(av.json?.errors?.[0]?.detail)}`);
 
     // 5. Review screenshot
+    //
+    // Check the DELIVERY STATE, not mere presence. Uploading is reserve → PUT
+    // bytes → PATCH uploaded; if a run dies in the middle, the row exists but
+    // sits at AWAITING_UPLOAD and ASC pins the product at MISSING_METADATA,
+    // which StoreKit silently omits from Product.products(for:). This guard
+    // used to be `if (existingShot.json?.data)`, and a stranded row IS truthy —
+    // so every re-run said "exists" and the product stayed broken forever.
+    // (That is exactly what happened to garage.20.3yr.) A stranded reservation
+    // also occupies the single screenshot slot, so it must be deleted before
+    // re-reserving or the POST is rejected as a duplicate.
     const existingShot = await req("GET", `/v2/inAppPurchases/${iapId}/appStoreReviewScreenshot`);
-    if (existingShot.json?.data) {
+    const shotData = existingShot.json?.data;
+    const shotState = shotData?.attributes?.assetDeliveryState?.state;
+    if (shotData && shotState === "COMPLETE") {
       console.log("  screenshot: exists");
     } else {
+      if (shotData) {
+        console.log(`  screenshot: incomplete (${shotState ?? "unknown"}) — replacing`);
+        await req("DELETE", `/v1/inAppPurchaseAppStoreReviewScreenshots/${shotData.id}`);
+      }
       const rsv = await req("POST", "/v1/inAppPurchaseAppStoreReviewScreenshots", {
         data: {
           type: "inAppPurchaseAppStoreReviewScreenshots",
