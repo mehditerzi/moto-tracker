@@ -76,6 +76,33 @@ describe("security headers", () => {
   });
 });
 
+describe("API responses are never cacheable", () => {
+  // Regression: Express ETag'd every res.json() and these routes set no
+  // Cache-Control, so an authenticated response was revalidatable. The browser
+  // sent If-None-Match, got 304, and the client's api() helper — which treats
+  // anything outside 200-299 as a failure — threw. On /api/me that turned a
+  // successful sign-in into "not signed in", bouncing the user back to the
+  // login page. It also meant per-user JSON was cacheable by a shared cache,
+  // and this app sits behind Cloudflare.
+  it("sends no-store and no ETag, so a 304 can never happen", async () => {
+    const app = buildTestApp();
+    for (const path of ["/api/health", "/api/public-config", "/api/me"]) {
+      const res = await request(app).get(path);
+      expect(res.headers["cache-control"], path).toBe("private, no-store");
+      expect(res.headers["etag"], path).toBeUndefined();
+    }
+  });
+
+  it("does not answer a conditional request with 304", async () => {
+    const app = buildTestApp();
+    const res = await request(app)
+      .get("/api/public-config")
+      .set("If-None-Match", 'W/"anything"');
+    expect(res.status).not.toBe(304);
+    expect(res.body).toHaveProperty("appleSignIn");
+  });
+});
+
 describe("/api/health", () => {
   afterEach(() => {
     resetDbForTests(":memory:");
