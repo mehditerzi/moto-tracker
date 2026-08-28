@@ -69,6 +69,45 @@ describe("/api/trips", () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toBe("bike_not_found");
   });
+
+  it("deletes a trip, then 404s on the id", async () => {
+    const app = buildTestApp();
+    const { cookie } = await signUpAndSignIn(app);
+    const bikeId = await makeBike(app, cookie);
+    const create = await request(app)
+      .post("/api/trips")
+      .set("Cookie", cookie)
+      .set("Content-Type", "application/json")
+      .send(trip(bikeId, 20));
+
+    const del = await request(app).delete(`/api/trips/${create.body.id}`).set("Cookie", cookie);
+    expect(del.status).toBe(204);
+
+    const again = await request(app).delete(`/api/trips/${create.body.id}`).set("Cookie", cookie);
+    expect(again.status).toBe(404);
+    expect(again.body.error).toBe("not_found");
+  });
+
+  it("404s when deleting an unknown id or another user's trip", async () => {
+    const app = buildTestApp();
+    const a = await signUpAndSignIn(app);
+    const bikeId = await makeBike(app, a.cookie);
+    const create = await request(app)
+      .post("/api/trips")
+      .set("Cookie", a.cookie)
+      .set("Content-Type", "application/json")
+      .send(trip(bikeId, 20));
+
+    const unknown = await request(app).delete("/api/trips/nope").set("Cookie", a.cookie);
+    expect(unknown.status).toBe(404);
+
+    const b = await signUpAndSignIn(app);
+    const other = await request(app).delete(`/api/trips/${create.body.id}`).set("Cookie", b.cookie);
+    expect(other.status).toBe(404);
+    // …and the owner's trip is untouched.
+    const detail = await request(app).get(`/api/trips/${create.body.id}`).set("Cookie", a.cookie);
+    expect(detail.status).toBe(200);
+  });
 });
 
 describe("/api/trips — routes", () => {
