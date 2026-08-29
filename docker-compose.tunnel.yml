@@ -23,6 +23,7 @@
 #   atakansilah.com             ->  http://atakansilah-web:80
 #   dropaflare.com              ->  http://flare-app:3000
 #   supabase.dropaflare.com     ->  http://flare-supabase-kong:8000
+#   navidesk.<your-domain>      ->  http://navidesk:3000
 #
 # Use the FULL container names above, not short aliases — the alias "kong"
 # exists on two networks and would resolve ambiguously.
@@ -40,6 +41,7 @@ services:
       - ostamai
       - atakansilah
       - flare
+      - navidesk
 
 networks:
   moto:
@@ -53,4 +55,7 @@ networks:
     external: true
   flare:
     name: flare_default
+    external: true
+  navidesk:
+    name: navidesk_default
     external: true
