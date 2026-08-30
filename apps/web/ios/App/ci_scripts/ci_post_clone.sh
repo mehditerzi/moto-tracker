@@ -22,10 +22,20 @@ set -eu
 echo "--- ci_post_clone: preparing the web build"
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
-# Xcode Cloud images ship Node, but not necessarily the major we build against
-# (.nvmrc). Install only when the runtime is missing or too old, so the common
-# case costs nothing.
-NEED_NODE=20
+# Node 22, NOT the 20 in .nvmrc.
+#
+# Those two numbers are allowed to differ and it is worth knowing why. `.nvmrc`
+# tracks the SERVER runtime — the API ships on node:20-bookworm-slim — and the
+# GitHub Actions workflow reads it for the test job. The iOS build has a
+# different constraint: the Capacitor CLI 8 declares `engines.node >= 22.0.0`
+# and refuses to run below it, so `cap sync` dies with
+#
+#   [fatal] The Capacitor CLI requires NodeJS >=22.0.0
+#
+# AFTER the whole web build has succeeded — which reads like a web problem and
+# is not. This is invisible locally, where the developer machine happens to run
+# a newer Node than .nvmrc claims.
+NEED_NODE=22
 have_node=0
 if command -v node >/dev/null 2>&1; then
   major="$(node -p 'process.versions.node.split(".")[0]')"
