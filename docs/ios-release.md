@@ -30,10 +30,33 @@ One workflow, **`Default`**, on the `Garajım` product:
 - **Trigger** — any push to `main`
 - **Container** — `apps/web/ios/App/App.xcodeproj`, scheme `Garajım`
 - **Action** — `ARCHIVE`, `buildDistributionAudience: APP_STORE_ELIGIBLE`
+- **Post-action** — TestFlight delivery. **Must be added in the UI, once.**
 
-That last field is the one that matters. Without it the workflow archives and
-the archive goes nowhere — which is what it did before: two enabled workflows,
-neither delivering anything.
+### The post-action is the one thing the API cannot set
+
+`buildDistributionAudience: APP_STORE_ELIGIBLE` makes the archive *eligible*
+and produces a correctly signed `app-store` export — build 9 did exactly that
+— but it does **not** deliver it. Delivery is a workflow **post-action**, and
+the App Store Connect API refuses to write one:
+
+```
+409 — 'postActions' is not an attribute on the resource 'ciWorkflows'
+```
+
+So this step cannot be scripted. Add it once, by hand:
+
+**App Store Connect → your app → Xcode Cloud → Manage Workflows → `Default`
+→ Post-Actions → + → TestFlight (Internal Testing) → Save.**
+
+(The same panel is in Xcode under the Report navigator → Cloud.)
+
+Symptom if it is missing: builds succeed, artefacts including
+`Garajım <version> app-store.zip` appear on the build run, and **nothing ever
+shows up in TestFlight**. That is not a signing or processing problem and no
+amount of waiting fixes it.
+
+Verify it stuck by re-reading the workflow — `postActions` should no longer be
+`undefined`.
 
 A second workflow, **`Garajim`**, is **disabled on purpose**. It only ran
 `BUILD` (compile, no archive, no upload) on the same trigger, so every commit
