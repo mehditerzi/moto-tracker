@@ -30,33 +30,40 @@ One workflow, **`Default`**, on the `Garajım` product:
 - **Trigger** — any push to `main`
 - **Container** — `apps/web/ios/App/App.xcodeproj`, scheme `Garajım`
 - **Action** — `ARCHIVE`, `buildDistributionAudience: APP_STORE_ELIGIBLE`
-- **Post-action** — TestFlight delivery. **Must be added in the UI, once.**
+- **Post-actions** — none, and none are needed to submit.
 
-### The post-action is the one thing the API cannot set
+### `APP_STORE_ELIGIBLE` really does deliver — no post-action required
 
-`buildDistributionAudience: APP_STORE_ELIGIBLE` makes the archive *eligible*
-and produces a correctly signed `app-store` export — build 9 did exactly that
-— but it does **not** deliver it. Delivery is a workflow **post-action**, and
-the App Store Connect API refuses to write one:
+An earlier version of this document claimed delivery needed a TestFlight
+post-action added by hand. **That was wrong**, and it is worth recording why so
+nobody re-adds a step that does nothing.
+
+Measured on 2026-08-30: the `Default` workflow has `postActions: undefined`,
+and builds **9 and 10** both arrived in App Store Connect as version `1.3`,
+`processingState: VALID`. An `ARCHIVE` action with
+`buildDistributionAudience: APP_STORE_ELIGIBLE` archives, signs, **and
+uploads**. That is all a submission needs.
+
+A post-action is only for pushing a delivered build onward to **TestFlight
+tester groups**. If you never use TestFlight, you never need one — which is
+lucky, because the API does refuse to write it:
 
 ```
 409 — 'postActions' is not an attribute on the resource 'ciWorkflows'
 ```
 
-So this step cannot be scripted. Add it once, by hand:
+If you *do* want internal testers, add it once by hand:
+**App Store Connect → Xcode Cloud → Manage Workflows → `Default` →
+Post-Actions → + → TestFlight (Internal Testing) → Save.**
 
-**App Store Connect → your app → Xcode Cloud → Manage Workflows → `Default`
-→ Post-Actions → + → TestFlight (Internal Testing) → Save.**
+The real diagnostic for "my build never showed up" is not the post-action.
+Check, in this order: the build run actually **succeeded** (runs 6–8 failed on
+Node 22 and produced nothing), and the build is not still in
+`PROCESSING`. Query it directly rather than watching the UI:
 
-(The same panel is in Xcode under the Report navigator → Cloud.)
-
-Symptom if it is missing: builds succeed, artefacts including
-`Garajım <version> app-store.zip` appear on the build run, and **nothing ever
-shows up in TestFlight**. That is not a signing or processing problem and no
-amount of waiting fixes it.
-
-Verify it stuck by re-reading the workflow — `postActions` should no longer be
-`undefined`.
+```
+GET /v1/builds?filter[app]=6783515081&sort=-uploadedDate&include=preReleaseVersion
+```
 
 A second workflow, **`Garajim`**, is **disabled on purpose**. It only ran
 `BUILD` (compile, no archive, no upload) on the same trigger, so every commit
@@ -115,9 +122,12 @@ previously uploaded version"* — which reads like a signing problem and is not.
    1.3). Only needed for a user-visible version; TestFlight builds of the same
    version just need a new build number, which is automatic.
 2. **Push to `main`.** Xcode Cloud builds and delivers.
-3. **App Store Connect → your app → the new build** appears under TestFlight
-   within ~15–30 minutes.
-4. **Create the version, attach the build, submit for review.**
+3. **The build appears in App Store Connect** under the app's *Builds* within
+   roughly 15–30 minutes, first as `PROCESSING`, then `VALID`.
+4. **Create the version, attach the build, submit for review.** Everything
+   except the final submit can be scripted against the API — including
+   `usesNonExemptEncryption`, which blocks submission while it is `null` and is
+   easy to miss because the UI only raises it at the last step.
 5. Choose manual or automatic release on approval.
 
 ### Web-only changes do not need any of this
