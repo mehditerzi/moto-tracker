@@ -2,7 +2,7 @@
 
 Pushing to `main` builds the iOS app in Xcode Cloud and delivers it to App Store
 Connect. This describes what runs, what you still have to do by hand, and the
-two failure modes that look like something else.
+three failure modes that look like something else.
 
 ---
 
@@ -14,7 +14,7 @@ two failure modes that look like something else.
 | Stamp a unique build number | Xcode Cloud (`ci_pre_xcodebuild.sh`) |
 | Deliver the build to App Store Connect / TestFlight | Xcode Cloud |
 | Bump the **version** users see (1.2 → 1.3) | **You**, in the Xcode project |
-| Submit for review | **You**, in App Store Connect |
+| Submit for review | `scripts/asc-submit-version.mjs` (or you, in App Store Connect) |
 | Release to users after approval | **You** (or App Store Connect's auto-release) |
 
 **Apple review cannot be automated.** "Auto" here means a push produces a
@@ -124,9 +124,17 @@ previously uploaded version"* — which reads like a signing problem and is not.
 2. **Push to `main`.** Xcode Cloud builds and delivers.
 3. **The build appears in App Store Connect** under the app's *Builds* within
    roughly 15–30 minutes, first as `PROCESSING`, then `VALID`.
-4. **Create the version, attach the build, submit for review.** Everything
-   except the final submit can be scripted against the API — including
-   `usesNonExemptEncryption`, which blocks submission while it is `null` and is
+4. **Create the version, attach the build, then submit:**
+
+   ```
+   ASC_ISSUER_ID=<uuid> node scripts/asc-submit-version.mjs           # dry run
+   ASC_ISSUER_ID=<uuid> node scripts/asc-submit-version.mjs --apply   # submit
+   ```
+
+   The submit **is** scriptable — an earlier version of this document said it
+   was the one step that was not, and see the failure mode below for what that
+   cost. The script preflights the things that block a submission quietly,
+   including `usesNonExemptEncryption`, which blocks while it is `null` and is
    easy to miss because the UI only raises it at the last step.
 5. Choose manual or automatic release on approval.
 
@@ -139,7 +147,29 @@ plugins, entitlements) need a new binary.
 
 ---
 
-## Two failure modes that look like something else
+## Three failure modes that look like something else
+
+**"The app is broken" when nothing is broken — the version was never
+submitted.** This is the expensive one, because every dashboard looks healthy
+while it happens. On 2026-09-05 the reported symptoms were a black screen and
+Sign in with Apple failing. Both were real, both had been fixed on 2026-08-28,
+and both fixes were sitting in App Store Connect: version 1.3,
+`PREPARE_FOR_SUBMISSION` since 2026-08-30, build 10 attached and `VALID`,
+metadata and screenshots complete, ten subscriptions `APPROVED`. Users were on
+**1.1 from 2026-07-20** — which shipped with `server.url` but no
+`allowNavigation`, so Apple's sign-in page opened in Safari and set the session
+cookie in Safari's jar, and the user returned to the app still signed out.
+
+Nothing was stuck and nothing was rejected. Nobody had pressed submit.
+
+The tell: `appStoreState` is `PREPARE_FOR_SUBMISSION` on a version whose build
+is `VALID`, and `/v1/reviewSubmissions` has nothing newer than the previous
+release. Check it in one command, and note that a green Xcode Cloud run means
+only that a binary exists — it says nothing about whether anyone shipped it:
+
+```
+ASC_ISSUER_ID=<uuid> node scripts/asc-submit-version.mjs   # dry run; reports state
+```
 
 **"The bundle version must be higher…"** — the build-number stamp did not run.
 Check `ci_pre_xcodebuild.sh` is executable (`chmod +x`) and that Xcode Cloud
@@ -158,3 +188,4 @@ working-looking app whose plugins are all `UNIMPLEMENTED`.
 - `docs/operations.md` — server deploys, backups, health
 - `docs/ios-iap.md` — the StoreKit products and verification
 - `scripts/asc-list-iap.mjs` — read-only audit of the IAP catalogue
+- `scripts/asc-submit-version.mjs` — preflight and submit a prepared version
