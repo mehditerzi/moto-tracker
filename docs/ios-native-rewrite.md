@@ -104,12 +104,38 @@ it is the right architecture. Consumer surface native, back-office surface web.
 Each phase ends with something shippable. No phase requires the next one to
 exist.
 
-**Phase 0 — decide the auth story (do this before writing UI)**
-`better-auth` currently issues a session cookie. A native client wants a token.
-`lib/nativeAuth` already exists as a bearer-token fallback — confirm it covers
-every route, or the whole app is blocked on it later. Sign in with Apple moves
-to `ASAuthorizationAppleIDProvider`, which removes the Safari cookie-jar bug
-class permanently.
+**Phase 0 — the auth story: DONE, and it is not a blocker**
+
+Verified against production on 2026-09-05, so nobody has to re-derive it.
+
+`better-auth` is configured with the `bearer()` plugin
+(`apps/api/src/auth/index.ts`), and `requireUser` resolves the session by
+handing the whole request header set to `getSession()` — it never reads the
+cookie directly. So bearer support is uniform across all **70** `requireUser`
+call sites for free, and the **34** `requireOrgRole` guards chain off
+`req.user` rather than resolving a session of their own, so they inherit it too.
+
+Measured, signing in as the review demo account and sending **only**
+`Authorization: Bearer …` with no cookie whatsoever:
+
+```
+/api/me  /api/bikes  /api/dashboard  /api/trips  /api/fuel-logs
+/api/documents  /api/entitlement  /api/orgs  /api/catalog/makes
+/api/notification-preferences  /api/mapkit-token  /api/ride-groups/active
+                                                          → all 200
+```
+
+Only three routers skip `requireUser` — `health`, `publicConfig` and `privacy`
+(a static policy page) — and all three are public by design.
+
+**A native client needs no API changes to authenticate.** That is the single
+biggest de-risking fact in this document: the rewrite is a pure UI project.
+
+Two notes for whoever builds it. Live group riding authenticates over
+WebSocket with a one-time ticket from `GET /api/ride-groups/ws-ticket`, not
+with the bearer token — that pattern ports to native unchanged. And Sign in
+with Apple should move to `ASAuthorizationAppleIDProvider`, which retires the
+Safari cookie-jar bug class permanently rather than configuring around it.
 
 **Phase 1 — skeleton + auth + vehicle list**
 Tab bar, networking layer, generated models, sign-in, vehicle list and detail.
@@ -153,7 +179,8 @@ that stalling at any boundary still leaves something worth shipping.
 
 1. **Minimum iOS version.** 17+ unlocks the good SwiftUI APIs and Live
    Activities. Current deployment target is 15.0.
-2. **Bearer tokens or cookies** for the native client (see Phase 0).
+2. ~~Bearer tokens or cookies~~ — **settled.** Bearer, verified end to end
+   against production; no API work required. See Phase 0.
 3. **Does the web app stay?** If yes it needs its own maintenance budget; if no,
    the fleet web view has to be reworked or fleet becomes native after all.
 4. **Fleet in a web view** — confirm that is acceptable.
