@@ -200,7 +200,25 @@ for (const p of PRODUCTS) {
     turPoint = points.reduce((a, b) =>
       Math.abs(Number(b.attributes.customerPrice) - p.tryPrice) < Math.abs(Number(a.attributes.customerPrice) - p.tryPrice) ? b : a,
     );
-    await write(`TUR price ₺${turPoint.attributes.customerPrice}`, "POST", "/v1/subscriptionPrices", {
+    // A 409 here is NOT "already set": on a subscription created seconds ago
+    // Apple answers the first price write with a conflict and stores nothing,
+    // which leaves the product in MISSING_METADATA. Retry until it is a 201.
+    for (let attempt = 0; APPLY && attempt < 4; attempt++) {
+      const r = await req("POST", "/v1/subscriptionPrices", {
+        data: {
+          type: "subscriptionPrices",
+          attributes: { preserveCurrentPrice: false },
+          relationships: {
+            subscription: { data: { type: "subscriptions", id: sub.id } },
+            subscriptionPricePoint: { data: { type: "subscriptionPricePoints", id: turPoint.id } },
+          },
+        },
+      });
+      console.log(`  TUR price ₺${turPoint.attributes.customerPrice} → ${r.status}`);
+      if (r.status === 201) break;
+      await sleep(5000);
+    }
+    if (!APPLY) await write(`TUR price ₺${turPoint.attributes.customerPrice}`, "POST", "/v1/subscriptionPrices", {
       data: {
         type: "subscriptionPrices",
         attributes: { preserveCurrentPrice: false },
@@ -219,6 +237,7 @@ for (const p of PRODUCTS) {
   if (APPLY) {
     let ok = 0;
     let bad = 0;
+    let firstErr = null;
     for (const e of missing) {
       const r = await req("POST", "/v1/subscriptionPrices", {
         data: {
@@ -230,10 +249,15 @@ for (const p of PRODUCTS) {
           },
         },
       });
-      if (r.status === 201 || r.status === 409) ok++;
-      else bad++;
+      // Only a 201 is a price. A 409 is how Apple refuses an equalization
+      // before the base (TUR) price has landed — it is not "already there".
+      if (r.status === 201) ok++;
+      else {
+        bad++;
+        firstErr ??= err(r);
+      }
     }
-    console.log(`  ✓ world prices: ${ok} written, ${bad} failed`);
+    console.log(`  ${bad ? "✗" : "✓"} world prices: ${ok} written, ${bad} failed${firstErr ? ` (${firstErr})` : ""}`);
   }
 
   // ─── 5. availability
@@ -281,7 +305,14 @@ for (const p of PRODUCTS) {
   }
 
   // ─── 7. review screenshot
-  const shot = await req("GET", `/v1/subscriptions/${sub.id}/appStoreReviewScreenshot`);
+  let shot = await req("GET", `/v1/subscriptions/${sub.id}/appStoreReviewScreenshot`);
+  const shotState = shot.json?.data?.attributes?.assetDeliveryState?.state;
+  if (shot.json?.data && shotState === "FAILED" && APPLY && SCREENSHOT) {
+    // A failed asset blocks the product (MISSING_METADATA) and is never retried.
+    await req("DELETE", `/v1/subscriptionAppStoreReviewScreenshots/${shot.json.data.id}`);
+    console.log("  removed FAILED review screenshot");
+    shot = { json: null };
+  }
   if (shot.json?.data) {
     console.log("  review screenshot set");
   } else if (!SCREENSHOT) {
@@ -301,11 +332,12 @@ for (const p of PRODUCTS) {
     } else {
       for (const op of r.attributes.uploadOperations ?? []) {
         const chunk = buf.subarray(op.offset, op.offset + op.length);
-        await fetch(op.url, {
+        const up = await fetch(op.url, {
           method: op.method,
           headers: Object.fromEntries((op.requestHeaders ?? []).map((h) => [h.name, h.value])),
           body: chunk,
         });
+        if (!up.ok) console.log(`  ✗ screenshot chunk → ${up.status}`);
       }
       const md5 = crypto.createHash("md5").update(buf).digest("hex");
       const done = await req("PATCH", `/v1/subscriptionAppStoreReviewScreenshots/${r.id}`, {
