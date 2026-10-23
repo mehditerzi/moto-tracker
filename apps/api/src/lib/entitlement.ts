@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { Database as DB } from "better-sqlite3";
 import { getDb } from "../db/index.js";
+import { config } from "../config.js";
 import {
   FREE_MAX_VEHICLES,
+  FREE_SCANS_PER_MONTH,
+  FREE_ATTACHMENT_LIMIT,
   tierForProductId,
   computeExpiryMs,
   type EntitlementStatus,
@@ -337,6 +340,56 @@ export function applyTransaction(
   write();
 }
 
+// ─── Garajım Pro ──────────────────────────────────────────────────────────────
+
+/**
+ * Whether the free allowances are enforced. A mutable object rather than a
+ * bare read of `config` so tests can switch it per case — see the config
+ * comment on PRO_LIMITS_ENFORCED for why production starts with it off.
+ */
+export const proLimits = { enforced: config.PRO_LIMITS_ENFORCED };
+
+/**
+ * Pro = any live paid entitlement. A vehicle pack counts too: a customer who
+ * paid for a bigger garage before Pro existed must not lose the scanner they
+ * were using. The operator-granted `unlimited` tier is Pro by definition.
+ */
+export function isPro(userId: string, db: DB = getDb()): boolean {
+  const ent = resolveEntitlement(userId, db);
+  return ent.tier === "unlimited" || ((ent.status === "active" || ent.status === "grace") && !!ent.productId);
+}
+
+/**
+ * Scans this calendar month, in Istanbul time — the month a Turkish user would
+ * name, not the UTC one (which would roll over at 03:00 on the 1st).
+ */
+export function scansThisMonth(userId: string, db: DB = getDb()): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM document
+        WHERE user_id = ?
+          AND strftime('%Y-%m', created_at, '+3 hours') = strftime('%Y-%m', 'now', '+3 hours')`,
+    )
+    .get(userId) as { n: number };
+  return row.n;
+}
+
+export function countAttachments(userId: string, db: DB = getDb()): number {
+  return (db.prepare("SELECT COUNT(*) AS n FROM attachment WHERE user_id = ?").get(userId) as { n: number }).n;
+}
+
+/** null = unlimited. */
+export function scanAllowance(userId: string, db: DB = getDb()): number | null {
+  if (!proLimits.enforced || isPro(userId, db)) return null;
+  return FREE_SCANS_PER_MONTH;
+}
+
+/** null = unlimited. */
+export function attachmentAllowance(userId: string, db: DB = getDb()): number | null {
+  if (!proLimits.enforced || isPro(userId, db)) return null;
+  return FREE_ATTACHMENT_LIMIT;
+}
+
 /** Full summary for `GET /api/entitlement` and the paywall. */
 export function getEntitlementSummary(userId: string, db: DB = getDb()): EntitlementSummary {
   const ent = resolveEntitlement(userId, db);
@@ -349,5 +402,11 @@ export function getEntitlementSummary(userId: string, db: DB = getDb()): Entitle
     activeVehicles,
     canAddVehicle: activeVehicles < ent.maxVehicles,
     expiresAt: ent.expiresAt,
+    pro: isPro(userId, db),
+    scansUsed: scansThisMonth(userId, db),
+    scanLimit: scanAllowance(userId, db),
+    attachmentsUsed: countAttachments(userId, db),
+    attachmentLimit: attachmentAllowance(userId, db),
+    proLive: proLimits.enforced,
   };
 }

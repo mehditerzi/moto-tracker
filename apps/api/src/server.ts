@@ -24,6 +24,9 @@ import { fuelLogsRouter } from "./routes/fuelLogs.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
 import { entitlementRouter } from "./routes/entitlement.js";
+import { expensesRouter } from "./routes/expenses.js";
+import { mechanicsRouter, sosContactsRouter } from "./routes/assistant.js";
+import { attachmentsRouter } from "./routes/attachments.js";
 import { iapRouter, iapWebhookRouter } from "./routes/iap.js";
 import { privacyRouter } from "./routes/privacy.js";
 import { orgsRouter } from "./routes/orgs.js";
@@ -157,7 +160,12 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   // this setting), so asset caching is unaffected.
   app.set("etag", false);
   if (config.TRUST_PROXY) {
-    app.set("trust proxy", true);
+    // Exactly one hop: the cloudflared connector in front of us. `true` would
+    // make req.ip the LEFTMOST X-Forwarded-For entry, which the client writes
+    // itself — so every rate limiter keyed by IP (sign-in brute force above
+    // all) could be dodged by sending a fresh fake header per request.
+    // Cloudflare appends the real client address, which is what one hop reads.
+    app.set("trust proxy", 1);
   }
   app.use(
     helmet({
@@ -221,6 +229,9 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   // limiter exists to blunt a flood, not to ration normal use — the daily cap
   // does the rationing, and it fails with a message that names the reason.
   app.use("/api/documents", limiter({ windowMs: 60 * 60 * 1000, max: 90, method: "POST" }));
+  // Glovebox uploads are re-encoded by sharp at up to 2400px — cheap next to
+  // OCR, but still the second-heaviest thing a client can ask for.
+  app.use("/api/attachments", limiter({ windowMs: 60 * 60 * 1000, max: 60, method: "POST" }));
   // Join codes are 6 chars from a 31-letter alphabet — throttle enumeration.
   app.use("/api/ride-groups/join", limiter({ windowMs: 10 * 60 * 1000, max: 20, method: "POST" }));
   // Mints signed Apple credentials. MapKit re-authorizes near expiry (30 min),
@@ -277,6 +288,10 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/push", pushSubscriptionsRouter);
   app.use("/api/entitlement", entitlementRouter);
   app.use("/api/vehicle-shares", vehicleSharesRouter);
+  app.use("/api/expenses", expensesRouter);
+  app.use("/api/mechanics", mechanicsRouter);
+  app.use("/api/sos-contacts", sosContactsRouter);
+  app.use("/api/attachments", attachmentsRouter);
   // Webhook first: it's unauthenticated (Apple → us) and must not hit the
   // requireUser middleware that iapRouter applies to the shared /api/iap path.
   app.use("/api/iap", iapWebhookRouter);

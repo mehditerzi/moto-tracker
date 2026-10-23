@@ -802,7 +802,7 @@ function Notice({
  * (an API failure during verification, a network drop) goes through the shared
  * translator.
  */
-function iapMessage(e: unknown, t: T): string {
+export function iapMessage(e: unknown, t: T): string {
   const code = e instanceof Error ? e.message : "";
   if (/^(iap_[a-z_]+|no_purchases)$/.test(code)) {
     const msg = t(`errors.${code}`, { defaultValue: "" });

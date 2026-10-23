@@ -5,8 +5,8 @@ import {
   LogOut,
   Settings,
   Bike as BikeIcon,
-  Navigation,
-  Fuel,
+  Wallet,
+  Sparkles,
   Map as MapIcon,
   LayoutDashboard,
   Building2,
@@ -21,6 +21,7 @@ import { useFleetDisclosure } from "@/hooks/useFleetDisclosure";
 import { withFleetLocale } from "@/lib/fleetLocale";
 import { signOut } from "@/lib/authClient";
 import { useConfirm } from "@/components/ConfirmSheet";
+import { hapticSelection } from "@/lib/haptics";
 
 // Only ever mounted for a member of an organization who has not acknowledged the
 // monitoring notice yet, so a consumer never downloads it.
@@ -96,9 +97,9 @@ export function AppShell() {
                   <NavIconLink to="/fleet" label={t("nav.fleet")} icon={<Building2 className="h-[18px] w-[18px]" />} />
                 )}
                 <NavIconLink to="/bikes" label={t("nav.bikes")} icon={<BikeIcon className="h-[18px] w-[18px]" />} />
-                <NavIconLink to="/trips" label={t("nav.trips")} icon={<Navigation className="h-[18px] w-[18px]" />} />
-                <NavIconLink to="/fuel" label={t("nav.fuel")} icon={<Fuel className="h-[18px] w-[18px]" />} />
+                <NavIconLink to="/costs" label={t("nav.costs")} icon={<Wallet className="h-[18px] w-[18px]" />} />
                 <NavIconLink to="/map" label={t("nav.map")} icon={<MapIcon className="h-[18px] w-[18px]" />} />
+                <NavIconLink to="/assistant" label={t("nav.assistant")} icon={<Sparkles className="h-[18px] w-[18px]" />} />
                 <NavIconLink to="/settings" label={t("nav.settings")} icon={<Settings className="h-[18px] w-[18px]" />} />
                 <Button
                   variant="ghost"
@@ -200,6 +201,9 @@ function NavIconLink({
   );
 }
 
+/** Screens reached from the Assistant hub — its tab stays lit on them. */
+const ASSISTANT_ROUTES = ["/mechanics", "/glovebox", "/warning-lights", "/nearby", "/sos", "/trips", "/groups"];
+
 function MobileNav({
   showFleet,
   alwaysVisible = false,
@@ -214,10 +218,10 @@ function MobileNav({
     { to: "/dashboard", label: t("nav.home"), icon: LayoutDashboard },
     ...(showFleet ? [{ to: "/fleet", label: t("nav.fleet"), icon: Building2 }] : []),
     { to: "/bikes", label: t("nav.bikes"), icon: BikeIcon },
-    { to: "/trips", label: t("nav.trips"), icon: Navigation },
-    { to: "/fuel", label: t("nav.fuel"), icon: Fuel },
+    { to: "/costs", label: t("nav.costs"), icon: Wallet, also: ["/fuel"] },
     { to: "/map", label: t("nav.map"), icon: MapIcon },
-  ];
+    { to: "/assistant", label: t("nav.assistant"), icon: Sparkles, also: ASSISTANT_ROUTES },
+  ] as { to: string; label: string; icon: typeof Wallet; also?: string[] }[];
 
   return (
     // The background is flush to the screen edge (`bottom-0` + viewport-fit=cover
@@ -235,20 +239,42 @@ function MobileNav({
       <div
         className={`mx-auto grid max-w-md px-2 pt-1.5 ${showFleet ? "grid-cols-6" : "grid-cols-5"}`}
       >
-        {items.map(({ to, label, icon: Icon }) => {
-          const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
+        {items.map(({ to, label, icon: Icon, also }) => {
+          const active = [to, ...(also ?? [])].some(
+            (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+          );
           return (
             <Link
               key={to}
               to={to}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
+              onClick={() => {
+                if (!active) hapticSelection();
+              }}
+              className={`relative flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-95 ${
                 active
                   ? "text-text dark:text-text-dark"
                   : "text-muted dark:text-muted-dark"
               }`}
             >
-              <Icon className={`h-5 w-5 ${active ? "text-accent-dim dark:text-accent" : ""}`} strokeWidth={active ? 2.3 : 1.8} />
+              {/* One indicator that slides between tabs instead of one per tab
+                  blinking on and off — the bar reads as a single control. */}
+              {active && (
+                <motion.span
+                  layoutId="tab-indicator"
+                  aria-hidden
+                  className="absolute top-0 h-[3px] w-7 rounded-full bg-accent-dim dark:bg-accent"
+                  transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                />
+              )}
+              <motion.span
+                key={active ? "on" : "off"}
+                initial={active ? { scale: 0.8, y: 2 } : false}
+                animate={{ scale: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 600, damping: 18 }}
+              >
+                <Icon className={`h-5 w-5 ${active ? "text-accent-dim dark:text-accent" : ""}`} strokeWidth={active ? 2.3 : 1.8} />
+              </motion.span>
               <span className="max-w-full truncate">{label}</span>
             </Link>
           );

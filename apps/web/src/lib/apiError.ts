@@ -39,3 +39,14 @@ export function friendlyError(e: unknown, t: Translate): string {
   if (e instanceof TypeError) return t("errors.network");
   return t("errors.generic");
 }
+
+/** Plan limits the server names with a 402 — answered with the Pro paywall. */
+export type ProLimitCode = "scan_limit_reached" | "attachment_limit_reached" | "pro_required";
+
+export function proLimitCode(e: unknown): ProLimitCode | null {
+  if (!(e instanceof ApiError) || e.status !== 402) return null;
+  const code = (e.body as { error?: unknown } | undefined)?.error;
+  return code === "scan_limit_reached" || code === "attachment_limit_reached" || code === "pro_required"
+    ? code
+    : null;
+}

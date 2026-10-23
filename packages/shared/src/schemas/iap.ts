@@ -143,6 +143,8 @@ const PRODUCT_ID_RE =
  * added in App Store Connect are honored without a redeploy.
  */
 export function tierForProductId(productId: string): IapTier | undefined {
+  const pro = PRO_PRODUCTS.find((p) => p.productId === productId);
+  if (pro) return pro;
   const m = productId.match(PRODUCT_ID_RE);
   if (!m) return undefined;
   const packSize = Number(m[1]);
@@ -170,6 +172,54 @@ export function computeExpiryMs(
   return d.getTime();
 }
 
+// ─── Garajım Pro ──────────────────────────────────────────────────────────────
+//
+// Since 2026-10-24 the paid product is ONE subscription, not a vehicle count.
+// "Pay from the second vehicle" meant almost nobody ever met a paywall — most
+// owners have one car — and the account history shows exactly that: zero
+// purchases. Pro unlocks the garage (vehicles), the scanner (no monthly
+// allowance), the cost report and the glovebox, in its own subscription group
+// "Garajım Pro" with a free trial as the introductory offer.
+//
+// The vehicle packs above are no longer sold but stay RESOLVABLE, so a pack
+// that was somehow bought is still honoured. Any active paid entitlement — pack
+// or Pro — counts as Pro (see `isProEntitlement` on the server).
+
+export const PRO_PRODUCT_PREFIX = "com.mehditerzi.mototracker.pro.";
+
+/**
+ * A practical ceiling, not a product term: the paywall says "unlimited", and
+ * nobody's personal garage reaches a hundred. It exists so a single account
+ * cannot be turned into a free fleet.
+ */
+export const PRO_MAX_VEHICLES = 100;
+
+/** Scans a free account gets per calendar month (Europe/Istanbul). */
+export const FREE_SCANS_PER_MONTH = 5;
+
+function proTier(termKey: "monthly" | "yearly", months: number, displayPriceTry: number): IapTier {
+  return {
+    productId: `${PRO_PRODUCT_PREFIX}${termKey}`,
+    tier: `pro-${termKey}`,
+    maxVehicles: PRO_MAX_VEHICLES,
+    termKey,
+    termMonths: months,
+    renewable: true,
+    displayPriceTry,
+  };
+}
+
+/** What the App Store sells. Prices are the TR fallbacks shown before StoreKit answers. */
+export const PRO_PRODUCTS: readonly IapTier[] = [
+  proTier("yearly", 12, 349.99),
+  proTier("monthly", 1, 59.99),
+];
+export const PRO_PRODUCT_IDS: readonly string[] = PRO_PRODUCTS.map((p) => p.productId);
+
+export function isProProductId(productId: string | null | undefined): boolean {
+  return !!productId && productId.startsWith(PRO_PRODUCT_PREFIX);
+}
+
 /** Subscription lifecycle status we track locally. */
 export const entitlementStatusSchema = z.enum(["free", "active", "grace", "expired"]);
 export type EntitlementStatus = z.infer<typeof entitlementStatusSchema>;
@@ -191,5 +241,19 @@ export const entitlementSummarySchema = z.object({
   canAddVehicle: z.boolean(),
   /** ISO timestamp the current period ends, or null on the free tier. */
   expiresAt: z.string().nullable(),
+  /**
+   * Garajım Pro is active (any paid entitlement counts). Optional only so an
+   * older server's response still parses.
+   */
+  pro: z.boolean().optional(),
+  /** Scans used in the current calendar month. */
+  scansUsed: z.number().int().min(0).optional(),
+  /** This month's scan allowance; null = unlimited (Pro, or not enforced). */
+  scanLimit: z.number().int().min(0).nullable().optional(),
+  /** Glovebox files kept / allowed (null = unlimited). */
+  attachmentsUsed: z.number().int().min(0).optional(),
+  attachmentLimit: z.number().int().min(0).nullable().optional(),
+  /** Pro is on sale and the free allowances apply (server switch). */
+  proLive: z.boolean().optional(),
 });
 export type EntitlementSummary = z.infer<typeof entitlementSummarySchema>;

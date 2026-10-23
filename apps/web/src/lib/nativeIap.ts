@@ -23,11 +23,37 @@ import { ENTITLEMENT_KEY } from "@/hooks/useEntitlement";
 import { track } from "./telemetry";
 import type { EntitlementSummary } from "@mototracker/shared";
 
+/** A subscription period as StoreKit states it. */
+export interface StoreKitPeriod {
+  unit: "day" | "week" | "month" | "year";
+  value: number;
+}
+
+/** The introductory offer on a subscription (a free trial, for Pro). */
+export interface StoreKitIntroOffer {
+  paymentMode: "freeTrial" | "payAsYouGo" | "payUpFront";
+  displayPrice: string;
+  period: StoreKitPeriod;
+  periodCount: number;
+}
+
 export interface StoreKitProduct {
   id: string;
   displayName: string;
   /** Localized, currency-formatted price string from StoreKit (e.g. "₺100,00"). */
   displayPrice: string;
+  /**
+   * Everything below arrives only from a binary built after 2026-10-24. The web
+   * app reaches older binaries too, so every reader must treat it as optional.
+   */
+  /** Numeric price in the storefront currency — for "₺29/ay" maths. */
+  price?: number;
+  currencyCode?: string;
+  /** Billing period of a subscription. */
+  period?: StoreKitPeriod;
+  introOffer?: StoreKitIntroOffer | null;
+  /** Whether THIS Apple ID can still take the intro offer (one per group, ever). */
+  eligibleForIntro?: boolean;
 }
 
 /** What the plugin reports back for a purchase attempt. */
@@ -95,6 +121,10 @@ interface StoreKitPlugin {
   restore(): Promise<{ transactions: string[]; transactionIds?: string[] }>;
   /** Marks transactions delivered. Only call AFTER the server recorded them. */
   finishTransactions(options: { transactionIds: string[] }): Promise<{ finished: number }>;
+  /** Apple's in-app "manage subscription" sheet (iOS 15+). New binaries only. */
+  manageSubscriptions?(): Promise<void>;
+  /** Ask StoreKit to show the rating prompt (Apple decides if it appears). */
+  requestReview?(): Promise<void>;
   addListener(
     eventName: "transactionsUpdated",
     handler: (event: NativeTransactionsEvent) => void,
@@ -134,8 +164,10 @@ function nativeErrorCode(e: unknown, fallback: string): string {
 // time is instant and so a purchase never waits on a network round-trip.
 
 const CATALOG_TTL_MS = 5 * 60_000;
-let catalogCache: { at: number; value: ProductCatalog } | null = null;
-let catalogInFlight: Promise<ProductCatalog> | null = null;
+// Keyed by the requested id set: the Pro sheet and the vehicle-pack sheet ask
+// for different products, and one must never be answered with the other's.
+let catalogCache: { at: number; key: string; value: ProductCatalog } | null = null;
+let catalogInFlight: { key: string; promise: Promise<ProductCatalog> } | null = null;
 
 const EMPTY_CATALOG: ProductCatalog = {
   products: [],
@@ -165,18 +197,19 @@ export async function fetchProductCatalog(
   opts: { force?: boolean } = {},
 ): Promise<ProductCatalog> {
   if (!isNative()) return EMPTY_CATALOG;
-  if (!opts.force && catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) {
+  const key = [...productIds].sort().join(",");
+  if (!opts.force && catalogCache?.key === key && Date.now() - catalogCache.at < CATALOG_TTL_MS) {
     return catalogCache.value;
   }
-  if (!opts.force && catalogInFlight) return catalogInFlight;
+  if (!opts.force && catalogInFlight?.key === key) return catalogInFlight.promise;
 
-  catalogInFlight = (async () => {
+  const promise = (async () => {
     let lastErr: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 600));
       try {
         const value = await loadCatalog(productIds);
-        catalogCache = { at: Date.now(), value };
+        catalogCache = { at: Date.now(), key, value };
         return value;
       } catch (e) {
         lastErr = e;
@@ -186,10 +219,11 @@ export async function fetchProductCatalog(
     throw new Error(nativeErrorCode(lastErr, "iap_products_failed"));
   })();
 
+  catalogInFlight = { key, promise };
   try {
-    return await catalogInFlight;
+    return await promise;
   } finally {
-    catalogInFlight = null;
+    if (catalogInFlight?.promise === promise) catalogInFlight = null;
   }
 }
 
@@ -372,5 +406,41 @@ export async function syncPurchasesSilently(): Promise<void> {
     publishEntitlement(summary);
   } catch {
     /* offline or no purchases — the webhook keeps server state correct anyway */
+  }
+}
+
+
+// ─── subscription management + rating prompt ──────────────────────────────────
+
+const MANAGE_URL = "https://apps.apple.com/account/subscriptions";
+
+/**
+ * Open subscription management. Apple's own sheet on a new binary; on an old
+ * one (no such plugin method) the App Store account page, which is where the
+ * sheet would have taken them anyway.
+ */
+export async function manageSubscriptions(): Promise<void> {
+  if (isNative()) {
+    try {
+      await plugin().manageSubscriptions!();
+      return;
+    } catch {
+      /* old binary — fall through to the URL */
+    }
+  }
+  window.open(MANAGE_URL, "_blank", "noopener");
+}
+
+/**
+ * Ask for an App Store rating. Fire-and-forget: Apple rate-limits the prompt
+ * (three times a year) and may show nothing, and an old binary has no method.
+ */
+export async function requestNativeReview(): Promise<boolean> {
+  if (!isNative()) return false;
+  try {
+    await plugin().requestReview!();
+    return true;
+  } catch {
+    return false;
   }
 }

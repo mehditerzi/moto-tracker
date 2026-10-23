@@ -28,6 +28,8 @@ import { OrgVehicleBadge } from "@/components/fleet/OrgVehicleBadge";
 import { OrgVehicleNotice } from "@/components/fleet/OrgVehicleNotice";
 import { SharedVehicleBadgeById } from "@/components/share/SharedVehicleBadge";
 import type { DashboardEntry, DatedItemType } from "@mototracker/shared";
+import { formatNumber } from "@/lib/format";
+import { QuickActions } from "@/components/QuickActions";
 
 export function DashboardPage() {
   const { t } = useTranslation();
@@ -237,6 +239,8 @@ export function DashboardPage() {
             <StatusChip key={type} type={type} bikeId={active.bike.id} item={active.items[type]} index={i} />
           ))}
         </section>
+
+        <QuickActions bikeId={active.bike.id} />
 
         <MaintenancePanel bikeId={active.bike.id} />
 
@@ -458,7 +462,7 @@ function QuickKmUpdate({ bikeId, currentKm }: { bikeId: string; currentKm: numbe
     >
       <Gauge className="h-3.5 w-3.5 shrink-0" />
       <span className="num">
-        {currentKm != null ? `${currentKm.toLocaleString()} km` : t("dashboard.addKm")}
+        {currentKm != null ? `${formatNumber(currentKm)} km` : t("dashboard.addKm")}
       </span>
       <Pencil className="h-3 w-3 opacity-50" />
     </button>

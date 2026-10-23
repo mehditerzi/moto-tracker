@@ -12,7 +12,7 @@ import { useDatedItem, useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { ApiError } from "@/lib/api";
 import { statusFor, statusColorClass } from "@/lib/datedItems";
 import { cn } from "@/lib/cn";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 
 /**
  * "Renew" used to open an empty date picker, making the user scroll a calendar
@@ -120,7 +120,7 @@ export function DatedItemDetailPage() {
           <Field label={t("items.policyNo")} value={item.data.policyNo} />
           <Field
             label={t("items.amount")}
-            value={item.data.cost !== null ? `${item.data.cost} ${t("items.currency")}` : null}
+            value={item.data.cost !== null ? formatMoney(item.data.cost, item.data.cost % 1 ? 2 : 0) : null}
           />
           <Field label={t("items.note")} value={item.data.notes} multiline />
         </CardContent>

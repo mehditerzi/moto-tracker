@@ -27,6 +27,9 @@ services:
       # every installed phone at once. Flip to "false" to enforce once the
       # device check is clean — see docs/operations.md.
       CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-true}
+      # Free-plan allowances (monthly scans, glovebox files). Keep false until
+      # the Garajım Pro subscriptions are approved and purchasable.
+      PRO_LIMITS_ENFORCED: ${PRO_LIMITS_ENFORCED:-false}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-Garajım <noreply@example.com>}
       # Local SMTP fallback (used only when RESEND_API_KEY is empty). To catch

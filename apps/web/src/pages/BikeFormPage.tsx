@@ -34,7 +34,7 @@ import { ApiError } from "@/lib/api";
 import { env } from "@/env";
 import { useConfirm } from "@/components/ConfirmSheet";
 import { ErrorState } from "@/components/ErrorState";
-import { PaywallSheet } from "@/components/PaywallSheet";
+import { usePaywall } from "@/components/paywall/PaywallContext";
 import { VehicleAvatar } from "@/components/VehicleAvatar";
 import { HiddenFileInput } from "@/components/ui/file-input";
 import { DuplicateVehicleSheet } from "@/components/share/DuplicateVehicleSheet";
@@ -44,6 +44,7 @@ import type { DuplicateVehicle } from "@mototracker/shared";
 import type { OrgMembership } from "@/hooks/useOrgs";
 import { deniedRedirect, useVehicleTarget } from "@/pages/fleet/vehicleTarget";
 import { ensureFleetLocale } from "@/lib/fleetLocale";
+import { formatDate } from "@/lib/format";
 
 /**
  * Built once, not per render: an inline `options={yearOptions()}` handed the
@@ -72,7 +73,7 @@ export function BikeFormPage() {
   const createMut = useCreateBike();
   const updateMut = useUpdateBike(id ?? "");
   const archiveMut = useArchiveBike();
-  const [paywall, setPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
   const [orgLimit, setOrgLimit] = useState(false);
   // The vehicle the user is trying to add is already tracked by somebody. Held
   // in state rather than navigated to, because the form must stay behind the
@@ -256,7 +257,7 @@ export function BikeFormPage() {
         // price to show and no purchase to offer (docs/fleet-design.md §1), so
         // say what happened and who can raise it — never the paywall.
         if (org) setOrgLimit(true);
-        else setPaywall(true);
+        else openPaywall("vehicles");
         return;
       }
       pushToast({
@@ -340,7 +341,6 @@ export function BikeFormPage() {
     >
       {/* Not mounted at all in an org context: the fleet UI contains no
           acquisition affordance anywhere (docs/fleet-design.md §1). */}
-      {!org && <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />}
       <DuplicateVehicleSheet duplicate={duplicate} onClose={() => setDuplicate(null)} />
       <Card>
         <CardHeader>
@@ -1086,7 +1086,7 @@ function BikeDocumentsSection({ bikeId }: { bikeId: string }) {
               <span className="text-[13px] font-medium">{t(`items.${type}`)}</span>
               {item ? (
                 <span className="num text-[11px] text-muted dark:text-muted-dark">
-                  {item.expiresOn}
+                  {formatDate(item.expiresOn)}
                 </span>
               ) : (
                 <span className="text-[11px] text-muted dark:text-muted-dark">

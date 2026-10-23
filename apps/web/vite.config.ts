@@ -48,6 +48,10 @@ export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   server: {
     port: 5173,
-    proxy: { "/api": { target: "http://localhost:8787", changeOrigin: true } },
+    // On the production host :8787 is the live container, so a dev API there
+    // has to run elsewhere: API_PROXY_TARGET=http://localhost:8899 pnpm dev:web
+    proxy: {
+      "/api": { target: process.env.API_PROXY_TARGET ?? "http://localhost:8787", changeOrigin: true, ws: true },
+    },
   },
 });

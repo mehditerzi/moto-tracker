@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Image as ImageIcon, Layers, ArrowRight } from "lucide-react";
+import { Camera, Image as ImageIcon, Layers, ArrowRight, Crown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HiddenFileInput } from "@/components/ui/file-input";
 import { useCreateBatch, useOpenBatches, useUploadDocument } from "@/hooks/useDocuments";
+import { usePaywall } from "@/components/paywall/PaywallContext";
+import { useEntitlement } from "@/hooks/useEntitlement";
 import { useBike } from "@/hooks/useBikes";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
@@ -88,6 +90,8 @@ function SingleCapture() {
   const cameraInput = useRef<HTMLInputElement | null>(null);
   const galleryInput = useRef<HTMLInputElement | null>(null);
   const upload = useUploadDocument();
+  const { openPaywall } = usePaywall();
+  const ent = useEntitlement();
   const createBatch = useCreateBatch();
   // Only asked for on the "add a vehicle" entry — a scan aimed at a vehicle has
   // nothing to resume.
@@ -138,6 +142,13 @@ function SingleCapture() {
       // "service_unavailable" / "bike_not_found" into the toast.
       const code = (e as Error).message;
       track("scan_upload_failed", { code });
+      // The free plan's monthly allowance is a plan term, not a fault: answer
+      // it with the offer instead of an error toast.
+      if (code === "scan_limit_reached") {
+        resetPicker();
+        openPaywall("scans");
+        return;
+      }
       const KNOWN: Record<string, string> = {
         service_unavailable: t("capture.errorLimit"),
         file_required: t("capture.errorFileRequired"),
@@ -220,6 +231,16 @@ function SingleCapture() {
                 : t("capture.subtitle")
               : t("capture.newVehicleSub")}
           </CardDescription>
+          {ent.data?.scanLimit != null && (
+            <button
+              type="button"
+              onClick={() => openPaywall("scans")}
+              className="num mt-2 inline-flex items-center gap-1.5 self-start rounded-full bg-accent/10 px-2.5 py-1 text-[12px] font-medium text-accent-dim ring-1 ring-accent/30 dark:text-accent"
+            >
+              <Crown className="h-3.5 w-3.5" />
+              {t("pro.scansLeft", { left: Math.max(0, ent.data.scanLimit - (ent.data.scansUsed ?? 0)) })}
+            </button>
+          )}
         </CardHeader>
         <CardContent>
           <AnimatePresence mode="wait">

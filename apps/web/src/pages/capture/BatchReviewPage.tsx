@@ -31,7 +31,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import type { FieldWidth } from "@/components/ui/control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
-import { PaywallSheet } from "@/components/PaywallSheet";
+import { usePaywall } from "@/components/paywall/PaywallContext";
 import { useConfirm } from "@/components/ConfirmSheet";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
 import { useBikes } from "@/hooks/useBikes";
@@ -103,7 +103,7 @@ export function BatchReviewPage({ batchId }: { batchId: string }) {
 
   const [index, setIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
-  const [paywall, setPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
   const [limitInfo, setLimitInfo] = useState<{ needed: number; available: number } | null>(null);
   const [applied, setApplied] = useState<{ created: number; updated: number; datedItems: number } | null>(
     null,
@@ -236,7 +236,7 @@ export function BatchReviewPage({ batchId }: { batchId: string }) {
         // app (App Store guideline 3.1.1 — it is sold offline), so the consumer
         // paywall must never open on a fleet batch. The count message above is
         // the whole answer there.
-        if (!orgId) setPaywall(true);
+        if (!orgId) openPaywall("vehicles");
         return;
       }
       if (e instanceof ApiError && e.status === 409) {
@@ -301,7 +301,6 @@ export function BatchReviewPage({ batchId }: { batchId: string }) {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-3 pb-28">
-      <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
 
       {/* ── progress header ─────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 -mx-4 border-b border-border bg-bg/90 px-4 py-2 backdrop-blur dark:border-border-dark dark:bg-bg-dark/90">

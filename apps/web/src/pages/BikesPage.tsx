@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
-import { PaywallSheet } from "@/components/PaywallSheet";
+import { usePaywall } from "@/components/paywall/PaywallContext";
+import { useProAvailable } from "@/hooks/useProAvailable";
 import { useBikes } from "@/hooks/useBikes";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { VehicleAvatar } from "@/components/VehicleAvatar";
@@ -24,7 +25,8 @@ import { SharedVehicleBadge } from "@/components/share/SharedVehicleBadge";
 function GarageFullBanner() {
   const { t } = useTranslation();
   const ent = useEntitlement();
-  const [paywall, setPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
+  const proAvailable = useProAvailable();
   if (!ent.data || ent.data.canAddVehicle) return null;
   return (
     <>
@@ -36,15 +38,14 @@ function GarageFullBanner() {
               {t("paywall.garageFull", { used: ent.data.activeVehicles, max: ent.data.maxVehicles })}
             </div>
             <div className="text-[13px] text-muted dark:text-muted-dark">
-              {t("paywall.garageFullSub")}
+              {proAvailable ? t("pro.garageFullSub") : t("paywall.garageFullSub")}
             </div>
           </div>
         </div>
-        <Button size="sm" variant="accent" onClick={() => setPaywall(true)}>
-          {t("paywall.choosePack")}
+        <Button size="sm" variant="accent" onClick={() => openPaywall("vehicles")}>
+          {proAvailable ? t("pro.upgrade") : t("paywall.choosePack")}
         </Button>
       </Card>
-      <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
     </>
   );
 }

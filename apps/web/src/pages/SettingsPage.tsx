@@ -31,8 +31,12 @@ import {
   type PushDiag,
 } from "@/lib/nativePush";
 import { useEntitlement } from "@/hooks/useEntitlement";
+import { useProAvailable } from "@/hooks/useProAvailable";
 import { useMe } from "@/hooks/useMe";
-import { PaywallSheet } from "@/components/PaywallSheet";
+import { usePaywall } from "@/components/paywall/PaywallContext";
+import { manageSubscriptions } from "@/lib/nativeIap";
+import { formatDate } from "@/lib/format";
+import { isProProductId } from "@mototracker/shared";
 
 /**
  * Subscription section: always visible so the upgrade/manage path isn't only
@@ -41,31 +45,50 @@ import { PaywallSheet } from "@/components/PaywallSheet";
 function SubscriptionCard() {
   const { t } = useTranslation();
   const ent = useEntitlement();
-  const [paywall, setPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
   const d = ent.data;
+  const pro = d?.pro === true;
+  const proAvailable = useProAvailable();
+  // A pack bought before Pro existed is still a paid plan — say what it is.
+  const legacyPack = pro && d?.productId && !isProProductId(d.productId) && d.tier !== "unlimited";
   return (
-    <Card>
+    <Card className={pro ? "ring-1 ring-accent/40" : undefined}>
       <SectionHeader icon={<Crown className="h-3.5 w-3.5" />} label={t("settings.subscription")} />
       <CardContent className="gap-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-[14px] font-semibold">
-              {d && d.tier !== "free"
-                ? t("paywall.tierVehicles", { count: d.maxVehicles })
-                : t("settings.freePlan")}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[14px] font-semibold">
+              {pro ? t("pro.active") : t("pro.freePlan")}
+              {pro && (
+                <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-black">{t("pro.badge")}</span>
+              )}
             </div>
             <div className="text-[13px] text-muted dark:text-muted-dark">
-              {d
-                ? t("settings.vehiclesUsed", { used: d.activeVehicles, max: d.maxVehicles })
-                : "…"}
+              {!d
+                ? "…"
+                : legacyPack
+                  ? t("paywall.tierVehicles", { count: d.maxVehicles })
+                  : pro && d.expiresAt
+                    ? t("pro.activeUntil", { date: formatDate(d.expiresAt.slice(0, 10)) })
+                    : d.scanLimit != null
+                      ? t("pro.scansLeft", { left: Math.max(0, d.scanLimit - (d.scansUsed ?? 0)) })
+                      : t("settings.vehiclesUsed", { used: d.activeVehicles, max: d.maxVehicles })}
             </div>
           </div>
-          <Button size="sm" variant="accent" onClick={() => setPaywall(true)}>
-            {d && d.tier !== "free" ? t("settings.changePack") : t("paywall.choosePack")}
-          </Button>
+          {pro ? (
+            d?.tier !== "unlimited" && (
+              <Button size="sm" variant="outline" onClick={() => void manageSubscriptions()}>
+                {t("pro.manage")}
+              </Button>
+            )
+          ) : (
+            // Until Pro is on sale here, the garage packs are what can be bought.
+            <Button size="sm" variant="accent" onClick={() => openPaywall(proAvailable ? "generic" : "vehicles")}>
+              {proAvailable ? t("pro.upgrade") : t("paywall.choosePack")}
+            </Button>
+          )}
         </div>
       </CardContent>
-      <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
     </Card>
   );
 }

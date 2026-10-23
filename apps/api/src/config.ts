@@ -247,6 +247,19 @@ const Env = z.object({
     .union([z.literal("true"), z.literal("false")])
     .transform((v) => v === "true")
     .default("false"),
+  /**
+   * Enforce the FREE plan's allowances (monthly scans, glovebox files).
+   *
+   * Off until the Garajım Pro subscriptions are APPROVED in App Store Connect.
+   * The web app reaches every installed binary the moment it deploys, so
+   * turning a limit on before there is anything to buy would put a wall in
+   * front of users with no door in it. Flip to true once StoreKit returns the
+   * pro.* products on a production device.
+   */
+  PRO_LIMITS_ENFORCED: z
+    .union([z.literal("true"), z.literal("false")])
+    .transform((v) => v === "true")
+    .default("false"),
 });
 
 export type AppEnv = z.infer<typeof Env>;

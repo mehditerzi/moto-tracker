@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/toaster";
 import { InstallBanner } from "@/components/InstallBanner";
 import { ConfirmProvider } from "@/components/ConfirmSheet";
+import { PaywallProvider } from "@/components/paywall/PaywallContext";
 
 // Every page is its own chunk. Statically importing all of them put the map,
 // the document scanner and every form into the entry bundle, so opening the
@@ -37,6 +38,13 @@ const DocumentCapturePage = lazy(() => import("@/pages/DocumentCapturePage").the
 const DocumentReviewPage = lazy(() => import("@/pages/DocumentReviewPage").then((m) => ({ default: m.DocumentReviewPage })));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const CostsPage = lazy(() => import("@/pages/CostsPage").then((m) => ({ default: m.CostsPage })));
+const AssistantPage = lazy(() => import("@/pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
+const MechanicsPage = lazy(() => import("@/pages/MechanicsPage").then((m) => ({ default: m.MechanicsPage })));
+const GloveboxPage = lazy(() => import("@/pages/GloveboxPage").then((m) => ({ default: m.GloveboxPage })));
+const WarningLightsPage = lazy(() => import("@/pages/WarningLightsPage").then((m) => ({ default: m.WarningLightsPage })));
+const NearbyPage = lazy(() => import("@/pages/NearbyPage").then((m) => ({ default: m.NearbyPage })));
+const SosPage = lazy(() => import("@/pages/SosPage").then((m) => ({ default: m.SosPage })));
 const MaintenanceFormPage = lazy(() => import("@/pages/MaintenanceFormPage").then((m) => ({ default: m.MaintenanceFormPage })));
 
 // Fleet. Split exactly like every other page so none of it reaches a consumer's
@@ -177,6 +185,13 @@ const router = createBrowserRouter([
       { path: "trips", element: pane(<TripsPage />) },
       { path: "fuel", element: pane(<FuelPage />) },
       { path: "map", element: fullBleed(<MapPage />) },
+      { path: "costs", element: pane(<CostsPage />) },
+      { path: "assistant", element: pane(<AssistantPage />) },
+      { path: "mechanics", element: pane(<MechanicsPage />) },
+      { path: "glovebox", element: pane(<GloveboxPage />) },
+      { path: "warning-lights", element: pane(<WarningLightsPage />) },
+      { path: "nearby", element: pane(<NearbyPage />) },
+      { path: "sos", element: pane(<SosPage />) },
       { path: "bikes/new", element: pane(<BikeFormPage />) },
       { path: "bikes/:id/edit", element: pane(<BikeFormPage />) },
       {
@@ -223,6 +238,7 @@ export function Routes() {
   return (
     <QueryClientProvider client={queryClient}>
       <ConfirmProvider>
+        <PaywallProvider>
         <RouterProvider
           router={router}
           // Navigations run inside startTransition, so React keeps the page you
@@ -230,6 +246,7 @@ export function Routes() {
           // swapping it for a fallback — those are only seen on a cold start.
           future={{ v7_startTransition: true }}
         />
+        </PaywallProvider>
       </ConfirmProvider>
       <Toaster />
       <InstallBanner />

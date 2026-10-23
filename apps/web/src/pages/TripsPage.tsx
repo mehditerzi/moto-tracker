@@ -10,7 +10,7 @@ import { useBikes } from "@/hooks/useBikes";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { TripMap } from "@/components/TripMap";
 import { vehicleIcon } from "@/lib/vehicleType";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import {
   useTripTrackingEnabled,
   setTripTrackingEnabled,
@@ -192,8 +192,8 @@ function TripInsights({ trips }: { trips: { distanceKm: number; endedAt: string 
   return (
     <Card>
       <CardContent className="grid grid-cols-3 gap-3 p-4">
-        {stat(t("trips.thisMonth"), `${Math.round(monthKm).toLocaleString()} km`)}
-        {stat(t("trips.totalKm"), `${Math.round(totalKm).toLocaleString()} km`)}
+        {stat(t("trips.thisMonth"), `${formatNumber(monthKm)} km`)}
+        {stat(t("trips.totalKm"), `${formatNumber(totalKm)} km`)}
         {stat(t("trips.count"), String(trips.length))}
       </CardContent>
     </Card>

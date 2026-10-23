@@ -26,12 +26,13 @@ import { useCreateDatedItem } from "@/hooks/useDatedItems";
 import { useCreateFuelLog } from "@/hooks/useFuelLogs";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError, isVehicleLimitError } from "@/lib/apiError";
-import { PaywallSheet } from "@/components/PaywallSheet";
+import { usePaywall } from "@/components/paywall/PaywallContext";
 import { track } from "@/lib/telemetry";
 import { ScanFrame } from "@/pages/DocumentCapturePage";
 import { env } from "@/env";
 import { cn } from "@/lib/cn";
 import type { Bike, VehicleType } from "@mototracker/shared";
+import { formatMoney } from "@/lib/format";
 
 /**
  * How long we wait before escalating the "still reading" copy. OCR is a queued
@@ -373,7 +374,7 @@ function RuhsatReviewForm({
   const update = useUpdateBike(bikeId ?? "");
   const create = useCreateBike();
   const [saved, setSaved] = useState(false);
-  const [paywall, setPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
   const [createdBikeId, setCreatedBikeId] = useState<string | null>(null);
   // Seeded from what OCR read, most specific first: "Ducati Monster" beats the
   // plate, which beats nothing. The field is visible from the start — it used to
@@ -458,7 +459,7 @@ function RuhsatReviewForm({
       pushToast({ variant: "success", title: t("bike.added") });
     } catch (e) {
       if (isVehicleLimitError(e)) {
-        setPaywall(true);
+        openPaywall("vehicles");
         return;
       }
       pushToast({ variant: "danger", title: t("items.saveFailed"), description: friendlyError(e, t) });
@@ -467,7 +468,6 @@ function RuhsatReviewForm({
 
   return (
     <>
-    <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />
     <Card>
       <CardHeader>
         <CardTitle className="inline-flex items-center gap-2">
@@ -977,7 +977,7 @@ function FuelReceiptReviewForm({
 
         {fuel?.unitPrice != null && (
           <p className="text-xs text-muted dark:text-muted-dark">
-            {t("review.unitPrice")}: <span className="num">₺{fuel.unitPrice.toFixed(2)}/L</span>
+            {t("review.unitPrice")}: <span className="num">{formatMoney(fuel.unitPrice, 2)}/L</span>
           </p>
         )}
 

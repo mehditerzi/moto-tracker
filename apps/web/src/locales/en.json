@@ -9,7 +9,9 @@
     "map": "Map",
     "settings": "Settings",
     "signOut": "Sign out",
-    "fleet": "Fleet"
+    "fleet": "Fleet",
+    "costs": "Costs",
+    "assistant": "Assistant"
   },
   "map": {
     "title": "Map",
@@ -228,7 +230,15 @@
     "edit": "Edit",
     "upcoming": "Upcoming",
     "updateKm": "Update km",
-    "addKm": "Add km"
+    "addKm": "Add km",
+    "quick": "Quick actions",
+    "spentThisMonth": "Spent on this vehicle this month",
+    "action": {
+      "costs": "Cost",
+      "fuel": "Fuel",
+      "glovebox": "Glovebox",
+      "sos": "SOS"
+    }
   },
   "items": {
     "sigorta": "Insurance",
@@ -491,7 +501,16 @@
     "dismiss": "Dismiss",
     "close": "Close",
     "retry": "Try again",
-    "done": "Done"
+    "done": "Done",
+    "delete": "Delete",
+    "saving": "Saving…",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "call": "Call",
+    "directions": "Directions",
+    "share": "Share",
+    "clear": "Clear"
   },
   "paywall": {
     "title": "Add more vehicles",
@@ -647,7 +666,11 @@
     "share_last_owner": "A shared garage must keep an owner. Delete the garage instead.",
     "share_invite_not_found": "This invitation is no longer valid.",
     "share_invite_expired": "This invitation has expired.",
-    "share_invite_email_mismatch": "This invitation was sent to a different email address."
+    "share_invite_email_mismatch": "This invitation was sent to a different email address.",
+    "scan_limit_reached": "You've used this month's free scans.",
+    "attachment_limit_reached": "You've reached the free plan's glovebox limit.",
+    "pro_required": "This feature is part of Garajım Pro.",
+    "limit_reached": "This list can't take any more entries."
   },
   "fleet": {
     "orgVehicle": {
@@ -888,5 +911,306 @@
     "inGroups": "Groups:",
     "badgeSharedGroups_one": "in {{count}} shared group",
     "badgeSharedGroups_other": "in {{count}} shared groups"
+  },
+  "pro": {
+    "title": "Garajım Pro",
+    "welcome": "Welcome to Garajım Pro!",
+    "badge": "PRO",
+    "reason": {
+      "vehicles": "Track every vehicle in your household in one place. Pro adds unlimited vehicles.",
+      "scans": "You've used this month's {{limit}} free scans. Pro lets you scan as many documents as you like.",
+      "export": "Export every expense to Excel and share it with your accountant in one tap.",
+      "glovebox": "Registration, policies and invoices — all in your digital glovebox, always with you.",
+      "generic": "Everything about your vehicle, unlimited. Never miss a date, see what it costs, carry your papers."
+    },
+    "benefit": {
+      "vehicles": {
+        "title": "Unlimited vehicles",
+        "body": "Cars, motorcycles — the whole family's in one garage."
+      },
+      "scans": {
+        "title": "Unlimited document scans",
+        "body": "Policies, inspections and receipts read automatically."
+      },
+      "export": {
+        "title": "Cost report & Excel",
+        "body": "Cost per km, monthly breakdown, CSV export."
+      },
+      "glovebox": {
+        "title": "Unlimited digital glovebox",
+        "body": "Registration, licence, invoices and warranties."
+      },
+      "sharing": {
+        "title": "Share with family",
+        "body": "Share vehicles with your partner, mechanic or family."
+      }
+    },
+    "choosePlan": "Choose a plan",
+    "plan": {
+      "yearly": "Yearly",
+      "monthly": "Monthly"
+    },
+    "per": {
+      "yearly": "per year",
+      "monthly": "per month"
+    },
+    "save": "Save {{percent}}%",
+    "perMonthEquivalent": "just {{price}} a month",
+    "startTrial_one": "Try {{count}} day free",
+    "startTrial_other": "Try {{count}} days free",
+    "subscribe": "Go Pro",
+    "trialThen_one": "{{count}} day free, then {{price}} {{period}}. Cancel anytime.",
+    "trialThen_other": "{{count}} days free, then {{price}} {{period}}. Cancel anytime.",
+    "renews": "Renews at {{price}} {{period}}. Cancel anytime.",
+    "legal": "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Any unused portion of a free trial is forfeited when a subscription is purchased. Manage or cancel in your App Store account settings.",
+    "webNotice": "Garajım Pro is purchased through the App Store in the iPhone app. Pro you buy there also works on the web with the same account.",
+    "openAppStore": "Open in the App Store",
+    "unavailableTitle": "Pro couldn't load right now",
+    "unavailableBody": "We couldn't reach the App Store. Check your connection and try again.",
+    "active": "Pro is active",
+    "activeUntil": "Renews on {{date}}",
+    "manage": "Manage subscription",
+    "upgrade": "Go Pro",
+    "freePlan": "Free plan",
+    "scansLeft": "{{left}} scans left this month",
+    "unlockCta": "Unlock Pro",
+    "garageFullSub": "Go Pro for unlimited vehicles."
+  },
+  "costs": {
+    "title": "Costs",
+    "noVehicle": "Add a vehicle first to track its costs.",
+    "last12": "Last 12 months",
+    "perKm": "per km",
+    "thisMonth": "This month",
+    "noData": "Nothing yet. As you add fuel, maintenance, insurance and other costs, your vehicle's real running cost appears here.",
+    "source": {
+      "fuel": "Fuel",
+      "maintenance": "Maintenance",
+      "document": "Insurance/tax",
+      "expense": "Other"
+    },
+    "byMonth": "Monthly spend",
+    "byCategory": "By type",
+    "add": "Quick add",
+    "addTitle": "Add a cost",
+    "editTitle": "Edit cost",
+    "sheetSub": "Amount and date are enough; the rest is optional.",
+    "categoryLabel": "Cost type",
+    "amount": "Amount",
+    "vendor": "Where / vendor",
+    "vendorPh": "e.g. car park, Shell, car wash",
+    "saved": "Cost saved",
+    "history": "Cost history",
+    "empty": "No costs yet",
+    "emptySub": "Parking, tolls, washes, repairs… Pick a type above and add it in seconds.",
+    "deleteConfirm": "Delete this cost?",
+    "export": "Export to Excel",
+    "fuelLink": "Fuel log",
+    "fuelLinkSub": "Fill-ups, average consumption and price per litre",
+    "category": {
+      "repair": "Repair",
+      "parts": "Parts",
+      "tires": "Tyres",
+      "wash": "Wash",
+      "parking": "Parking",
+      "toll": "Bridge / toll",
+      "fine": "Fine",
+      "tax": "Tax",
+      "insurance": "Insurance",
+      "accessory": "Accessory",
+      "other": "Other"
+    }
+  },
+  "assistant": {
+    "title": "Vehicle assistant",
+    "sos": "Emergency (SOS)",
+    "sosSub": "Share your location, call 112, what to do after a crash",
+    "proSub": "Unlimited vehicles, scans, cost report and glovebox",
+    "tools": {
+      "costs": {
+        "title": "Costs",
+        "sub": "Total cost, ₺ per km"
+      },
+      "glovebox": {
+        "title": "Digital glovebox",
+        "sub": "Registration, licence, invoices"
+      },
+      "mechanics": {
+        "title": "My mechanics",
+        "sub": "Call in one tap"
+      },
+      "nearby": {
+        "title": "Nearby",
+        "sub": "Fuel, charging, repair"
+      },
+      "lights": {
+        "title": "Warning lights",
+        "sub": "What does it mean?"
+      },
+      "trips": {
+        "title": "Trips",
+        "sub": "Automatic drive log"
+      },
+      "groups": {
+        "title": "Groups",
+        "sub": "Organise your vehicles"
+      },
+      "settings": {
+        "title": "Settings",
+        "sub": "Notifications, language, account"
+      }
+    }
+  },
+  "mechanics": {
+    "title": "My mechanics",
+    "subtitle": "Save the mechanics, tyre shop and tow service you trust and call them in one tap when you need them.",
+    "empty": "No mechanics yet",
+    "emptySub": "Add your own, or find garages nearby on the map and save them in one tap.",
+    "add": "Add mechanic",
+    "edit": "Edit mechanic",
+    "findNearby": "Find nearby",
+    "favorite": "Favourite",
+    "addPhone": "Add phone",
+    "name": "Name / business",
+    "namePh": "e.g. Joe's Garage, City Tyres",
+    "specialtyLabel": "Speciality",
+    "phone": "Phone",
+    "address": "Address",
+    "notes": "Note",
+    "notesPh": "e.g. open Saturdays, issues invoices",
+    "saved": "Mechanic saved",
+    "deleteConfirm": "Delete this mechanic?",
+    "waGreeting": "Hello, I'd like to ask about my vehicle.",
+    "specialty": {
+      "general": "General repair",
+      "electric": "Auto electrics",
+      "tires": "Tyres",
+      "body": "Bodywork",
+      "paint": "Paint",
+      "glass": "Glass",
+      "tow": "Towing / recovery",
+      "motorcycle": "Motorcycle",
+      "dealer": "Dealer service",
+      "other": "Other"
+    }
+  },
+  "glovebox": {
+    "title": "Digital glovebox",
+    "subtitle": "Registration, licence, policies, invoices and warranties — always on your phone, at a roadside check, at the garage or when you sell.",
+    "photo": "Take photo",
+    "fromFiles": "Photos / PDF",
+    "all": "All",
+    "empty": "Your glovebox is empty",
+    "emptySub": "Add your first document: photograph your registration or pick a PDF.",
+    "addTitle": "Add to glovebox",
+    "kindLabel": "Document type",
+    "name": "Name",
+    "expires": "Valid until",
+    "expiresHint": "For documents that expire, like a licence or warranty.",
+    "personal": "Personal document (not tied to this vehicle)",
+    "saved": "Added to glovebox",
+    "validUntil": "Valid until {{date}}",
+    "deleteConfirm": "Delete this document?",
+    "pdf": "PDF document",
+    "openPdf": "Open / share PDF",
+    "kind": {
+      "registration": "Registration",
+      "license": "Driving licence",
+      "insurance": "Insurance",
+      "kasko": "Comprehensive",
+      "inspection": "Inspection",
+      "invoice": "Invoice",
+      "service": "Service record",
+      "warranty": "Warranty",
+      "other": "Other"
+    }
+  },
+  "lights": {
+    "title": "Warning lights",
+    "subtitle": "Find out what a dashboard light means and what to do about it.",
+    "search": "Search (e.g. oil, ABS, battery)",
+    "filter": "By colour",
+    "color": {
+      "all": "All",
+      "red": "Red",
+      "amber": "Amber",
+      "green": "Green / blue"
+    },
+    "urgency": {
+      "red": "Stop now",
+      "amber": "Get it checked soon",
+      "green": "Information"
+    },
+    "meaning": "What it means",
+    "action": "What to do",
+    "none": "No light matches your search.",
+    "disclaimer": "General guidance only; symbols vary by manufacturer. Check your owner's manual for specifics."
+  },
+  "nearby": {
+    "title": "Nearby",
+    "category": "What are you looking for?",
+    "locating": "Finding you…",
+    "searching": "Searching…",
+    "recenter": "Go to my location",
+    "noLocation": "We couldn't get your location. Allow location for Garajım in Settings, or search the area shown on the map.",
+    "searchMapArea": "Search this area",
+    "none": "Nothing found nearby.",
+    "mapError": "The map couldn't load right now.",
+    "saveMechanic": "Save to my mechanics",
+    "cat": {
+      "fuel": "Fuel",
+      "ev": "Charging",
+      "service": "Repair",
+      "tires": "Tyres",
+      "parking": "Parking",
+      "wash": "Car wash",
+      "tow": "Towing",
+      "hospital": "Hospital"
+    }
+  },
+  "sos": {
+    "eyebrow": "EMERGENCY",
+    "title": "SOS",
+    "shareTitle": "Share your location",
+    "shareSub": "Send your exact location to your emergency contacts by SMS or WhatsApp.",
+    "getLocation": "Find my location",
+    "locating": "Finding you…",
+    "refresh": "Refresh location",
+    "copy": "Copy",
+    "copied": "Copied",
+    "smsContacts_one": "Text {{count}} contact",
+    "smsContacts_other": "Text {{count}} contacts",
+    "message": "EMERGENCY: I need help. My location: {{url}} (Garajım)",
+    "locError": {
+      "denied": "No location permission. Allow it in Settings > Garajım > Location.",
+      "timeout": "Couldn't get a fix — try again somewhere open.",
+      "unavailable": "Location is unavailable right now.",
+      "unsupported": "This device can't share its location."
+    },
+    "call": "Call now",
+    "numbers": {
+      "emergency": "Emergency (ambulance, police, fire)",
+      "police": "Police",
+      "gendarmerie": "Gendarmerie",
+      "fire": "Fire brigade"
+    },
+    "contacts": "Emergency contacts",
+    "contactsSub": "Your location goes to these people in one tap.",
+    "addContact": "Add contact",
+    "contactName": "Name",
+    "removeConfirm": "Remove {{name}} from emergency contacts?",
+    "accident": {
+      "title": "What to do after a crash",
+      "sub": "Step-by-step checklist",
+      "steps": [
+        "Turn on your hazards, move to safety if you can, and place the warning triangle 30–50 m behind the car.",
+        "If anyone is hurt, call 112. Don't move an injured person unless there's immediate danger such as fire.",
+        "If there's only damage and both sides agree, you don't have to call the police — fill in the agreed accident report together.",
+        "Photograph the cars' positions, damage, plates and surroundings from several angles — you can keep them in your Garajım glovebox.",
+        "Take the other driver's licence, registration and insurance policy details.",
+        "If you disagree, anyone is injured or alcohol is suspected, don't move the cars and call 155 / 156.",
+        "Report the accident to your insurer (and comprehensive cover) within 5 working days."
+      ]
+    }
   }
 }

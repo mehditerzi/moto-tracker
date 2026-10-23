@@ -40,6 +40,8 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finishTransactions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "manageSubscriptions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestReview", returnType: CAPPluginReturnPromise),
         // addListener / removeAllListeners are provided by the Capacitor bridge
         // itself (see JSExport.createPluginHeader) — declaring them here would
         // duplicate them in the generated JS shim.
@@ -123,13 +125,11 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.cacheProducts(products.map { ($0.id, $0 as Any) })
                 let resolved = Set(products.map { $0.id })
                 let missing = ids.filter { !resolved.contains($0) }
-                let payload = products.map { product in
-                    [
-                        "id": product.id,
-                        "displayName": product.displayName,
-                        // Localized, currency-formatted for the user's storefront.
-                        "displayPrice": product.displayPrice,
-                    ]
+                // Localized, currency-formatted prices for the user's storefront,
+                // plus the offer details — see `describe`.
+                var payload: [[String: Any]] = []
+                for product in products {
+                    payload.append(await StoreKitPlugin.describe(product))
                 }
                 let storefront = await Storefront.current
                 call.resolve([
@@ -326,6 +326,103 @@ public class StoreKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // MARK: - Error mapping
+
+    // MARK: - product description
+
+    /// Everything the paywall needs to state an offer honestly: the numeric
+    /// price (for "₺29/ay" maths), the billing period, and the introductory
+    /// offer together with whether THIS Apple ID may still take it — Apple
+    /// allows one intro offer per subscription group, ever, so a paywall that
+    /// promises "7 days free" to someone who already used it is lying.
+    @available(iOS 15.0, *)
+    private static func describe(_ product: Product) async -> [String: Any] {
+        var out: [String: Any] = [
+            "id": product.id,
+            "displayName": product.displayName,
+            "displayPrice": product.displayPrice,
+            "price": NSDecimalNumber(decimal: product.price).doubleValue,
+        ]
+        if #available(iOS 16.0, *) {
+            out["currencyCode"] = product.priceFormatStyle.currencyCode
+        }
+        if let sub = product.subscription {
+            out["period"] = periodJSON(sub.subscriptionPeriod)
+            if let intro = sub.introductoryOffer {
+                out["introOffer"] = [
+                    "paymentMode": paymentModeName(intro.paymentMode),
+                    "displayPrice": intro.displayPrice,
+                    "period": periodJSON(intro.period),
+                    "periodCount": intro.periodCount,
+                ] as [String: Any]
+            } else {
+                out["introOffer"] = NSNull()
+            }
+            out["eligibleForIntro"] = await sub.isEligibleForIntroOffer
+        }
+        return out
+    }
+
+    @available(iOS 15.0, *)
+    private static func periodJSON(_ p: Product.SubscriptionPeriod) -> [String: Any] {
+        let unit: String
+        switch p.unit {
+        case .day: unit = "day"
+        case .week: unit = "week"
+        case .month: unit = "month"
+        case .year: unit = "year"
+        @unknown default: unit = "month"
+        }
+        return ["unit": unit, "value": p.value]
+    }
+
+    @available(iOS 15.0, *)
+    private static func paymentModeName(_ m: Product.SubscriptionOffer.PaymentMode) -> String {
+        switch m {
+        case .freeTrial: return "freeTrial"
+        case .payAsYouGo: return "payAsYouGo"
+        case .payUpFront: return "payUpFront"
+        default: return "freeTrial"
+        }
+    }
+
+    // MARK: - manage subscriptions / rating prompt
+
+    /// Apple's own subscription management sheet, inside the app.
+    @objc func manageSubscriptions(_ call: CAPPluginCall) {
+        guard #available(iOS 15.0, *) else {
+            call.reject("iap_unsupported_os")
+            return
+        }
+        Task { @MainActor in
+            guard let scene = self.bridge?.viewController?.view.window?.windowScene else {
+                call.reject("iap_no_window")
+                return
+            }
+            do {
+                try await AppStore.showManageSubscriptions(in: scene)
+                call.resolve()
+            } catch {
+                call.reject("iap_manage_failed", nil, error)
+            }
+        }
+    }
+
+    /// Ask StoreKit for the rating prompt. Apple decides whether it appears
+    /// (at most three times a year), so success means "asked", not "shown".
+    @objc func requestReview(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard let scene = self.bridge?.viewController?.view.window?.windowScene else {
+                call.reject("review_no_window")
+                return
+            }
+            if #available(iOS 16.0, *) {
+                AppStore.requestReview(in: scene)
+            } else {
+                SKStoreReviewController.requestReview(in: scene)
+            }
+            call.resolve()
+        }
+    }
 
     /// Collapse StoreKit's error zoo into stable, ACTIONABLE codes. Each one has
     /// its own `errors.*` string in the web app, and each one is distinguishable

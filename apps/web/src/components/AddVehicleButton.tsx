@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { IAP_PRODUCT_IDS } from "@mototracker/shared";
+import { PRO_PRODUCT_IDS } from "@mototracker/shared";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { addVehicleIntent } from "@/pages/fleet/vehicleTarget";
-import { PaywallSheet } from "@/components/PaywallSheet";
+import { usePaywall } from "@/components/paywall/PaywallContext";
 import { fetchProductCatalog, isNativeIapAvailable } from "@/lib/nativeIap";
 
 /**
@@ -17,7 +17,7 @@ import { fetchProductCatalog, isNativeIapAvailable } from "@/lib/nativeIap";
  * passes it). That path is a different product: the ceiling is the org's, sold
  * offline, so the consumer paywall is not merely unnecessary but forbidden —
  * docs/fleet-design.md §1 / App Store Guideline 3.1.1. Hence no entitlement
- * query, no StoreKit warm-up and no `<PaywallSheet>` in the tree at all; the
+ * query, no StoreKit warm-up and no paywall at all; the
  * decision itself lives in `addVehicleIntent`.
  */
 export function AddVehicleButton({
@@ -38,7 +38,7 @@ export function AddVehicleButton({
 }) {
   const navigate = useNavigate();
   const { data } = useEntitlement({ enabled: !orgId });
-  const [paywall, setPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
 
   // The user is already at the cap, so the next tap opens the paywall. Warm the
   // StoreKit catalogue now (it's cached in nativeIap) so the sheet opens with
@@ -46,14 +46,14 @@ export function AddVehicleButton({
   const atLimit = !orgId && data ? !data.canAddVehicle : false;
   useEffect(() => {
     if (!atLimit || !isNativeIapAvailable()) return;
-    void fetchProductCatalog([...IAP_PRODUCT_IDS]).catch(() => {
+    void fetchProductCatalog([...PRO_PRODUCT_IDS]).catch(() => {
       /* the paywall retries and reports properly */
     });
   }, [atLimit]);
 
   function onClick() {
     const intent = addVehicleIntent(orgId, data);
-    if (intent.kind === "paywall") setPaywall(true);
+    if (intent.kind === "paywall") openPaywall("vehicles");
     else navigate(intent.to);
   }
 
@@ -62,7 +62,6 @@ export function AddVehicleButton({
       <Button size={size} variant={variant} className={className} onClick={onClick} disabled={disabled}>
         {children}
       </Button>
-      {!orgId && <PaywallSheet open={paywall} onClose={() => setPaywall(false)} />}
     </>
   );
 }

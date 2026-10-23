@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import type { EconomyPoint, MonthSpend } from "@/lib/fuelEconomy";
+import { formatMoney, formatNumber } from "@/lib/format";
 
 // Hand-rolled SVG charts — deliberately no charting dependency. Everything is
 // sized in a fixed viewBox and stretched to the card width, so there's no
@@ -50,7 +51,7 @@ export function MonthlySpendChart({ months }: { months: MonthSpend[] }) {
                     className="fill-current text-muted dark:text-muted-dark"
                     fontSize={9}
                   >
-                    ₺{Math.round(m.total).toLocaleString()}
+                    {formatMoney(m.total)}
                   </text>
                 )}
                 <text
@@ -89,7 +90,7 @@ export function EconomyTrendChart({ points }: { points: EconomyPoint[] }) {
       <CardContent className="flex flex-col gap-2 p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted dark:text-muted-dark">{t("fuel.economyTrend")}</span>
-          <span className="num text-[13px] font-semibold">{last.l100.toFixed(1)} L/100km</span>
+          <span className="num text-[13px] font-semibold">{formatNumber(last.l100, 1)} L/100km</span>
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={t("fuel.economyTrend")}>
           <path d={path} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" className="stroke-accent" />

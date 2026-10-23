@@ -10,7 +10,7 @@ import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { Field, FormRow } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
-import { VehicleAvatar } from "@/components/VehicleAvatar";
+import { VehicleBar } from "@/components/VehicleBar";
 import { AddVehicleButton } from "@/components/AddVehicleButton";
 import { ErrorState } from "@/components/ErrorState";
 import { useConfirm } from "@/components/ConfirmSheet";
@@ -20,7 +20,7 @@ import { useDatedItemsForBike } from "@/hooks/useDatedItems";
 import { fuelSummary, economySeries, monthlySpend } from "@/lib/fuelEconomy";
 import { MonthlySpendChart, EconomyTrendChart } from "@/components/FuelCharts";
 import { getActiveBikeId, storeActiveBikeId } from "@/hooks/useActiveBike";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { pushToast } from "@/hooks/useToast";
 import { friendlyError } from "@/lib/apiError";
 import { track } from "@/lib/telemetry";
@@ -147,55 +147,6 @@ export function FuelPage() {
  * name/plate belong to whatever the picker currently reads, so there is never a
  * moment where the numbers below say one thing and the header another.
  */
-function VehicleBar({
-  bike,
-  bikes,
-  onChange,
-}: {
-  bike: Bike;
-  bikes: Bike[];
-  onChange: (id: string) => void;
-}) {
-  const { t } = useTranslation();
-  const many = bikes.length > 1;
-  return (
-    <Card className="p-3 sm:p-3">
-      <div className="flex items-center gap-3">
-        <VehicleAvatar vehicle={bike} size="thumb" className="h-12 w-12 shrink-0 rounded-xl" />
-        <div className="min-w-0 flex-1">
-          <div className="label-micro text-muted dark:text-muted-dark">{t("fuel.vehicle")}</div>
-          {many ? (
-            <Select
-              className="mt-1 font-medium"
-              value={bike.id}
-              onChange={(e) => onChange(e.target.value)}
-              aria-label={t("fuel.switchVehicle")}
-            >
-              {bikes.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.nickname}
-                  {b.plate ? ` · ${b.plate}` : ""}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="truncate text-[16px] font-semibold leading-tight">
-                {bike.nickname}
-              </span>
-              {bike.plate && (
-                <span className="num shrink-0 text-[12px] text-muted dark:text-muted-dark">
-                  {bike.plate}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -216,17 +167,17 @@ function SummaryCard({ summary }: { summary: ReturnType<typeof fuelSummary> }) {
       <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
           label={t("fuel.economy")}
-          value={summary.avgL100 != null ? `${summary.avgL100.toFixed(1)} L` : dash}
+          value={summary.avgL100 != null ? `${formatNumber(summary.avgL100, 1)} L` : dash}
         />
         <Stat
           label={t("fuel.costPerKm")}
-          value={summary.costPerKm != null ? `₺${summary.costPerKm.toFixed(2)}` : dash}
+          value={summary.costPerKm != null ? formatMoney(summary.costPerKm, 2) : dash}
         />
         <Stat
           label={t("fuel.pricePerLiter")}
-          value={summary.pricePerLiter != null ? `₺${summary.pricePerLiter.toFixed(2)}` : dash}
+          value={summary.pricePerLiter != null ? formatMoney(summary.pricePerLiter, 2) : dash}
         />
-        <Stat label={t("fuel.last30")} value={`₺${Math.round(summary.last30Spend).toLocaleString()}`} />
+        <Stat label={t("fuel.last30")} value={formatMoney(summary.last30Spend)} />
       </CardContent>
     </Card>
   );
@@ -236,7 +187,7 @@ function CostsCard({ fuelTotal, premiumTotal }: { fuelTotal: number; premiumTota
   const { t } = useTranslation();
   const total = fuelTotal + premiumTotal;
   if (total <= 0) return null;
-  const tl = (n: number) => `₺${Math.round(n).toLocaleString()}`;
+  const tl = (n: number) => formatMoney(n);
   return (
     <Card>
       <CardContent className="flex flex-col gap-2">
@@ -443,8 +394,8 @@ function FuelRow({
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[14px] font-medium">
               <span>
-                {liters.toLocaleString()} L
-                {cost != null && <span className="text-muted dark:text-muted-dark"> · ₺{cost.toLocaleString()}</span>}
+                {formatNumber(liters, liters % 1 ? 2 : 0)} L
+                {cost != null && <span className="text-muted dark:text-muted-dark"> · {formatMoney(cost, cost % 1 ? 2 : 0)}</span>}
               </span>
               {!isFull && (
                 <span className="rounded-full bg-surface-elev px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted dark:bg-surface-elev-dark dark:text-muted-dark">
@@ -456,11 +407,11 @@ function FuelRow({
               <span>{dateLabel}</span>
               {odo != null && (
                 <span className="num inline-flex items-center gap-1">
-                  <Gauge className="h-3 w-3" /> {odo.toLocaleString()}
+                  <Gauge className="h-3 w-3" /> {formatNumber(odo)}
                 </span>
               )}
               {cost != null && liters > 0 && (
-                <span className="num">₺{(cost / liters).toFixed(2)}/L</span>
+                <span className="num">{formatMoney(cost / liters, 2)}/L</span>
               )}
             </div>
           </div>

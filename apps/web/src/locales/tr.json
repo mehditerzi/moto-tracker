@@ -9,7 +9,9 @@
     "map": "Harita",
     "settings": "Ayarlar",
     "signOut": "Çıkış",
-    "fleet": "Filo"
+    "fleet": "Filo",
+    "costs": "Masraflar",
+    "assistant": "Asistan"
   },
   "map": {
     "title": "Harita",
@@ -228,7 +230,15 @@
     "edit": "Düzenle",
     "upcoming": "Yaklaşan",
     "updateKm": "Km güncelle",
-    "addKm": "Km ekle"
+    "addKm": "Km ekle",
+    "quick": "Hızlı erişim",
+    "spentThisMonth": "Bu ay bu araca harcanan",
+    "action": {
+      "costs": "Masraf",
+      "fuel": "Yakıt",
+      "glovebox": "Torpido",
+      "sos": "SOS"
+    }
   },
   "items": {
     "sigorta": "Sigorta",
@@ -491,7 +501,16 @@
     "dismiss": "Kapat",
     "close": "Kapat",
     "retry": "Tekrar dene",
-    "done": "Tamam"
+    "done": "Tamam",
+    "delete": "Sil",
+    "saving": "Kaydediliyor…",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "search": "Ara",
+    "call": "Ara",
+    "directions": "Yol tarifi",
+    "share": "Paylaş",
+    "clear": "Temizle"
   },
   "paywall": {
     "title": "Daha fazla araç ekle",
@@ -647,7 +666,11 @@
     "share_last_owner": "Paylaşımlı bir garajın sahibi olmalı. Bunun yerine garajı sil.",
     "share_invite_not_found": "Bu davet artık geçerli değil.",
     "share_invite_expired": "Bu davetin süresi doldu.",
-    "share_invite_email_mismatch": "Bu davet başka bir e-posta adresine gönderilmiş."
+    "share_invite_email_mismatch": "Bu davet başka bir e-posta adresine gönderilmiş.",
+    "scan_limit_reached": "Bu ayki ücretsiz tarama hakkın doldu.",
+    "attachment_limit_reached": "Ücretsiz plandaki torpido dosya sınırına ulaştın.",
+    "pro_required": "Bu özellik Garajım Pro ile kullanılabilir.",
+    "limit_reached": "Bu listeye daha fazla kayıt eklenemez."
   },
   "fleet": {
     "orgVehicle": {
@@ -888,5 +911,306 @@
     "inGroups": "Gruplar:",
     "badgeSharedGroups_one": "{{count}} paylaşımlı grupta",
     "badgeSharedGroups_other": "{{count}} paylaşımlı grupta"
+  },
+  "pro": {
+    "title": "Garajım Pro",
+    "welcome": "Garajım Pro'ya hoş geldin!",
+    "badge": "PRO",
+    "reason": {
+      "vehicles": "Garajındaki tüm araçları tek yerden takip et. Pro ile sınırsız araç ekle.",
+      "scans": "Bu ayki {{limit}} ücretsiz taramanı kullandın. Pro ile istediğin kadar belge tara.",
+      "export": "Tüm masraflarını Excel'e aktar, muhasebeciyle tek dokunuşla paylaş.",
+      "glovebox": "Ruhsat, poliçe ve faturalarının hepsi dijital torpidoda, her zaman yanında.",
+      "generic": "Aracınla ilgili her şey, sınırsız. Tarihleri kaçırma, masrafları gör, belgeleri yanında taşı."
+    },
+    "benefit": {
+      "vehicles": {
+        "title": "Sınırsız araç",
+        "body": "Otomobil, motosiklet — ailenin tüm araçları tek garajda."
+      },
+      "scans": {
+        "title": "Sınırsız belge tarama",
+        "body": "Poliçe, muayene ve fiş fotoğraflarını otomatik okut."
+      },
+      "export": {
+        "title": "Masraf raporu ve Excel",
+        "body": "Km başı maliyet, aylık dağılım, CSV dışa aktarma."
+      },
+      "glovebox": {
+        "title": "Sınırsız dijital torpido",
+        "body": "Ruhsat, ehliyet, fatura ve garanti belgeleri."
+      },
+      "sharing": {
+        "title": "Aile ile paylaşım",
+        "body": "Araçlarını eşinle, ustanla veya ailenle paylaş."
+      }
+    },
+    "choosePlan": "Plan seç",
+    "plan": {
+      "yearly": "Yıllık",
+      "monthly": "Aylık"
+    },
+    "per": {
+      "yearly": "yıllık",
+      "monthly": "aylık"
+    },
+    "save": "%{{percent}} tasarruf",
+    "perMonthEquivalent": "aylık yalnızca {{price}}",
+    "startTrial_one": "{{count}} gün ücretsiz dene",
+    "startTrial_other": "{{count}} gün ücretsiz dene",
+    "subscribe": "Pro'ya geç",
+    "trialThen_one": "{{count}} gün ücretsiz, sonra {{price}} {{period}}. İstediğin an iptal et.",
+    "trialThen_other": "{{count}} gün ücretsiz, sonra {{price}} {{period}}. İstediğin an iptal et.",
+    "renews": "{{price}} {{period}} yenilenir. İstediğin an iptal et.",
+    "legal": "Ödeme, satın alma onaylandığında Apple Kimliği hesabınızdan alınır. Abonelik, dönem bitiminden en az 24 saat önce iptal edilmezse otomatik yenilenir. Ücretsiz deneme süresinin kullanılmayan kısmı abonelik satın alındığında geçersiz olur. Aboneliği App Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz.",
+    "webNotice": "Garajım Pro, iPhone uygulamasından App Store üzerinden alınır. Satın aldığın Pro, aynı hesapla web'de de geçerlidir.",
+    "openAppStore": "App Store'da aç",
+    "unavailableTitle": "Pro şu anda yüklenemedi",
+    "unavailableBody": "App Store'a ulaşılamadı. Bağlantını kontrol edip tekrar dene.",
+    "active": "Pro aktif",
+    "activeUntil": "{{date}} tarihinde yenilenir",
+    "manage": "Aboneliği yönet",
+    "upgrade": "Pro'ya geç",
+    "freePlan": "Ücretsiz plan",
+    "scansLeft": "Bu ay {{left}} tarama hakkın kaldı",
+    "unlockCta": "Pro'nun kilidini aç",
+    "garageFullSub": "Pro ile sınırsız araç ekleyebilirsin."
+  },
+  "costs": {
+    "title": "Masraflar",
+    "noVehicle": "Masraf takibi için önce bir araç ekle.",
+    "last12": "Son 12 ay toplam",
+    "perKm": "km başına",
+    "thisMonth": "Bu ay",
+    "noData": "Henüz kayıt yok. Yakıt, bakım, sigorta ve diğer masrafları ekledikçe aracının gerçek maliyeti burada görünecek.",
+    "source": {
+      "fuel": "Yakıt",
+      "maintenance": "Bakım",
+      "document": "Sigorta/vergi",
+      "expense": "Diğer"
+    },
+    "byMonth": "Aylık masraf",
+    "byCategory": "Masraf türleri",
+    "add": "Hızlı masraf ekle",
+    "addTitle": "Masraf ekle",
+    "editTitle": "Masrafı düzenle",
+    "sheetSub": "Tutar ve tarih yeter; gerisi isteğe bağlı.",
+    "categoryLabel": "Masraf türü",
+    "amount": "Tutar",
+    "vendor": "Yer / firma",
+    "vendorPh": "örn. İSPARK, Shell, Oto Yıkama",
+    "saved": "Masraf kaydedildi",
+    "history": "Masraf geçmişi",
+    "empty": "Henüz masraf yok",
+    "emptySub": "Otopark, köprü-otoyol, yıkama, tamir… Yukarıdan bir tür seç, saniyeler içinde ekle.",
+    "deleteConfirm": "Bu masrafı silmek istiyor musun?",
+    "export": "Excel'e aktar",
+    "fuelLink": "Yakıt kayıtları",
+    "fuelLinkSub": "Dolumlar, ortalama tüketim ve litre fiyatı",
+    "category": {
+      "repair": "Tamir",
+      "parts": "Parça",
+      "tires": "Lastik",
+      "wash": "Yıkama",
+      "parking": "Otopark",
+      "toll": "Köprü / Otoyol",
+      "fine": "Ceza",
+      "tax": "Vergi / MTV",
+      "insurance": "Sigorta",
+      "accessory": "Aksesuar",
+      "other": "Diğer"
+    }
+  },
+  "assistant": {
+    "title": "Araç asistanı",
+    "sos": "Acil durum (SOS)",
+    "sosSub": "Konumunu paylaş, 112'yi ara, kaza anında ne yapılır",
+    "proSub": "Sınırsız araç, tarama, masraf raporu ve dijital torpido",
+    "tools": {
+      "costs": {
+        "title": "Masraflar",
+        "sub": "Toplam maliyet, km başı ₺"
+      },
+      "glovebox": {
+        "title": "Dijital torpido",
+        "sub": "Ruhsat, ehliyet, fatura"
+      },
+      "mechanics": {
+        "title": "Ustalarım",
+        "sub": "Tek dokunuşla ara"
+      },
+      "nearby": {
+        "title": "Yakındaki yerler",
+        "sub": "Akaryakıt, şarj, servis"
+      },
+      "lights": {
+        "title": "Arıza lambaları",
+        "sub": "Ne anlama geliyor?"
+      },
+      "trips": {
+        "title": "Yolculuklar",
+        "sub": "Otomatik sürüş kaydı"
+      },
+      "groups": {
+        "title": "Gruplar",
+        "sub": "Araçlarını grupla"
+      },
+      "settings": {
+        "title": "Ayarlar",
+        "sub": "Bildirim, dil, hesap"
+      }
+    }
+  },
+  "mechanics": {
+    "title": "Ustalarım",
+    "subtitle": "Güvendiğin ustaları, lastikçini ve çekiciyi kaydet; ihtiyacın olunca tek dokunuşla ara.",
+    "empty": "Henüz usta eklemedin",
+    "emptySub": "Kendi ustanı ekle ya da yakındaki servisleri haritada bulup tek dokunuşla kaydet.",
+    "add": "Usta ekle",
+    "edit": "Ustayı düzenle",
+    "findNearby": "Yakında bul",
+    "favorite": "Favori",
+    "addPhone": "Telefon ekle",
+    "name": "Ad / işletme",
+    "namePh": "örn. Zeki Usta, Öz Lastik",
+    "specialtyLabel": "Uzmanlık",
+    "phone": "Telefon",
+    "address": "Adres",
+    "notes": "Not",
+    "notesPh": "örn. Cumartesi açık, fatura kesiyor",
+    "saved": "Usta kaydedildi",
+    "deleteConfirm": "Bu ustayı silmek istiyor musun?",
+    "waGreeting": "Merhaba, aracım için bilgi almak istiyorum.",
+    "specialty": {
+      "general": "Genel servis",
+      "electric": "Oto elektrik",
+      "tires": "Lastikçi",
+      "body": "Kaporta",
+      "paint": "Boya",
+      "glass": "Oto cam",
+      "tow": "Çekici / kurtarma",
+      "motorcycle": "Motosiklet",
+      "dealer": "Yetkili servis",
+      "other": "Diğer"
+    }
+  },
+  "glovebox": {
+    "title": "Dijital torpido",
+    "subtitle": "Ruhsat, ehliyet, poliçe, fatura ve garanti belgelerin her zaman telefonunda. Polis çevirmesinde, serviste, satışta elinin altında.",
+    "photo": "Fotoğraf çek",
+    "fromFiles": "Galeri / PDF",
+    "all": "Tümü",
+    "empty": "Torpido boş",
+    "emptySub": "İlk belgeni ekle: ruhsatının fotoğrafını çek ya da bir PDF seç.",
+    "addTitle": "Torpidoya ekle",
+    "kindLabel": "Belge türü",
+    "name": "Ad",
+    "expires": "Geçerlilik bitişi",
+    "expiresHint": "Ehliyet, garanti gibi süreli belgeler için.",
+    "personal": "Kişisel belge (araca bağlı değil)",
+    "saved": "Torpidoya eklendi",
+    "validUntil": "{{date}} tarihine kadar",
+    "deleteConfirm": "Bu belge silinsin mi?",
+    "pdf": "PDF belgesi",
+    "openPdf": "PDF'i aç / paylaş",
+    "kind": {
+      "registration": "Ruhsat",
+      "license": "Ehliyet",
+      "insurance": "Trafik sigortası",
+      "kasko": "Kasko",
+      "inspection": "Muayene",
+      "invoice": "Fatura",
+      "service": "Servis formu",
+      "warranty": "Garanti",
+      "other": "Diğer"
+    }
+  },
+  "lights": {
+    "title": "Arıza lambaları",
+    "subtitle": "Gösterge panelinde yanan lambanın ne anlama geldiğini ve ne yapman gerektiğini öğren.",
+    "search": "Lamba ara (örn. yağ, ABS, akü)",
+    "filter": "Renge göre",
+    "color": {
+      "all": "Tümü",
+      "red": "Kırmızı",
+      "amber": "Sarı",
+      "green": "Yeşil / mavi"
+    },
+    "urgency": {
+      "red": "Hemen dur",
+      "amber": "Yakında kontrol ettir",
+      "green": "Bilgi"
+    },
+    "meaning": "Ne anlama geliyor?",
+    "action": "Ne yapmalısın?",
+    "none": "Aramanla eşleşen lamba yok.",
+    "disclaimer": "Bu rehber genel bilgi içindir; semboller markaya göre değişebilir. Kesin bilgi için aracının kullanım kılavuzuna bak."
+  },
+  "nearby": {
+    "title": "Yakındaki yerler",
+    "category": "Ne arıyorsun?",
+    "locating": "Konum alınıyor…",
+    "searching": "Aranıyor…",
+    "recenter": "Konumuma git",
+    "noLocation": "Konumuna ulaşılamadı. Ayarlar'dan Garajım'a konum izni verebilir ya da haritada görünen bölgede arayabilirsin.",
+    "searchMapArea": "Bu bölgede ara",
+    "none": "Yakında sonuç bulunamadı.",
+    "mapError": "Harita şu anda yüklenemedi.",
+    "saveMechanic": "Ustalarıma kaydet",
+    "cat": {
+      "fuel": "Akaryakıt",
+      "ev": "Şarj",
+      "service": "Servis",
+      "tires": "Lastikçi",
+      "parking": "Otopark",
+      "wash": "Yıkama",
+      "tow": "Çekici",
+      "hospital": "Hastane"
+    }
+  },
+  "sos": {
+    "eyebrow": "ACİL DURUM",
+    "title": "SOS",
+    "shareTitle": "Konumunu paylaş",
+    "shareSub": "Tam konumunu acil durum kişilerine SMS ya da WhatsApp ile gönder.",
+    "getLocation": "Konumumu bul",
+    "locating": "Konum alınıyor…",
+    "refresh": "Konumu yenile",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "smsContacts_one": "{{count}} kişiye SMS gönder",
+    "smsContacts_other": "{{count}} kişiye SMS gönder",
+    "message": "ACİL: Yardıma ihtiyacım var. Konumum: {{url}} (Garajım)",
+    "locError": {
+      "denied": "Konum izni yok. Ayarlar > Garajım > Konum'dan izin ver.",
+      "timeout": "Konum alınamadı, açık bir alanda tekrar dene.",
+      "unavailable": "Konum şu anda alınamıyor.",
+      "unsupported": "Bu cihaz konum paylaşmayı desteklemiyor."
+    },
+    "call": "Hemen ara",
+    "numbers": {
+      "emergency": "Acil çağrı (ambulans, polis, itfaiye)",
+      "police": "Polis",
+      "gendarmerie": "Jandarma",
+      "fire": "İtfaiye"
+    },
+    "contacts": "Acil durum kişileri",
+    "contactsSub": "Konumun tek dokunuşla bu kişilere gider.",
+    "addContact": "Kişi ekle",
+    "contactName": "Ad",
+    "removeConfirm": "{{name}} acil durum kişilerinden çıkarılsın mı?",
+    "accident": {
+      "title": "Kaza anında ne yapmalı?",
+      "sub": "Adım adım kontrol listesi",
+      "steps": [
+        "Dörtlüleri yak, mümkünse aracı güvenli bir yere çek ve reflektörü aracın 30-50 metre gerisine koy.",
+        "Yaralı varsa 112'yi ara. Yaralıyı ciddi bir tehlike (yangın gibi) yoksa yerinden oynatma.",
+        "Yalnızca maddi hasar varsa ve taraflar anlaşıyorsa polis çağırmak zorunlu değildir; anlaşmalı kaza tespit tutanağını birlikte doldurun.",
+        "Araçların konumunu, hasarı, plakaları ve çevreyi farklı açılardan fotoğrafla — Garajım'daki dijital torpidona ekleyebilirsin.",
+        "Karşı tarafın ehliyet, ruhsat ve trafik sigortası poliçe bilgilerini al.",
+        "Anlaşmazlık, yaralanma ya da alkol şüphesi varsa araçları yerinden oynatmadan 155 / 156'yı ara.",
+        "Kazayı en geç 5 iş günü içinde sigorta şirketine (ve kaskona) bildir."
+      ]
+    }
   }
 }

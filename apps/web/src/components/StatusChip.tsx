@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { DatedItem, DatedItemType } from "@mototracker/shared";
 import { statusFor, type Status, statusDotClass } from "@/lib/datedItems";
 import { cn } from "@/lib/cn";
+import { formatDate } from "@/lib/format";
 
 interface Props {
   type: DatedItemType;
@@ -128,10 +129,10 @@ export function StatusChip({ type, bikeId, item, index = 0 }: Props) {
             </div>
           )}
 
-          {/* Footer: ISO date, or a small "X days ago" for expired */}
+          {/* Footer: the expiry date, or a small "X days ago" for expired */}
           {item?.expiresOn && info.status !== "unset" && (
             <div className="mt-2 num text-[11px] text-muted dark:text-muted-dark">
-              {item.expiresOn}
+              {formatDate(item.expiresOn)}
             </div>
           )}
           {info.status === "expired" && info.daysRemaining !== null && (

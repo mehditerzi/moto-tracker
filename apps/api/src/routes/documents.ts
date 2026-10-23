@@ -23,6 +23,8 @@ import {
   getMaxVehicles,
   getOrgMaxVehicles,
   resolveEntitlement,
+  scanAllowance,
+  scansThisMonth,
 } from "../lib/entitlement.js";
 import { inferVehicleType } from "../ocr/catalog.js";
 import { suggestBikeForScan } from "../ocr/autoApply.js";
@@ -675,6 +677,14 @@ documentsRouter.post(
       .get(req.user!.id) as { cnt: number };
     if (cnt >= documentLimits.perDay && !scanCapsLifted(req.user!.id, db)) {
       res.status(429).json({ error: "service_unavailable" });
+      return;
+    }
+
+    // The free plan's monthly allowance. Unlike the daily cap above this is a
+    // plan term, so it is NAMED: the client answers it with the Pro paywall.
+    const allowance = scanAllowance(req.user!.id, db);
+    if (allowance !== null && scansThisMonth(req.user!.id, db) >= allowance) {
+      res.status(402).json({ error: "scan_limit_reached", limit: allowance });
       return;
     }
 

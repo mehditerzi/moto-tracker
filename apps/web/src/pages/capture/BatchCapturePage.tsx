@@ -15,6 +15,7 @@ import { HiddenFileInput } from "@/components/ui/file-input";
 import { CameraCapture, type BurstShot } from "@/components/CameraCapture";
 import { downscaleImageFile } from "@/lib/camera";
 import { uploadDocument, useDeleteDocument } from "@/hooks/useDocuments";
+import { usePaywall } from "@/components/paywall/PaywallContext";
 import { pushToast } from "@/hooks/useToast";
 import { track } from "@/lib/telemetry";
 
@@ -73,6 +74,9 @@ export function BatchCapturePage({ batchId }: { batchId: string }) {
   );
 
   const inFlight = useRef(0);
+  // One paywall per batch: every queued shot after the limit fails the same way.
+  const paywallShown = useRef(false);
+  const { openPaywall } = usePaywall();
   const shotsRef = useRef<Shot[]>([]);
   shotsRef.current = shots;
 
@@ -96,6 +100,10 @@ export function BatchCapturePage({ batchId }: { batchId: string }) {
         .catch((e: Error) => {
           const code = e.message;
           if (code === "batch_full") setBatchFull(true);
+          if (code === "scan_limit_reached" && !paywallShown.current) {
+            paywallShown.current = true;
+            openPaywall("scans");
+          }
           next.status = "failed";
           patch(next.id, { status: "failed", error: code });
           track("batch_upload_failed", { code });
