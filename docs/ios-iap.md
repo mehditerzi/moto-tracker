@@ -1,3 +1,41 @@
+# Garajım Pro (since 1.4, 2026-10-24)
+
+**The paid product is now one subscription, not a vehicle count.** "Pay from the
+second vehicle" meant almost nobody ever reached a paywall (most owners have one
+car): zero purchases in four months. Garajım Pro unlocks unlimited vehicles,
+unlimited document scans, the cost-report CSV export and an unlimited digital
+glovebox. Free = 1 vehicle, 5 scans / calendar month (Istanbul), 5 glovebox files.
+
+| Product | Term | TR price | Intro offer |
+|---|---|---|---|
+| `com.mehditerzi.mototracker.pro.yearly`  | 1 year  | ₺349,99 | 1 week free |
+| `com.mehditerzi.mototracker.pro.monthly` | 1 month | ₺59,99  | 1 week free |
+
+Group **"Garajım Pro"**, both at level 1 (a crossgrade, not an upgrade). Created
+by `scripts/asc-pro.mjs` (idempotent; dry run unless `--apply`): group + tr/en
+names, products, localizations, TUR price → Apple's equalizations everywhere,
+availability, the free trial per territory, and the review screenshot
+(`docs/app-store/pro-paywall.png`).
+
+The vehicle packs below are **no longer sold** but stay resolvable: any live paid
+entitlement counts as Pro (`isPro` in `apps/api/src/lib/entitlement.ts`).
+
+## Turning Pro on — the order matters
+
+1. Pro products exist in ASC (above) and are **attached to a version on the
+   version page in the web UI** ("In-App Purchases and Subscriptions" →
+   select both). The API cannot attach a group's first subscriptions.
+2. Submit that version. While in review, a reviewer's sandbox StoreKit returns
+   the pro.* products, so the app shows them Pro (`useProAvailable`); ordinary
+   users do not see Pro yet and still get the vehicle-pack sheet at the limit.
+3. Once the subscriptions are **APPROVED**: set `PRO_LIMITS_ENFORCED=true` in the
+   server `.env` and redeploy. That turns on the free allowances (scans,
+   glovebox, CSV export) and `proLive`, which shows Pro on the web.
+   Never flip it earlier — the web app reaches every installed binary on deploy,
+   and a limit with nothing purchasable behind it is a wall.
+
+---
+
 # In-app purchases — vehicle packs, by term
 
 The **first vehicle is free**. More vehicles are sold as **packs** (pack size =
