@@ -53,7 +53,7 @@ export function SosPage() {
   const reduce = useReducedMotion();
   const contacts = useSosContacts();
   const mechanics = useMechanics();
-  const tow = (mechanics.data ?? []).filter((m) => m.phone && (m.specialty === "tow" || m.favorite)).slice(0, 2);
+  const tow = (mechanics.data ?? []).filter((m) => m.phone && m.specialty === "tow").slice(0, 2);
   const [fix, setFix] = useState<Fix | null>(null);
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);

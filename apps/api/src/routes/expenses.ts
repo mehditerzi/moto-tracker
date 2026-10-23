@@ -132,8 +132,7 @@ interface CostLine {
  * Every priced event on the vehicle inside [from, to]. Four tables, one shape.
  *
  * A dated item (policy, inspection, MTV) has no "paid on" date, so it is placed
- * where the record was created — the moment the user told us they paid. A
- * maintenance item only remembers its LAST service, so only that one is
+ * where its period began (see below). A maintenance item only remembers its LAST service, so only that one is
  * counted; that is the honest reading of what the table holds.
  */
 function costLines(bikeId: string, from: string, to: string, db = getDb()): CostLine[] {
@@ -149,10 +148,23 @@ function costLines(bikeId: string, from: string, to: string, db = getDb()): Cost
         WHERE bike_id = ? AND cost IS NOT NULL AND cost > 0 AND last_done_on BETWEEN ? AND ?`,
     )
     .all(bikeId, from, to) as { on_: string; amount: number; kind: string; custom_label: string | null }[];
+  // When the money actually left: a policy is paid when its year starts, not
+  // when someone typed it in. Placing it at created_at put a whole kasko
+  // premium into "this month" for everyone who entered an existing policy on
+  // day one. Annual cover starts a year before it ends; a private vehicle's
+  // inspection is valid two years; MTV is paid in half-year instalments.
   const dated = db
     .prepare(
-      `SELECT date(created_at, '+3 hours') AS on_, cost AS amount, type FROM dated_item
-        WHERE bike_id = ? AND cost IS NOT NULL AND cost > 0 AND date(created_at, '+3 hours') BETWEEN ? AND ?`,
+      `SELECT on_, amount, type FROM (
+         SELECT date(expires_on, CASE type
+                  WHEN 'sigorta' THEN '-1 year'
+                  WHEN 'kasko' THEN '-1 year'
+                  WHEN 'muayene' THEN '-2 years'
+                  ELSE '-6 months' END) AS on_,
+                cost AS amount, type
+           FROM dated_item
+          WHERE bike_id = ? AND cost IS NOT NULL AND cost > 0
+       ) WHERE on_ BETWEEN ? AND ?`,
     )
     .all(bikeId, from, to) as { on_: string; amount: number; type: string }[];
   const expenses = db
