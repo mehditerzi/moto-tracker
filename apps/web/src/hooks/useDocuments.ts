@@ -59,10 +59,18 @@ export interface UploadDocumentInput {
   batchId?: string;
   /** Passed through to fetch — lets callers abort an in-flight upload. */
   signal?: AbortSignal;
+  /**
+   * The phone's own Apple Vision reading of this photo. With it the server
+   * reads the document in milliseconds and usually answers already done.
+   */
+  ocrLines?: { t: string; x: number; y: number; w: number; h: number }[];
 }
 
 export async function uploadDocument(input: UploadDocumentInput): Promise<Document> {
   const fd = new FormData();
+  // Fields before the file: multer parses in order, and the route reads `ocr`
+  // from req.body once the file has arrived.
+  if (input.ocrLines?.length) fd.append("ocr", JSON.stringify({ lines: input.ocrLines }));
   fd.append("file", input.file);
   const qs = input.batchId
     ? `?batchId=${encodeURIComponent(input.batchId)}`

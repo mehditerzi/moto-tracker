@@ -423,7 +423,9 @@
     "errorBikeNotFound": "Vehicle not found.",
     "errorUnsupportedType": "Only JPEG, PNG, WebP or HEIC images are supported — PDFs can't be scanned.",
     "errorTooLarge": "That image is too large (max 10 MB). Try taking the photo again.",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "scannedMany_one": "{{count}} document read",
+    "scannedMany_other": "{{count}} documents read"
   },
   "review": {
     "reading": "Reading document",

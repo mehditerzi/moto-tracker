@@ -13,7 +13,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HiddenFileInput } from "@/components/ui/file-input";
-import { useCreateBatch, useOpenBatches, useUploadDocument } from "@/hooks/useDocuments";
+import { uploadDocument, useCreateBatch, useOpenBatches, useUploadDocument } from "@/hooks/useDocuments";
+import { scanDocuments, scannerAvailable, type ScanLine, type ScannedPage } from "@/lib/documentScanner";
+import { hapticSuccess } from "@/lib/haptics";
 import { usePaywall } from "@/components/paywall/PaywallContext";
 import { useEntitlement } from "@/hooks/useEntitlement";
 import { useBike } from "@/hooks/useBikes";
@@ -98,10 +100,60 @@ function SingleCapture() {
   const openBatches = useOpenBatches(!bikeId);
 
   function openCamera() {
-    // Live viewfinder with the document guide when supported; otherwise fall
-    // back to the OS camera via the file input.
+    // The iOS document scanner when this binary has it: it finds the card,
+    // fires by itself and reads the text on the phone. Otherwise the live
+    // viewfinder with the document guide, else the OS camera.
+    if (scannerAvailable()) {
+      void runScanner();
+      return;
+    }
     if (typeof navigator.mediaDevices?.getUserMedia === "function") setCameraOpen(true);
     else cameraInput.current?.click();
+  }
+
+  /**
+   * One card → straight to its review, already read. Several cards in one
+   * session on the "add a vehicle" entry → a batch, reviewed in one pass.
+   */
+  async function runScanner() {
+    let pages: ScannedPage[];
+    try {
+      pages = await scanDocuments();
+    } catch (e) {
+      track("scanner_failed", { message: (e as Error).message });
+      // Never a dead end: fall back to the in-page camera.
+      if (typeof navigator.mediaDevices?.getUserMedia === "function") setCameraOpen(true);
+      else cameraInput.current?.click();
+      return;
+    }
+    if (pages.length === 0) return;
+    hapticSuccess();
+    track("scanner_pages", { n: pages.length, ocrMs: Math.max(...pages.map((p) => p.ms)) });
+    if (pages.length === 1) {
+      await handleFile(pages[0]!.file, pages[0]!.lines);
+      return;
+    }
+    setPreview(URL.createObjectURL(pages[0]!.file));
+    setBusy(true);
+    try {
+      if (!bikeId) {
+        const batch = await createBatch.mutateAsync({});
+        await uploadAll(pages, (p) => uploadDocument({ file: p.file, batchId: batch.id, ocrLines: p.lines }));
+        navigate(`/capture?batch=${encodeURIComponent(batch.id)}&step=review`, { replace: true });
+      } else {
+        await uploadAll(pages, (p) => uploadDocument({ file: p.file, bikeId, ocrLines: p.lines }));
+        pushToast({ variant: "success", title: t("capture.scannedMany", { count: pages.length }) });
+        navigate("/dashboard", { replace: true });
+      }
+    } catch (e) {
+      if ((e as Error).message === "scan_limit_reached") {
+        resetPicker();
+        openPaywall("scans");
+        return;
+      }
+      pushToast({ variant: "danger", title: friendlyError(e, t) });
+      resetPicker();
+    }
   }
 
   useEffect(
@@ -124,12 +176,12 @@ function SingleCapture() {
     if (cameraInput.current) cameraInput.current.value = "";
   }
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, ocrLines?: ScanLine[]) {
     setPreview(URL.createObjectURL(file));
     setBusy(true);
     const startedAt = Date.now();
     try {
-      const doc = await upload.mutateAsync({ file, bikeId });
+      const doc = await upload.mutateAsync({ file, bikeId, ocrLines });
       track("scan_uploaded", { ms: Date.now() - startedAt, hasBike: !!bikeId });
       navigate(`/documents/${doc.id}/review`, { replace: true });
     } catch (e) {
@@ -388,4 +440,13 @@ export function ScanFrame({ src, active }: { src: string; active: boolean }) {
       )}
     </div>
   );
+}
+
+/** Upload a scanning session three at a time — fast, without flooding the link. */
+async function uploadAll<T>(items: T[], fn: (item: T) => Promise<unknown>): Promise<void> {
+  const queue = [...items];
+  const worker = async () => {
+    for (let item = queue.shift(); item !== undefined; item = queue.shift()) await fn(item);
+  };
+  await Promise.all([worker(), worker(), worker()]);
 }

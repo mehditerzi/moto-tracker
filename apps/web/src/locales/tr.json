@@ -423,7 +423,9 @@
     "errorBikeNotFound": "Araç bulunamadı.",
     "errorUnsupportedType": "Yalnızca JPEG, PNG, WebP veya HEIC görseller destekleniyor — PDF taranamıyor.",
     "errorTooLarge": "Görsel çok büyük (en fazla 10 MB). Fotoğrafı tekrar çekmeyi dene.",
-    "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene."
+    "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+    "scannedMany_one": "{{count}} belge okundu",
+    "scannedMany_other": "{{count}} belge okundu"
   },
   "review": {
     "reading": "Belge okunuyor",
