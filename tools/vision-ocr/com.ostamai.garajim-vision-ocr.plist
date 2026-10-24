@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.ostamai.garajim-vision-ocr</string>
+  <key>ProgramArguments</key>
+  <array><string>/Users/ostamai/moto-tracker/tools/vision-ocr/garajim-vision-ocr</string></array>
+  <key>EnvironmentVariables</key>
+  <dict><key>GARAJIM_OCR_PORT</key><string>11470</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Interactive</string>
+  <key>StandardOutPath</key><string>/Users/ostamai/Library/Logs/garajim-vision-ocr.log</string>
+  <key>StandardErrorPath</key><string>/Users/ostamai/Library/Logs/garajim-vision-ocr.log</string>
+</dict>
+</plist>

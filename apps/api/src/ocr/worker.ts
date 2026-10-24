@@ -6,7 +6,10 @@ import {
   runTextExtract,
 } from "./ollamaClient.js";
 import { extractTextWithTesseract } from "./tesseractClient.js";
-import { safeParseOcr, emptyParsedOcr, type ParsedOcr } from "./parser.js";
+import { safeParseOcr, emptyParsedOcr, toModelJson, type ParsedOcr } from "./parser.js";
+import { mergeReadings, readLocally } from "./localRead.js";
+import { readWithVisionService, sanitizeLines } from "./visionClient.js";
+import type { OcrLine } from "./ruhsatLayout.js";
 import { backstopFromText } from "./backstop.js";
 import { validateAndCorrect } from "./validators.js";
 import { autoApply, suggestBikeForScan } from "./autoApply.js";
@@ -33,7 +36,21 @@ export interface OcrResult {
   stages?: string[];
 }
 
-type OcrFn = (filePath: string, signal: AbortSignal) => Promise<OcrResult>;
+/** What the pipeline may know before it starts: the phone's own OCR. */
+export interface OcrHints {
+  clientLines?: OcrLine[] | null;
+  /** Stop after stage 0; throw FastPathMiss if it did not settle the document. */
+  fastOnly?: boolean;
+}
+
+/** Stage 0 could not settle the document; the full pipeline has to run. */
+export class FastPathMiss extends Error {
+  constructor() {
+    super("fast_path_miss");
+  }
+}
+
+type OcrFn = (filePath: string, signal: AbortSignal, hints?: OcrHints) => Promise<OcrResult>;
 
 /**
  * Token budget for the verify pass. The verify model is typically a reasoning
@@ -101,12 +118,46 @@ function isBetter(a: ParsedOcr, b: ParsedOcr): boolean {
  * Every stage shares the caller's AbortSignal (the per-document deadline), so a
  * hung backend is actually cancelled — not just abandoned — when it fires.
  */
-async function defaultOcrPipeline(filePath: string, signal: AbortSignal): Promise<OcrResult> {
+async function defaultOcrPipeline(filePath: string, signal: AbortSignal, hints: OcrHints = {}): Promise<OcrResult> {
   const stages: string[] = [];
 
+  // ── 0. Vision + layout ──────────────────────────────────────────────────
+  //
+  // The phone's own Apple Vision pass when it sent one, else the host's
+  // Vision service. Either gives every line WITH its position, which the
+  // model-free layout reader turns into fields in milliseconds. A confident
+  // reading ends the document here: no extraction model, no parse model.
+  let local: ParsedOcr | null = null;
+  let read: { text: string; lines: OcrLine[] } | null = null;
+  if (hints.clientLines?.length) {
+    read = { text: hints.clientLines.map((l) => l.t).join("\n"), lines: hints.clientLines };
+    stages.push(`device-ocr(${read.lines.length})`);
+  } else if (config.VISION_OCR_URL) {
+    try {
+      const v = await readWithVisionService(filePath, signal);
+      read = { text: v.text, lines: v.lines };
+      stages.push(`vision-ocr(${v.lines.length},${v.ms}ms)`);
+    } catch (e) {
+      if (signal.aborted) throw e;
+      stages.push("vision-ocr:ERR");
+      console.warn("[ocr] vision service failed — continuing with the model pipeline:", (e as Error).message);
+    }
+  }
+  if (read && read.text.length >= MIN_USABLE_TEXT) {
+    local = readLocally(read);
+    stages.push(`local(${local.docType},${local.confidence})`);
+    if (local.docType !== "unknown" && local.confidence >= config.OCR_AUTO_APPLY_THRESHOLD) {
+      return { rawText: toModelJson(local), model: "vision-local", sourceText: read.text, stages };
+    }
+  }
+  if (hints.fastOnly) throw new FastPathMiss();
+  const localJson = local ? toModelJson(local) : "";
+
   // ── 1. extract ──────────────────────────────────────────────────────────
-  let sourceText = "";
-  if (config.OLLAMA_OCR_MODEL) {
+  // Vision's text, when we have it, is the starting point; the models below
+  // only run when it was not enough.
+  let sourceText = read && read.text.length >= MIN_USABLE_TEXT ? read.text : "";
+  if (!sourceText && config.OLLAMA_OCR_MODEL) {
     try {
       sourceText = (await runTextExtract(filePath, config.OLLAMA_OCR_MODEL, undefined, signal)).trim();
       stages.push(`ocr:${config.OLLAMA_OCR_MODEL}(${sourceText.length})`);
@@ -170,8 +221,12 @@ async function defaultOcrPipeline(filePath: string, signal: AbortSignal): Promis
     // look.
     const best = parsed ? backstopFromText(parsed, sourceText) : enriched;
     if (result && (best.docType !== "unknown" || foundSomething(best))) {
+      // The model only fills what the layout reader could not see.
+      if (local && parsed) return { ...result, rawText: toModelJson(mergeReadings(local, parsed)), sourceText, stages };
       return { ...result, sourceText, stages };
     }
+    // The model failed outright, but a local reading exists: that is the answer.
+    if (local) return { rawText: localJson, model: "vision-local", sourceText, stages };
     console.log("[ocr] text yielded nothing identifiable — falling back to vision");
   }
 
@@ -182,7 +237,7 @@ async function defaultOcrPipeline(filePath: string, signal: AbortSignal): Promis
     // worker turns the empty body into an empty parse, and the backstop still
     // gets its shot at the OCR text — a document with no LLM answer at all is
     // worth more than a failed row.
-    return { rawText: "", model: "none", sourceText: sourceText || undefined, stages };
+    return { rawText: localJson, model: local ? "vision-local" : "none", sourceText: sourceText || undefined, stages };
   }
   stages.push("vision");
   console.log(`[ocr] running vision LLM (${config.OLLAMA_VISION_MODEL})`);
@@ -195,7 +250,7 @@ async function defaultOcrPipeline(filePath: string, signal: AbortSignal): Promis
     // the text we have; the backstop is the floor, not an optimisation.
     stages.push("vision:ERR");
     console.warn("[ocr] vision LLM failed — degrading to extracted text:", (e as Error).message);
-    return { rawText: "", model: config.OLLAMA_VISION_MODEL, sourceText: sourceText || undefined, stages };
+    return { rawText: localJson, model: local ? "vision-local" : config.OLLAMA_VISION_MODEL, sourceText: sourceText || undefined, stages };
   }
 }
 
@@ -204,7 +259,9 @@ export const runOcrPipeline = defaultOcrPipeline;
 
 let _ocrPipeline: OcrFn = defaultOcrPipeline;
 
-export function __setRunVisionOcrForTests(impl: (filePath: string, signal?: AbortSignal) => Promise<OcrResult>): void {
+export function __setRunVisionOcrForTests(
+  impl: (filePath: string, signal?: AbortSignal, hints?: OcrHints) => Promise<OcrResult>,
+): void {
   _ocrPipeline = impl as OcrFn;
 }
 export function __resetRunVisionOcrForTests(): void {
@@ -326,12 +383,20 @@ export function queueDepth(userId: string): number {
   return queues.get(userId)?.length ?? 0;
 }
 
-export async function processDocument(documentId: string): Promise<void> {
+export async function processDocument(documentId: string, opts: { fastOnly?: boolean } = {}): Promise<void> {
   const db = getDb();
   const doc = db
-    .prepare("SELECT id, user_id, bike_id, file_path, batch_id FROM document WHERE id = ?")
-    .get(documentId) as DocRow | undefined;
+    .prepare("SELECT id, user_id, bike_id, file_path, batch_id, client_ocr_json FROM document WHERE id = ?")
+    .get(documentId) as (DocRow & { client_ocr_json: string | null }) | undefined;
   if (!doc) return;
+  let clientLines: OcrLine[] | null = null;
+  if (doc.client_ocr_json) {
+    try {
+      clientLines = sanitizeLines((JSON.parse(doc.client_ocr_json) as { lines?: unknown }).lines);
+    } catch {
+      clientLines = null;
+    }
+  }
 
   // One shared deadline for the whole pipeline. The signal both cancels the
   // in-flight fetch / Tesseract child (cooperative backends) AND, via the race
@@ -351,7 +416,7 @@ export async function processDocument(documentId: string): Promise<void> {
   });
 
   try {
-    const pipeline = _ocrPipeline(doc.file_path, controller.signal);
+    const pipeline = _ocrPipeline(doc.file_path, controller.signal, { clientLines, fastOnly: opts.fastOnly });
     // If the pipeline loses the race it may stay pending; swallow its eventual
     // rejection so it doesn't surface as an unhandled rejection.
     pipeline.catch(() => {});
@@ -479,6 +544,9 @@ export async function processDocument(documentId: string): Promise<void> {
       );
     }
   } catch (e) {
+    // Not a failure: the fast path declined, and the caller queues the
+    // document for the full pipeline.
+    if (e instanceof FastPathMiss) throw e;
     const msg = (e as Error).message ?? String(e);
     db.prepare(
       `UPDATE document

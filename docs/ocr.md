@@ -1,5 +1,41 @@
 # Document scanning (OCR + extraction)
 
+> **Since 2026-10-24 the first read is Apple Vision + a model-free layout reader.**
+> Measured on the same 25 production cards as everything below:
+>
+> | path | overall | p50 | p90 | needs a model |
+> |---|---|---|---|---|
+> | **stage 0: Vision (host or phone) + `ocr/localRead.ts`** | **96%** | **0.3 s** | **0.4 s** | no |
+> | glm-ocr text + `localRead` (reading order only) | 97% | — | — | glm-ocr only |
+> | glm-ocr + gemma4 parse (the pipeline below) | see below | 9–13 s | 34 s | yes |
+>
+> Why it changed: on 2026-10 the host's Ollama models (`glm-ocr`, `gemma4`) were
+> removed when the machine moved to a shared MLX gateway, and every scan since
+> then fell through to Tesseract and came back empty. Depending on a shared LLM
+> host for the app's core feature was the bug; Vision ships with macOS and iOS.
+>
+> How it works: Vision returns each line **with its box**. A ruhsat is a form —
+> every value sits under or beside its printed label ("(D.1) MARKASI",
+> "(E) ŞASE NO") — so `ocr/ruhsatLayout.ts` finds the labels (code + keyword,
+> fuzzy, with vetoes for the lookalikes that bit: MARAŞ≈MARKA, AYAKTA≈YAKIT,
+> TİCARİ ÜNVANI≈TİCARİ ADI) and takes the nearest well-shaped value. It never
+> guesses: a field it cannot see stays null. Then: make must exist in the
+> catalogue, model snaps to the catalogue model with the same digits
+> ("ИТ 09"→"MT-09"), the VIN's manufacturer code is repaired from the make
+> ("JVA"→"JYA" on a Yamaha), and the inspection date is the card's one
+> hyphenated date (or the date under (Z.2)).
+>
+> Where the lines come from, in order: the phone's own Vision pass (sent with
+> the upload as `ocr`), else the host service `tools/vision-ocr`
+> (LaunchAgent `com.ostamai.garajim-vision-ocr`, 127.0.0.1:11470, wired with
+> `VISION_OCR_URL`). A confident reading finishes the document **inside the
+> upload request** — the review screen opens filled in. Anything else falls to
+> the stages below, whose answer is merged under the local one (local wins
+> wherever it has a value). Eval: `pnpm --filter @mototracker/api ocr:eval -- local --engine vision`.
+
+---
+
+
 Photograph a Turkish vehicle document; get its renewal deadline in the app
 without typing it. Everything runs locally on Ollama and Tesseract — no document
 image or extracted text is ever sent to a third-party AI service, which is what

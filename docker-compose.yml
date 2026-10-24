@@ -56,6 +56,8 @@ services:
       # production came to run an 8B model while the docs said 26B.
       # 1. image → text (purpose-built, ~2GB, ~4s; Tesseract is the backup)
       OLLAMA_OCR_MODEL: ${OLLAMA_OCR_MODEL:-glm-ocr:latest}
+      # Apple Vision on the host (tools/vision-ocr) — the fast, model-free first read.
+      VISION_OCR_URL: ${VISION_OCR_URL:-}
       # 2. text → JSON, runs on every document, chosen for latency + accuracy
       OLLAMA_PARSE_MODEL: ${OLLAMA_PARSE_MODEL:-gemma4:e2b}
       # 4. image → JSON, only for photos stage 1 could not read; must see

@@ -9,7 +9,8 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { getDb } from "../db/index.js";
 import { newId } from "../lib/ulid.js";
 import { config } from "../config.js";
-import { enqueueDocument } from "../ocr/worker.js";
+import { enqueueDocument, FastPathMiss, processDocument } from "../ocr/worker.js";
+import { sanitizeLines } from "../ocr/visionClient.js";
 import {
   authorizeBike,
   authorizeRecord,
@@ -746,13 +747,42 @@ documentsRouter.post(
     );
 
     await fs.writeFile(outPath, buf);
-    db.prepare(
-      `INSERT INTO document (id, user_id, bike_id, file_path, mime_type, size_bytes, ocr_status, batch_id, batch_seq)
-       VALUES (?, ?, ?, ?, 'image/jpeg', ?, 'pending', ?, ?)`,
-    ).run(id, req.user!.id, bikeId, outPath, buf.length, batch?.id ?? null, seq);
 
+    // The phone's own Apple Vision pass, when the client sent one. Untrusted
+    // input: sanitized to the line shape and capped, and it can only ever
+    // describe this user's own photo.
+    let clientOcr: string | null = null;
+    if (typeof req.body?.ocr === "string" && req.body.ocr.length < 200_000) {
+      try {
+        const lines = sanitizeLines((JSON.parse(req.body.ocr) as { lines?: unknown }).lines);
+        if (lines.length) clientOcr = JSON.stringify({ lines });
+      } catch {
+        /* malformed — ignore and let the server read the photo */
+      }
+    }
+
+    db.prepare(
+      `INSERT INTO document (id, user_id, bike_id, file_path, mime_type, size_bytes, ocr_status, batch_id, batch_seq, client_ocr_json)
+       VALUES (?, ?, ?, ?, 'image/jpeg', ?, 'pending', ?, ?, ?)`,
+    ).run(id, req.user!.id, bikeId, outPath, buf.length, batch?.id ?? null, seq, clientOcr);
+
+    // The fast path, inside the request: when the document can be read with
+    // Vision positions (the phone's or the host's) and the layout reader is
+    // confident, the response already carries the finished reading — the
+    // review screen opens filled in, with no "reading…" spinner at all.
+    // Anything it cannot settle goes to the queue exactly as before.
+    let settled = false;
+    if (clientOcr || config.VISION_OCR_URL) {
+      try {
+        await processDocument(id, { fastOnly: true });
+        settled = (db.prepare("SELECT ocr_status FROM document WHERE id = ?").get(id) as { ocr_status: string })
+          .ocr_status === "done";
+      } catch (e) {
+        if (!(e instanceof FastPathMiss)) console.warn(`[ocr] fast path for ${id} failed:`, (e as Error).message);
+      }
+    }
     // Bulk work yields to anyone watching a spinner — see ocr/worker.ts.
-    void enqueueDocument(id, req.user!.id, { priority: batch ? "bulk" : "interactive" });
+    if (!settled) void enqueueDocument(id, req.user!.id, { priority: batch ? "bulk" : "interactive" });
 
     const row = db.prepare("SELECT * FROM document WHERE id = ?").get(id) as DocRow;
     res.status(201).json(rowToDocument(row));

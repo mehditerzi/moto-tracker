@@ -241,7 +241,7 @@ async function modeDeterministic(cases: EvalCase[]): Promise<void> {
   const threshold = Number(arg("threshold", "0.7"));
   const results: RunResult[] = [];
   for (const c of cases) {
-    const src = cachedText(c.id) ?? "";
+    const src = cachedText(c.id, arg("engine", "glm-ocr:latest")) ?? "";
     const t0 = performance.now();
     // Empty LLM output on purpose: this measures what the deterministic
     // recovery layer alone can pull out of the OCR text, i.e. the floor the
@@ -259,6 +259,41 @@ async function modeDeterministic(cases: EvalCase[]): Promise<void> {
     });
   }
   report("deterministic-backstop-only", results);
+}
+
+/**
+ * The model-free fast path: OCR (Vision boxes, or plain text) → readLocally.
+ *   --engine vision   uses data/ocr-eval/text/<id>.vision.json (with geometry)
+ *   --engine glm-ocr:latest   plain text, reading order only
+ */
+async function modeLocal(cases: EvalCase[]): Promise<void> {
+  const { readLocally } = await import("../../src/ocr/localRead.js");
+  const { applicableDatedItems } = await import("../../src/ocr/autoApply.js");
+  const engine = arg("engine", "vision")!;
+  const threshold = Number(arg("threshold", "0.7"));
+  const results: RunResult[] = [];
+  for (const c of cases) {
+    const t0 = performance.now();
+    let parsed;
+    if (engine === "vision") {
+      const j = JSON.parse(readFileSync(`${CACHE}/${c.id}.vision.json`, "utf8"));
+      const text = (j.lines as { t: string }[]).map((l) => l.t).join("\n");
+      parsed = readLocally({ text, lines: j.lines });
+    } else {
+      parsed = readLocally({ text: cachedText(c.id, engine) ?? "" });
+    }
+    const got = flatten(parsed);
+    results.push({
+      id: c.id,
+      got,
+      verdicts: judge(c, got),
+      confidence: parsed.confidence,
+      autoApplied: parsed.confidence >= threshold && applicableDatedItems(parsed).length > 0,
+      autoAppliedLegacy: legacyWouldApply(parsed, threshold),
+      ms: performance.now() - t0,
+    });
+  }
+  report(`local-${engine}`, results);
 }
 
 /** The number that matters: the real pipeline, end to end, per document. */
@@ -359,6 +394,9 @@ async function main(): Promise<void> {
       return modeExtract(subset);
     case "parse":
       return modeParse(subset);
+    case "local":
+      await modeLocal(cases);
+      break;
     case "deterministic":
       return modeDeterministic(subset);
     case "pipeline":

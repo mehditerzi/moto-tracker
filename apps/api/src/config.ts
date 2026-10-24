@@ -117,6 +117,15 @@ const Env = z.object({
    */
   OLLAMA_OCR_MODEL: modelRef("glm-ocr:latest"),
   /**
+   * STAGE 0 — Apple Vision on the macOS host (tools/vision-ocr), e.g.
+   * http://host.docker.internal:11470. When set, every document is first read
+   * by Vision (~0.4 s, positions included) and the model-free layout reader
+   * (ocr/localRead.ts). A confident reading finishes the document there and no
+   * language model runs at all; the stages below only see what it could not
+   * settle. Unset = the Ollama pipeline exactly as before.
+   */
+  VISION_OCR_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional()),
+  /**
    * STAGE 2 — extracted text → structured JSON. This is the hot path: it runs
    * on every document, so its latency is the user's latency.
    *

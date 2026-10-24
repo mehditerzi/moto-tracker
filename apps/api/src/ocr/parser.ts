@@ -336,3 +336,33 @@ export function parseOcr(rawText: string): ParsedOcr {
     confidence: parsed.confidence,
   };
 }
+
+/**
+ * The inverse of parseOcr: a ParsedOcr as the JSON a model would have
+ * answered. Lets a reading that never touched a model (ocr/localRead.ts) flow
+ * through the same parse → backstop → validate path as one that did.
+ */
+export function toModelJson(p: ParsedOcr): string {
+  return JSON.stringify({
+    doc_type: p.docType,
+    plate: p.plate,
+    make: p.make,
+    model: p.model,
+    year: p.year,
+    first_registration_date: p.firstRegistrationDate,
+    color: p.color,
+    chassis_no: p.chassisNo,
+    engine_no: p.engineNo,
+    fuel_type: p.fuelType,
+    cylinder_cc: p.cylinderCc,
+    dates: {
+      sigorta_expires_on: p.dates.sigortaExpiresOn,
+      kasko_expires_on: p.dates.kaskoExpiresOn,
+      muayene_expires_on: p.dates.muayeneExpiresOn,
+    },
+    fuel: p.fuel
+      ? { filled_on: p.fuel.filledOn, liters: p.fuel.liters, total_cost: p.fuel.totalCost, unit_price: p.fuel.unitPrice }
+      : null,
+    confidence: p.confidence,
+  });
+}
