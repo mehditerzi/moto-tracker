@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import {
   Copy,
   Crosshair,
@@ -173,6 +174,35 @@ function RideScreen() {
 
   // Auto-framing yields the moment the rider takes hold of the map.
   const userMoved = useRef(false);
+
+  // Deep links from a planned ride: /map?join=CODE joins its live room,
+  // /map?tab=group opens on the group panel. Consumed once, then dropped from
+  // the URL so a reload does not re-join a ride the rider has since left.
+  const [params, setParams] = useSearchParams();
+  const deepJoin = params.get("join");
+  const deepTab = params.get("tab");
+  useEffect(() => {
+    if (deepTab === "group") setTab("group");
+    if (!deepJoin || rideQuery.isPending) {
+      if (deepTab && !deepJoin) setParams({}, { replace: true });
+      return;
+    }
+    setParams({}, { replace: true });
+    if (ride?.code === deepJoin.toUpperCase()) {
+      setTab("group");
+      return;
+    }
+    join.mutate(deepJoin, {
+      onSuccess: () => {
+        setSummary(null);
+        setTab("group");
+        hapticSuccess();
+        track("ride_joined", { via: "planned" });
+      },
+      onError: (e) => pushToast({ variant: "danger", title: friendlyError(e, t) }),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepJoin, deepTab, rideQuery.isPending]);
   const framing = useRef(false);
   const lastFit = useRef(0);
 

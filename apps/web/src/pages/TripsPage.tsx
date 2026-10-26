@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Navigation, Route as RouteIcon, MapPin, ChevronDown } from "lucide-react";
+import { Navigation, Route as RouteIcon, MapPin, ChevronDown, Share2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +15,13 @@ import {
   useTripTrackingEnabled,
   setTripTrackingEnabled,
 } from "@/lib/tripTracking";
-import type { Bike } from "@mototracker/shared";
+import type { Bike, Trip } from "@mototracker/shared";
+import { VehicleAvatar } from "@/components/VehicleAvatar";
+import { ShareCardSheet } from "@/components/share/ShareCardSheet";
+import { api } from "@/lib/api";
+import { tripCard } from "@/lib/rideCards";
+import type { CardData } from "@/lib/shareCard";
+import { pushToast } from "@/hooks/useToast";
 
 export function TripsPage() {
   const { t, i18n } = useTranslation();
@@ -24,6 +30,15 @@ export function TripsPage() {
   const enabled = useTripTrackingEnabled();
   const cfg = usePublicConfig();
   const [openTripId, setOpenTripId] = useState<string | null>(null);
+  const [card, setCard] = useState<CardData | null>(null);
+  const shareTrip = async (trip: Trip) => {
+    try {
+      const full = trip.hasRoute ? await api<Trip>(`/api/trips/${trip.id}`) : trip;
+      setCard(tripCard(full, bikeById.get(trip.bikeId), t, i18n.language));
+    } catch {
+      pushToast({ variant: "danger", title: t("shareCard.renderFailed") });
+    }
+  };
   const mapsOn = cfg.data?.mapkit ?? false;
 
   // Rebuilding this on every render meant walking the whole garage again just
@@ -99,9 +114,13 @@ export function TripsPage() {
                   }
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
-                      <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
-                    </div>
+                    {bike ? (
+                      <VehicleAvatar vehicle={bike} size="thumb" className="h-11 w-14 shrink-0 rounded-xl ring-1 ring-border dark:ring-border-dark" />
+                    ) : (
+                      <div className="grid h-11 w-14 shrink-0 place-items-center rounded-xl bg-bg ring-1 ring-border dark:bg-bg-dark dark:ring-border-dark">
+                        <Icon className="h-5 w-5 text-muted dark:text-muted-dark" strokeWidth={1.6} />
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <div className="truncate text-[15px] font-semibold">
                         {bike?.nickname ?? t("trips.unknownVehicle")}
@@ -118,6 +137,18 @@ export function TripsPage() {
                       </span>
                       <span className="ml-1 text-[12px] text-muted dark:text-muted-dark">km</span>
                     </div>
+                    <button
+                      type="button"
+                      aria-label={t("shareCard.shareTrip")}
+                      className="grid h-10 w-10 place-items-center rounded-full text-muted transition hover:bg-surface dark:text-muted-dark dark:hover:bg-surface-elev-dark"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void shareTrip(trip);
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
                     {expandable && (
                       <ChevronDown
                         className={`h-4 w-4 text-muted transition-transform dark:text-muted-dark ${
@@ -133,6 +164,7 @@ export function TripsPage() {
           })}
         </div>
       )}
+      <ShareCardSheet open={!!card} onClose={() => setCard(null)} data={card} fileName="garajim-surus" />
     </div>
   );
 }

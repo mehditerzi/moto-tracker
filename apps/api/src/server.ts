@@ -20,6 +20,7 @@ import { eventsRouter } from "./routes/events.js";
 import { tripsRouter } from "./routes/trips.js";
 import { mapkitRouter } from "./routes/mapkit.js";
 import { rideGroupsRouter } from "./routes/rideGroups.js";
+import { rideEventsRouter, rideInviteRouter } from "./routes/rideEvents.js";
 import { fuelLogsRouter } from "./routes/fuelLogs.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
@@ -284,6 +285,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/trips", tripsRouter);
   app.use("/api/mapkit-token", mapkitRouter);
   app.use("/api/ride-groups", rideGroupsRouter);
+  app.use("/api/ride-events", rideEventsRouter);
   app.use("/api/fuel-logs", fuelLogsRouter);
   app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
@@ -317,6 +319,8 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/privacy", privacyRouter);
   // The App Store Support URL — public, no login (Guideline 1.5).
   app.use("/support", supportRouter);
+  // Planned-ride invite links: a real page with Open Graph tags for previews.
+  app.use("/r", rideInviteRouter);
 
   // ---- Static SPA hosting (single-origin production mode) ----
   // If WEB_ROOT points at a built React dist, serve it and fall back to

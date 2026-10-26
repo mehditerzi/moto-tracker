@@ -135,6 +135,19 @@ const PAGE = `<!doctype html>
     <strong>in memory only and is never written to disk</strong>. It disappears the
     moment the ride ends, and a server restart drops it entirely. We keep no
     location trail from a group ride beyond the trip you recorded yourself.</li>
+    <li><strong>Planned group rides.</strong> When you plan a ride, we store what you
+    enter &mdash; its name, time, meeting point and destination (with coordinates if
+    you picked a place on the map), pace and an optional note &mdash; and who said
+    they are coming. Anyone signed in who has the ride&rsquo;s invite link can see the
+    plan and the <strong>first name and last initial</strong> of the people coming
+    (plus the make and model of the vehicle they chose to bring); never an email
+    address. The public link preview (<code>/r/&hellip;</code>) shows only the plan
+    and a head count. A ride can be reported from inside the app; the organiser can
+    remove riders, cancel or delete it, and everything is deleted with the
+    organiser&rsquo;s account.</li>
+    <li><strong>Share cards.</strong> Ride, trip and monthly cards are drawn on your
+    device. Nothing is uploaded; an image only leaves your phone if you share it
+    yourself.</li>
     <li><strong>Route planning.</strong> When you plan a route on the map, the start,
     destination and any stops are sent to Apple Maps to compute directions and to
     look up place names (see <a href="#third-party">Third-party services</a>). Your

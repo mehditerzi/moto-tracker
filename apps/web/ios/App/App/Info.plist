@@ -30,6 +30,8 @@
 	<string>Garajım uses your location in the background to detect drives and log trip distance for your vehicle, even when the app is not open.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Garajım uses your location to show nearby fuel stations, chargers and garages, to share where you are with your emergency contacts in SOS, and to measure how far you drive when trip logging is on.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Garajım saves the ride and stats cards you choose to share to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Garajım lets you pick an existing photo of your vehicle document to read its dates.</string>
 	<key>UIBackgroundModes</key>

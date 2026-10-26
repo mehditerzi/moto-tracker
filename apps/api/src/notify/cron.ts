@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { getDb } from "../db/index.js";
 import { dispatchForToday } from "./dispatcher.js";
 import { pruneEvents, pruneNotificationEvents } from "./retention.js";
+import { remindUpcomingRides } from "../routes/rideEvents.js";
 
 /** app_meta key holding the last calendar day we dispatched for (yyyy-MM-dd). */
 const LAST_RUN_KEY = "notify_last_dispatch_on";
@@ -99,6 +100,16 @@ export function startCron(): void {
   // loses that day's reminders permanently.
   cron.schedule("17 * * * *", () => void catchUpIfMissed(), { timezone: config.CRON_TIMEZONE });
   void catchUpIfMissed();
+
+  // Planned group rides: the hour-before reminder.
+  cron.schedule("*/5 * * * *", () => {
+    try {
+      const n = remindUpcomingRides();
+      if (n > 0) console.log(`[cron] reminded ${n} planned ride(s)`);
+    } catch (e) {
+      console.error("[cron] ride reminders failed", e);
+    }
+  });
 
   // Telemetry retention runs on the same daily rhythm (plus once at boot, so a
   // deployment that is only ever restarted still gets pruned).

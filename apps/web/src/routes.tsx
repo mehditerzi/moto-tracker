@@ -1,9 +1,10 @@
 import { useEffect, useState, lazy, Suspense, type ReactNode } from "react";
-import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Navigate, createBrowserRouter, RouterProvider, useLocation, useNavigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { registerNativePush } from "@/lib/nativePush";
+import { consumeReturnTo, rememberReturnTo } from "@/lib/returnTo";
 import { syncPurchasesSilently } from "@/lib/nativeIap";
 import { queryClient } from "@/lib/queryClient";
 import { withFleetLocale } from "@/lib/fleetLocale";
@@ -31,6 +32,9 @@ const BikeFormPage = lazy(() => import("@/pages/BikeFormPage").then((m) => ({ de
 const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const TripsPage = lazy(() => import("@/pages/TripsPage").then((m) => ({ default: m.TripsPage })));
 const FuelPage = lazy(() => import("@/pages/FuelPage").then((m) => ({ default: m.FuelPage })));
+const RidesPage = lazy(() => import("@/pages/RidesPage").then((m) => ({ default: m.RidesPage })));
+const RideEventPage = lazy(() => import("@/pages/RideEventPage").then((m) => ({ default: m.RideEventPage })));
+const RideEventFormPage = lazy(() => import("@/pages/RideEventFormPage").then((m) => ({ default: m.RideEventFormPage })));
 const MapPage = lazy(() => import("@/pages/MapPage").then((m) => ({ default: m.MapPage })));
 const DatedItemFormPage = lazy(() => import("@/pages/DatedItemFormPage").then((m) => ({ default: m.DatedItemFormPage })));
 const DatedItemDetailPage = lazy(() => import("@/pages/DatedItemDetailPage").then((m) => ({ default: m.DatedItemDetailPage })));
@@ -68,8 +72,16 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   // useSession's initial render flashes `data: null, isPending: false` which
   // causes a false redirect before the fetch resolves.
   const me = useMe();
+  const location = useLocation();
   // Once signed in, register for native APNs push (no-op on web / off-device).
   const authed = !!me.data;
+  const navigate = useNavigate();
+  // A link opened while signed out (a ride invite) resumes after sign-in.
+  useEffect(() => {
+    if (!authed) return;
+    const resume = consumeReturnTo();
+    if (resume) navigate(resume, { replace: true });
+  }, [authed, navigate]);
   useEffect(() => {
     if (authed) {
       void registerNativePush();
@@ -83,6 +95,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (me.isError || !me.data) {
     // Logged-out users always enter through onboarding; its Skip / Get Started
     // lead to /sign-in.
+    rememberReturnTo(location.pathname + location.search);
     return <Navigate to="/welcome" replace />;
   }
   return <>{children}</>;
@@ -185,6 +198,10 @@ const router = createBrowserRouter([
       { path: "trips", element: pane(<TripsPage />) },
       { path: "fuel", element: pane(<FuelPage />) },
       { path: "map", element: fullBleed(<MapPage />) },
+      { path: "rides", element: pane(<RidesPage />) },
+      { path: "rides/new", element: pane(<RideEventFormPage />) },
+      { path: "rides/:code", element: pane(<RideEventPage />) },
+      { path: "rides/:code/edit", element: pane(<RideEventFormPage />) },
       { path: "costs", element: pane(<CostsPage />) },
       { path: "assistant", element: pane(<AssistantPage />) },
       { path: "mechanics", element: pane(<MechanicsPage />) },

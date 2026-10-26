@@ -166,7 +166,7 @@ export function BikesPage() {
                   <VehicleAvatar
                     vehicle={b}
                     size="thumb"
-                    className="h-11 w-11 shrink-0 rounded-xl ring-1 ring-border dark:ring-border-dark"
+                    className="h-12 w-16 shrink-0 rounded-xl ring-1 ring-border dark:ring-border-dark"
                   />
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-semibold">{b.nickname}</div>

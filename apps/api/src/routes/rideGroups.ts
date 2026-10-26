@@ -26,7 +26,7 @@ const CODE_LEN = 6;
  * largest multiple of the alphabet length (248) are discarded instead.
  */
 const CODE_BYTE_LIMIT = 256 - (256 % CODE_ALPHABET.length);
-function newCode(): string {
+export function newCode(): string {
   let code = "";
   while (code.length < CODE_LEN) {
     // Over-draw so the loop almost always finishes in one syscall.
@@ -155,16 +155,32 @@ function insertGroup(id: string, userId: string): string {
   throw Object.assign(new Error("ride_code_unavailable"), { status: 503 });
 }
 
+/** Open a fresh live ride led by `userId` (leaving any current one). */
+export function openRideGroup(userId: string): { id: string; code: string } {
+  leaveCurrent(userId); // one active ride per user
+  pruneStaleGroups();
+  const id = newId();
+  const code = insertGroup(id, userId);
+  getDb().prepare("INSERT INTO ride_member (group_id, user_id) VALUES (?, ?)").run(id, userId);
+  return { id, code };
+}
+
+/** The join code of a live ride, or null once it has ended or gone stale. */
+export function liveRideCode(groupId: string | null): string | null {
+  if (!groupId) return null;
+  const g = getDb()
+    .prepare(
+      "SELECT code FROM ride_group WHERE id = ? AND ended_at IS NULL AND created_at > datetime('now', ?)",
+    )
+    .get(groupId, RIDE_MAX_AGE) as { code: string } | undefined;
+  return g?.code ?? null;
+}
+
 rideGroupsRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
-    leaveCurrent(userId); // one active ride per user
-    pruneStaleGroups();
-    const db = getDb();
-    const id = newId();
-    insertGroup(id, userId);
-    db.prepare("INSERT INTO ride_member (group_id, user_id) VALUES (?, ?)").run(id, userId);
+    openRideGroup(userId);
     res.status(201).json(toJson(activeGroupFor(userId)!, userId));
   }),
 );

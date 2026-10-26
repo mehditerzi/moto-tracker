@@ -205,32 +205,16 @@ export function DashboardPage() {
           </Button>
         </header>
 
-        {/* BELOW the header, and only when there is something to show.
-
-            It used to sit between the switcher and the header, rendered
-            unconditionally, because making it conditional jumped the page by
-            ~160px whenever you switched between a vehicle with a photo and one
-            without. Reserving the space did fix the jump, but it charged every
-            photo-less vehicle a screen-wide tinted rectangle whose entire
-            message was "no photo here".
-
-            Ordering it below the header fixes the same jump for free and keeps
-            nothing on screen that has nothing to say. What you look at when you
-            tap the switcher — the name, the make/model, the plate, the km — now
-            sits at a fixed offset under the switcher and cannot move; only the
-            status chips and below shift, by exactly the height of a photo that
-            is actually there. Animating the height was not an option worth
-            taking: `key={active.bike.id}` remounts this whole subtree on every
-            switch, so there is no persistent box for a layout transition to
-            animate between. */}
-        {active.bike.photoUrl && (
-          <VehicleAvatar
-            vehicle={active.bike}
-            emphasis
-            label={t("bike.photoOf", { name: active.bike.nickname })}
-            className="aspect-[16/7] w-full rounded-2xl border border-border dark:border-border-dark"
-          />
-        )}
+        {/* Below the header so what you read after switching vehicles (name,
+            plate, km) sits at a fixed offset. Always present: a vehicle with
+            no photo gets its studio illustration, so every vehicle has the
+            same hero and switching never jumps the page. */}
+        <VehicleAvatar
+          vehicle={active.bike}
+          emphasis
+          label={active.bike.photoUrl ? t("bike.photoOf", { name: active.bike.nickname }) : undefined}
+          className="aspect-[5/2] w-full rounded-2xl border border-border dark:border-border-dark"
+        />
 
         {activeOrg && <OrgVehicleNotice orgName={activeOrg.orgName} />}
 

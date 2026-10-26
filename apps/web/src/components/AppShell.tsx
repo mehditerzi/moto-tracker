@@ -7,7 +7,7 @@ import {
   Bike as BikeIcon,
   Wallet,
   Sparkles,
-  Map as MapIcon,
+  Users,
   LayoutDashboard,
   Building2,
   Fuel,
@@ -139,7 +139,7 @@ function Sidebar({ showFleet }: { showFleet: boolean }) {
     ...(showFleet ? [{ to: "/fleet", label: t("nav.fleet"), icon: Building2 }] : []),
     { to: "/bikes", label: t("nav.bikes"), icon: BikeIcon },
     { to: "/costs", label: t("nav.costs"), icon: Wallet },
-    { to: "/map", label: t("nav.map"), icon: MapIcon },
+    { to: "/rides", label: t("nav.rides"), icon: Users },
     { to: "/assistant", label: t("nav.assistant"), icon: Sparkles },
   ];
   const tools = [
@@ -220,7 +220,8 @@ function SideLink({
   const active =
     location.pathname === to ||
     location.pathname.startsWith(`${to}/`) ||
-    (to === "/costs" && location.pathname === "/fuel" && !small);
+    (to === "/costs" && location.pathname === "/fuel" && !small) ||
+    (to === "/rides" && ["/map", "/trips"].includes(location.pathname));
   return (
     <Link
       to={to}
@@ -259,7 +260,7 @@ function TripTracking() {
 }
 
 /** Screens reached from the Assistant hub — its tab stays lit on them. */
-const ASSISTANT_ROUTES = ["/mechanics", "/glovebox", "/warning-lights", "/nearby", "/sos", "/trips", "/groups"];
+const ASSISTANT_ROUTES = ["/mechanics", "/glovebox", "/warning-lights", "/nearby", "/sos", "/groups"];
 
 function MobileNav({ showFleet }: { showFleet: boolean }) {
   const { t } = useTranslation();
@@ -269,7 +270,7 @@ function MobileNav({ showFleet }: { showFleet: boolean }) {
     ...(showFleet ? [{ to: "/fleet", label: t("nav.fleet"), icon: Building2 }] : []),
     { to: "/bikes", label: t("nav.bikes"), icon: BikeIcon },
     { to: "/costs", label: t("nav.costs"), icon: Wallet, also: ["/fuel"] },
-    { to: "/map", label: t("nav.map"), icon: MapIcon },
+    { to: "/rides", label: t("nav.rides"), icon: Users, also: ["/map", "/trips"] },
     { to: "/assistant", label: t("nav.assistant"), icon: Sparkles, also: ASSISTANT_ROUTES },
   ] as { to: string; label: string; icon: typeof Wallet; also?: string[] }[];
 

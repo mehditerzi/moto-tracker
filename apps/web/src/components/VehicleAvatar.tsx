@@ -1,7 +1,8 @@
 import * as React from "react";
 import { cn } from "@/lib/cn";
 import { env } from "@/env";
-import { vehicleIcon, vehicleTint, tintGradient, vehiclePhotoSrc } from "@/lib/vehicleType";
+import { vehiclePhotoSrc } from "@/lib/vehicleType";
+import { vehicleArtFor } from "@/lib/vehicleArt";
 import type { VehicleType } from "@mototracker/shared";
 
 /** The subset of a vehicle this needs. Loose so DashboardEntry, Bike and a
@@ -13,6 +14,7 @@ export interface AvatarVehicle {
   make?: string | null;
   model?: string | null;
   color?: string | null;
+  cylinderCc?: number | null;
   photoUrl?: string | null;
 }
 
@@ -27,7 +29,7 @@ export interface VehicleAvatarProps {
   /** Overrides the photo URL — used for an optimistic local preview during an
    *  upload, so the tile shows the new photo before the server has it. */
   previewSrc?: string | null;
-  /** Renders the glyph larger, for hero-sized tiles. */
+  /** Hero-sized tile: the illustration sits smaller, with room around it. */
   emphasis?: boolean;
   /** Set when no adjacent text names the vehicle. Otherwise the tile is
    *  decorative and stays out of the accessibility tree. */
@@ -36,32 +38,17 @@ export interface VehicleAvatarProps {
 
 /**
  * One vehicle, drawn the same way everywhere: dashboard hero, garage list,
- * switcher pill, edit form.
+ * switcher pill, edit form, share cards.
  *
- * NO LAYOUT SHIFT, BY CONSTRUCTION. The tint is the element's own background
- * and the photo is an absolutely-positioned overlay inside it, so the box is
- * fully painted on first render and occupies its final size whether the photo
- * is loading, cached, slow or broken. Nothing here can reflow: there is no
- * `{photo ? <img/> : <div/>}` branch that changes the box, and no intrinsic
- * image size leaking into layout. A photo that 404s (a stale `?v=`, an org
- * upload the caller may no longer read) simply reveals the tint again.
+ * Without a photo it shows the studio illustration from lib/vehicleArt.ts — the
+ * vehicle's body style in its recorded colour on a neutral backdrop — so a
+ * garage reads as a garage, not as a column of placeholders. With a photo, the
+ * photo fades in over it.
  *
- * See lib/vehicleType.ts for why the fallback is a colour-derived tint rather
- * than stock or per-model photography.
- *
- * WHERE IT MAY BE USED. At identifier size — the switcher pill, a garage list
- * row, ~44px — the tint IS the content: it distinguishes two vehicles in a list
- * whether or not either has been photographed, and the guarantee above is what
- * keeps a list from twitching as photos decode. Callers may render it
- * unconditionally there.
- *
- * At HERO size it may only be rendered when `vehicle.photoUrl` (or a
- * `previewSrc`) actually exists. A screen-wide tinted rectangle with a glyph in
- * the middle is not an identifier, it is a full-width announcement that there
- * is nothing to show — and reserving that space to avoid a reflow buys
- * stability with a permanent cost paid by every vehicle that has no photo. Fix
- * the reflow by ordering the page so the photo sits below the content that must
- * not move (see DashboardPage), not by filling the hole.
+ * NO LAYOUT SHIFT, BY CONSTRUCTION. The backdrop and illustration are painted
+ * on first render and the photo is an absolutely-positioned overlay, so the box
+ * occupies its final size whether the photo is loading, cached, slow or broken.
+ * A photo that 404s simply reveals the illustration again.
  */
 export function VehicleAvatar({
   vehicle,
@@ -71,10 +58,15 @@ export function VehicleAvatar({
   emphasis,
   label,
 }: VehicleAvatarProps) {
-  const Icon = vehicleIcon(vehicle.vehicleType);
-  const tint = vehicleTint(vehicle);
   const remote = vehiclePhotoSrc(vehicle.photoUrl, env.VITE_API_URL, size);
   const src = previewSrc ?? remote;
+  // The studio illustration (lib/vehicleArt.ts): body style from make/model,
+  // paint from the recorded colour. Memoised on exactly what changes it.
+  const art = React.useMemo(
+    () => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(vehicleArtFor(vehicle).svg)}`,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vehicle.id, vehicle.vehicleType, vehicle.make, vehicle.model, vehicle.color, vehicle.cylinderCc, vehicle.nickname],
+  );
 
   const [failed, setFailed] = React.useState(false);
   // Sticky once anything has painted, and deliberately NOT reset when `src`
@@ -93,29 +85,31 @@ export function VehicleAvatar({
 
   return (
     <div
-      className={cn("relative isolate overflow-hidden", className)}
-      style={{ background: tintGradient(tint) }}
+      className={cn(
+        "relative isolate overflow-hidden bg-gradient-to-b from-[#f6f7f9] to-[#dde1e6] dark:from-[#25282e] dark:to-[#111317]",
+        className,
+      )}
       // Announced only when there is a real photograph to announce, and only
       // where the caller says no adjacent text already names the vehicle. The
-      // tint by itself is decoration — "Photo of Monster" on a vehicle with no
-      // photo would be a plain untruth.
+      // illustration is decoration — "Photo of Monster" on a drawing would be a
+      // plain untruth.
       {...(label && src ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
     >
-      {/* A single soft highlight. Enough to read as a surface with a light on
-          it rather than a flat swatch, at zero asset cost. */}
+      {/* Studio light: a soft spot behind the vehicle. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{ background: "radial-gradient(120% 90% at 22% 12%, rgba(255,255,255,0.16), transparent 62%)" }}
+        className="pointer-events-none absolute inset-0 opacity-70 dark:opacity-40"
+        style={{ background: "radial-gradient(70% 60% at 50% 38%, rgba(255,255,255,0.9), transparent 70%)" }}
       />
-      <Icon
+      <img
+        src={art}
+        alt=""
         aria-hidden
+        draggable={false}
         className={cn(
-          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
-          emphasis ? "h-[38%] w-[38%]" : "h-1/2 w-1/2",
+          "pointer-events-none absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-[46%] select-none",
+          emphasis ? "w-[min(62%,420px)]" : "w-[124%]",
         )}
-        style={{ color: tint.ink }}
-        strokeWidth={1.5}
       />
       {src && !failed && (
         <img
