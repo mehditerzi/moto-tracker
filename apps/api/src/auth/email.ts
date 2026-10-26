@@ -120,3 +120,18 @@ export async function sendGarageInviteEmail(
     devUrl: url,
   });
 }
+
+/** Where content reports go (App Review 1.2: reports must reach a person). */
+export const MODERATION_INBOX = "mehditerzi32@hotmail.com";
+
+export async function sendModerationAlert(subject: string, body: string): Promise<void> {
+  const esc = body.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
+  await send({
+    to: MODERATION_INBOX,
+    subject: `Garajım moderasyon — ${subject}`,
+    text: body,
+    html: `<pre style="font:14px/1.5 -apple-system,sans-serif;white-space:pre-wrap">${esc}</pre>`,
+    devLabel: "moderation",
+    devUrl: subject,
+  });
+}

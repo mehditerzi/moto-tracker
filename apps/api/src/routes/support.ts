@@ -82,6 +82,9 @@ const PAGE = `<!doctype html>
   <h3>Hesabımı ve verilerimi nasıl silerim?</h3>
   <p>Uygulamada Ayarlar &rsaquo; Hesabı sil. Hesabınız, araçlarınız, belgeleriniz ve kayıtlarınız kalıcı olarak silinir. Uygulamaya erişemiyorsanız kayıtlı e-posta adresinizden bize yazın.</p>
 
+  <h3 id="topluluk">Topluluk kuralları</h3>
+  <p>Garajım'ın sosyal özellikleri (profil, akış, yorumlar, grup sürüşleri) saygı çerçevesinde kullanılmalıdır. Hakaret, taciz, nefret söylemi, müstehcenlik, spam, tehlikeli/yasadışı sürüşü özendirme ve başkalarının kişisel bilgilerini paylaşmak yasaktır; bu tür içeriklere tolerans gösterilmez. Uygunsuz içeriği ya da kişiyi uygulama içinden &ldquo;Bildir&rdquo; ile bildirebilir, &ldquo;Engelle&rdquo; ile tamamen gizleyebilirsiniz. Bildirimler 24 saat içinde incelenir; kuralları ihlal eden içerik kaldırılır, hesaplar kapatılabilir.</p>
+
   <h3>Verilerim nerede, kimlerle paylaşılıyor?</h3>
   <p>Verileriniz satılmaz ve reklam amacıyla paylaşılmaz. Ayrıntılar <a href="/privacy">Gizlilik Politikası</a>&rsquo;nda.</p>
 
@@ -96,6 +99,8 @@ const PAGE = `<!doctype html>
     <p>Refunds for App Store purchases are handled by Apple: <a href="${REFUND}">${REFUND}</a>.</p>
     <h3>Restore purchases</h3>
     <p>Sign in with the same account and tap &ldquo;Restore purchases&rdquo; on the Pro screen.</p>
+    <h3>Community rules</h3>
+    <p>No harassment, hate speech, sexual content, spam, encouraging dangerous or illegal riding, or sharing other people's personal information — zero tolerance. Report content or people from inside the app, or block them. Reports are reviewed within 24 hours; violating content is removed and accounts may be closed.</p>
     <h3>Delete your account</h3>
     <p>In the app: Settings &rsaquo; Delete account. This permanently deletes your account and all your data. See the <a href="/privacy">Privacy Policy</a>.</p>
   </div>

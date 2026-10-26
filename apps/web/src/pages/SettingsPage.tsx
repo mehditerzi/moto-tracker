@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Bell, BellOff, LogOut, Globe, ChevronRight, ChevronDown, Trash2, Crown, Users, LifeBuoy, Mail, ShieldCheck, FileText } from "lucide-react";
+import { Bell, BellOff, LogOut, Globe, ChevronRight, ChevronDown, Trash2, Crown, Users,
+  UserRound, LifeBuoy, Mail, ShieldCheck, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,6 +216,18 @@ export function SettingsPage() {
       </header>
 
       <SubscriptionCard />
+
+      <Card>
+        <SectionHeader icon={<UserRound className="h-3.5 w-3.5" />} label={t("social.riderProfile")} />
+        <CardContent>
+          <p className="text-sm text-muted dark:text-muted-dark">{t("social.settingsIntro")}</p>
+          <Button asChild variant="outline" size="sm" className="mt-3">
+            <Link to="/profile">
+              {t("social.manageProfile")} <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Groups are reached from the garage they organise, but Settings is
           where people look for "where do I set this up?" — so the entry point

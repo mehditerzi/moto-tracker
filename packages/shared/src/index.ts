@@ -14,3 +14,4 @@ export * from "./schemas/ride.js";
 export * from "./schemas/vehicleShare.js";
 export * from "./schemas/assistant.js";
 export * from "./schemas/rideEvent.js";
+export * from "./schemas/social.js";

@@ -35,6 +35,11 @@ const FuelPage = lazy(() => import("@/pages/FuelPage").then((m) => ({ default: m
 const RidesPage = lazy(() => import("@/pages/RidesPage").then((m) => ({ default: m.RidesPage })));
 const RideEventPage = lazy(() => import("@/pages/RideEventPage").then((m) => ({ default: m.RideEventPage })));
 const RideEventFormPage = lazy(() => import("@/pages/RideEventFormPage").then((m) => ({ default: m.RideEventFormPage })));
+const ProfilePage = lazy(() => import("@/pages/social/ProfilePage").then((m) => ({ default: m.ProfilePage })));
+const ProfileEditPage = lazy(() => import("@/pages/social/ProfileEditPage").then((m) => ({ default: m.ProfileEditPage })));
+const PeoplePage = lazy(() => import("@/pages/social/PeoplePage").then((m) => ({ default: m.PeoplePage })));
+const PeopleListPage = lazy(() => import("@/pages/social/PeoplePage").then((m) => ({ default: m.PeopleListPage })));
+const PostPage = lazy(() => import("@/pages/social/PostPage").then((m) => ({ default: m.PostPage })));
 const MapPage = lazy(() => import("@/pages/MapPage").then((m) => ({ default: m.MapPage })));
 const DatedItemFormPage = lazy(() => import("@/pages/DatedItemFormPage").then((m) => ({ default: m.DatedItemFormPage })));
 const DatedItemDetailPage = lazy(() => import("@/pages/DatedItemDetailPage").then((m) => ({ default: m.DatedItemDetailPage })));
@@ -202,6 +207,12 @@ const router = createBrowserRouter([
       { path: "rides/new", element: pane(<RideEventFormPage />) },
       { path: "rides/:code", element: pane(<RideEventPage />) },
       { path: "rides/:code/edit", element: pane(<RideEventFormPage />) },
+      { path: "people", element: pane(<PeoplePage />) },
+      { path: "profile", element: pane(<ProfileEditPage />) },
+      { path: "u/:handle", element: pane(<ProfilePage />) },
+      { path: "u/:handle/followers", element: pane(<PeopleListPage />) },
+      { path: "u/:handle/following", element: pane(<PeopleListPage />) },
+      { path: "posts/:id", element: pane(<PostPage />) },
       { path: "costs", element: pane(<CostsPage />) },
       { path: "assistant", element: pane(<AssistantPage />) },
       { path: "mechanics", element: pane(<MechanicsPage />) },

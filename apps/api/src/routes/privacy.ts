@@ -168,6 +168,32 @@ const PAGE = `<!doctype html>
   members you deliberately ride with and &mdash; for a trip recorded on a company
   vehicle &mdash; the organization that vehicle belongs to.</p>
 
+  <h2 id="social">Rider profile, follows and the ride feed</h2>
+  <p>The social features are opt-in. Until you create a rider profile nobody can
+  find you, follow you or see anything of yours. When you create one:</p>
+  <ul>
+    <li>Your <strong>@handle, display name</strong> and, if you add them, a short
+    bio and your city are visible to other signed-in users, along with how many
+    followers you have, how many people you follow, your total trip distance and
+    count, and &mdash; unless you switch it off &mdash; the make, model, year and
+    colour of your personal vehicles (never plates, documents or company
+    vehicles).</li>
+    <li><strong>Nothing you ride is posted automatically.</strong> A trip appears in
+    the feed only when you post it. A post stores a copy of the distance, duration,
+    start time, vehicle and your caption, and &mdash; if you leave &ldquo;show
+    route&rdquo; on &mdash; the route with its <strong>first and last 600 metres
+    removed</strong> so it does not reveal where you start or finish.</li>
+    <li>&ldquo;Gaz!&rdquo; (kudos) and comments you leave are visible to people who
+    can see the post. You can delete your posts and comments, and comments on your
+    posts, at any time.</li>
+    <li>You can <strong>report</strong> posts, comments and profiles and
+    <strong>block</strong> people; reports reach us by email and content reported by
+    several people is hidden until we review it. Blocking hides each of you from the
+    other entirely.</li>
+    <li>Deleting your account deletes your profile, posts, comments, kudos and
+    follows.</li>
+  </ul>
+
   <h2 id="sharing">Sharing a vehicle with other people</h2>
   <p>You can share a vehicle &mdash; or a <strong>shared garage</strong> holding
   several vehicles &mdash; with other people. Nothing is shared unless you

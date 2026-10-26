@@ -22,6 +22,8 @@ import { api } from "@/lib/api";
 import { tripCard } from "@/lib/rideCards";
 import type { CardData } from "@/lib/shareCard";
 import { pushToast } from "@/hooks/useToast";
+import { PostTripSheet } from "@/components/social/PostTripSheet";
+import { useProfileGate } from "@/components/social/ProfileGate";
 
 export function TripsPage() {
   const { t, i18n } = useTranslation();
@@ -30,11 +32,13 @@ export function TripsPage() {
   const enabled = useTripTrackingEnabled();
   const cfg = usePublicConfig();
   const [openTripId, setOpenTripId] = useState<string | null>(null);
-  const [card, setCard] = useState<CardData | null>(null);
+  const [card, setCard] = useState<{ data: CardData; trip: Trip } | null>(null);
+  const [postTrip, setPostTrip] = useState<Trip | null>(null);
+  const gate = useProfileGate();
   const shareTrip = async (trip: Trip) => {
     try {
       const full = trip.hasRoute ? await api<Trip>(`/api/trips/${trip.id}`) : trip;
-      setCard(tripCard(full, bikeById.get(trip.bikeId), t, i18n.language));
+      setCard({ data: tripCard(full, bikeById.get(trip.bikeId), t, i18n.language), trip });
     } catch {
       pushToast({ variant: "danger", title: t("shareCard.renderFailed") });
     }
@@ -164,7 +168,22 @@ export function TripsPage() {
           })}
         </div>
       )}
-      <ShareCardSheet open={!!card} onClose={() => setCard(null)} data={card} fileName="garajim-surus" />
+      <ShareCardSheet
+        open={!!card}
+        onClose={() => setCard(null)}
+        data={card?.data ?? null}
+        fileName="garajim-surus"
+        onPostToFeed={
+          card
+            ? () => {
+                const trip = card.trip;
+                setCard(null);
+                gate(() => setPostTrip(trip));
+              }
+            : undefined
+        }
+      />
+      <PostTripSheet trip={postTrip} onClose={() => setPostTrip(null)} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Share2 } from "lucide-react";
+import { Rss, Share2 } from "lucide-react";
 import { Sheet } from "@/components/share/ShareSheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,7 @@ export function ShareCardSheet({
   fileName,
   text,
   url,
+  onPostToFeed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -30,6 +31,8 @@ export function ShareCardSheet({
   fileName: string;
   text?: string;
   url?: string;
+  /** Offered for trips: post the ride to the in-app feed as well. */
+  onPostToFeed?: () => void;
 }) {
   const { t } = useTranslation();
   const [format, setFormat] = useState<CardFormat>("story");
@@ -124,6 +127,11 @@ export function ShareCardSheet({
       <Button size="lg" className="w-full" disabled={!blob || busy} onClick={() => void share()}>
         <Share2 className="h-4 w-4" /> {t("shareCard.share")}
       </Button>
+      {onPostToFeed && (
+        <Button size="lg" variant="outline" className="w-full" onClick={onPostToFeed}>
+          <Rss className="h-4 w-4" /> {t("social.postToFeed")}
+        </Button>
+      )}
     </Sheet>
   );
 }

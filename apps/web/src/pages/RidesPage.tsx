@@ -21,6 +21,19 @@ import { formatNumber } from "@/lib/format";
 import { durationText, summaryCard, tripCard, tripMinutes, weeklyBars } from "@/lib/rideCards";
 import type { CardData } from "@/lib/shareCard";
 import { pushToast } from "@/hooks/useToast";
+import { FeedView } from "@/components/social/FeedView";
+import { PostTripSheet } from "@/components/social/PostTripSheet";
+import { useProfileGate } from "@/components/social/ProfileGate";
+import { useNavigate } from "react-router-dom";
+
+const VIEW_KEY = "garajim.ridesView";
+function initialView(): "feed" | "mine" {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "mine" ? "mine" : "feed";
+  } catch {
+    return "feed";
+  }
+}
 
 /**
  * SÜRÜŞLER — the social tab. Everything you do with other people and
@@ -38,7 +51,25 @@ export function RidesPage() {
   const trips = useTrips();
   const bikes = useBikes();
   const [activeBikeId] = useActiveBikeId();
-  const [card, setCard] = useState<{ data: CardData; name: string } | null>(null);
+  const [card, setCard] = useState<{ data: CardData; name: string; trip?: Trip } | null>(null);
+  const [view, setView] = useState<"feed" | "mine">(initialView);
+  const [postTrip, setPostTrip] = useState<Trip | null>(null);
+  const gate = useProfileGate();
+  const navigate = useNavigate();
+  const switchView = (v: "feed" | "mine") => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* per-device convenience only */
+    }
+  };
+  /** From the empty feed: post the latest trip, or go turn tracking on. */
+  const shareLatest = () => {
+    const latest = trips.data?.[0];
+    if (latest) setPostTrip(latest);
+    else navigate("/trips");
+  };
 
   const bikeById = useMemo(() => new Map<string, Bike>((bikes.data ?? []).map((b) => [b.id, b])), [bikes.data]);
   const activeBike = (activeBikeId && bikeById.get(activeBikeId)) || bikes.data?.[0] || null;
@@ -73,7 +104,7 @@ export function RidesPage() {
   const shareTrip = async (trip: Trip) => {
     try {
       const full = trip.hasRoute ? await api<Trip>(`/api/trips/${trip.id}`) : trip;
-      setCard({ name: "garajim-surus", data: tripCard(full, bikeById.get(trip.bikeId), t, i18n.language) });
+      setCard({ name: "garajim-surus", data: tripCard(full, bikeById.get(trip.bikeId), t, i18n.language), trip });
     } catch {
       pushToast({ variant: "danger", title: t("shareCard.renderFailed") });
     }
@@ -129,6 +160,27 @@ export function RidesPage() {
         </Link>
       </div>
 
+      <div role="tablist" aria-label={t("rides.title")} className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1 dark:bg-surface-elev-dark">
+        {(["feed", "mine"] as const).map((v) => (
+          <button
+            key={v}
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => switchView(v)}
+            className={cn(
+              "min-h-[40px] rounded-lg text-[13.5px] font-medium transition",
+              view === v ? "bg-bg text-text shadow-sm dark:bg-surface-dark dark:text-text-dark" : "text-muted dark:text-muted-dark",
+            )}
+          >
+            {t(`rides.view.${v}`)}
+          </button>
+        ))}
+      </div>
+
+      {view === "feed" ? (
+        <FeedView onShareTrip={shareLatest} />
+      ) : (
+      <>
       {/* Planned rides */}
       <section className="flex flex-col gap-2.5" aria-labelledby="rides-upcoming">
         <h2 id="rides-upcoming" className="text-[13px] font-semibold uppercase tracking-wider text-muted dark:text-muted-dark">
@@ -242,12 +294,25 @@ export function RidesPage() {
         </details>
       )}
 
+      </>
+      )}
+
       <ShareCardSheet
         open={!!card}
         onClose={() => setCard(null)}
         data={card?.data ?? null}
         fileName={card?.name ?? "garajim"}
+        onPostToFeed={
+          card?.trip
+            ? () => {
+                const trip = card.trip!;
+                setCard(null);
+                gate(() => setPostTrip(trip));
+              }
+            : undefined
+        }
       />
+      <PostTripSheet trip={postTrip} onClose={() => setPostTrip(null)} />
     </div>
   );
 }

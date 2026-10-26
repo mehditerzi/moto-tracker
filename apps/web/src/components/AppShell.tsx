@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BrandMark } from "@/components/BrandMark";
+import { ProfileGateProvider } from "@/components/social/ProfileGate";
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/hooks/useMe";
 import { useTripTracker } from "@/hooks/useTripTracker";
@@ -57,6 +58,7 @@ export function AppShell() {
   const immersive = location.pathname === "/map";
 
   return (
+    <ProfileGateProvider>
     <div className={`${immersive ? "h-dvh overflow-hidden" : "min-h-dvh"} md:pl-64`}>
       {/* Trip recording is suspended while a monitoring notice is outstanding, so
           the acknowledgement genuinely happens BEFORE the first trip on a
@@ -120,6 +122,7 @@ export function AppShell() {
         </Suspense>
       )}
     </div>
+    </ProfileGateProvider>
   );
 }
 
@@ -221,7 +224,7 @@ function SideLink({
     location.pathname === to ||
     location.pathname.startsWith(`${to}/`) ||
     (to === "/costs" && location.pathname === "/fuel" && !small) ||
-    (to === "/rides" && ["/map", "/trips"].includes(location.pathname));
+    (to === "/rides" && SOCIAL_ROUTES.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`)));
   return (
     <Link
       to={to}
@@ -259,6 +262,9 @@ function TripTracking() {
   return null;
 }
 
+/** Screens that belong to the Rides tab — its tab stays lit on them. */
+const SOCIAL_ROUTES = ["/map", "/trips", "/u", "/posts", "/people", "/profile"];
+
 /** Screens reached from the Assistant hub — its tab stays lit on them. */
 const ASSISTANT_ROUTES = ["/mechanics", "/glovebox", "/warning-lights", "/nearby", "/sos", "/groups"];
 
@@ -270,7 +276,7 @@ function MobileNav({ showFleet }: { showFleet: boolean }) {
     ...(showFleet ? [{ to: "/fleet", label: t("nav.fleet"), icon: Building2 }] : []),
     { to: "/bikes", label: t("nav.bikes"), icon: BikeIcon },
     { to: "/costs", label: t("nav.costs"), icon: Wallet, also: ["/fuel"] },
-    { to: "/rides", label: t("nav.rides"), icon: Users, also: ["/map", "/trips"] },
+    { to: "/rides", label: t("nav.rides"), icon: Users, also: SOCIAL_ROUTES },
     { to: "/assistant", label: t("nav.assistant"), icon: Sparkles, also: ASSISTANT_ROUTES },
   ] as { to: string; label: string; icon: typeof Wallet; also?: string[] }[];
 

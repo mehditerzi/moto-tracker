@@ -21,6 +21,7 @@ import { tripsRouter } from "./routes/trips.js";
 import { mapkitRouter } from "./routes/mapkit.js";
 import { rideGroupsRouter } from "./routes/rideGroups.js";
 import { rideEventsRouter, rideInviteRouter } from "./routes/rideEvents.js";
+import { socialRouter } from "./routes/social.js";
 import { fuelLogsRouter } from "./routes/fuelLogs.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { pushSubscriptionsRouter } from "./routes/pushSubscriptions.js";
@@ -286,6 +287,7 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   app.use("/api/mapkit-token", mapkitRouter);
   app.use("/api/ride-groups", rideGroupsRouter);
   app.use("/api/ride-events", rideEventsRouter);
+  app.use("/api/social", socialRouter);
   app.use("/api/fuel-logs", fuelLogsRouter);
   app.use("/api/catalog", catalogRouter);
   app.use("/api/push", pushSubscriptionsRouter);
