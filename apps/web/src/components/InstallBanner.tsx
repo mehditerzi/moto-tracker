@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Share } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { isNative } from "@/lib/nativeAuth";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -30,7 +31,8 @@ export function InstallBanner() {
   const [ios, setIos] = useState(false);
 
   useEffect(() => {
-    if (isStandalone() || sessionStorage.getItem(DISMISSED_KEY)) return;
+    // Never inside the App Store app: "add to home screen" there is nonsense.
+    if (isNative() || isStandalone() || sessionStorage.getItem(DISMISSED_KEY)) return;
 
     if (isIosSafari()) {
       setIos(true);

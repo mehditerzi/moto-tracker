@@ -17,7 +17,7 @@ import { FIELD_WIDTH } from "@/components/ui/control";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMakes, fetchModels } from "@/lib/catalog";
-import { COLOR_OPTIONS, FUEL_OPTIONS, yearOptions } from "@/lib/vehicleOptions";
+import { COLOR_OPTIONS, FUEL_OPTIONS, normalizeFuel, yearOptions } from "@/lib/vehicleOptions";
 import {
   useBike,
   useCreateBike,
@@ -190,7 +190,7 @@ export function BikeFormPage() {
         chassisNo: (bike.data as any).chassisNo ?? "",
         engineNo: (bike.data as any).engineNo ?? "",
         cylinderCc: (bike.data as any).cylinderCc ?? "",
-        fuelType: (bike.data as any).fuelType ?? "",
+        fuelType: normalizeFuel((bike.data as any).fuelType),
         firstRegistrationDate: (bike.data as any).firstRegistrationDate ?? "",
       });
     }

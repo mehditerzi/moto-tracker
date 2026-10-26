@@ -165,3 +165,13 @@ describe("/privacy", () => {
     });
   });
 });
+
+describe("GET /support", () => {
+  it("is a public page with a way to reach a person", async () => {
+    const res = await request(buildTestApp()).get("/support");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/text\/html/);
+    expect(res.text).toContain("mailto:");
+    expect(res.text).toContain("Hesabı sil");
+  });
+});

@@ -202,12 +202,14 @@ function isLabelLine(text: string): boolean {
 
 // ── value shapes ──────────────────────────────────────────────────────────────
 
+// Spelled exactly like the app's fuel picker (lib/vehicleOptions.ts).
 const FUELS: [RegExp, string][] = [
-  [/BENZ|BENS/, "BENZİN"],
-  [/DIZ|MOTORIN/, "DİZEL"],
+  [/(BENZ|BENS).*LPG|LPG.*(BENZ|BENS)/, "Benzin + LPG"],
+  [/BENZ|BENS/, "Benzin"],
+  [/DIZ|MOTORIN/, "Dizel"],
   [/LPG/, "LPG"],
-  [/ELEKT/, "ELEKTRİK"],
-  [/HIBR|HYBR/, "HİBRİT"],
+  [/ELEKT/, "Elektrik"],
+  [/HIBR|HYBR/, "Hibrit"],
 ];
 
 const COLORS = [

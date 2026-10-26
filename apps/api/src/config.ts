@@ -102,6 +102,8 @@ const Env = z.object({
   // every ≤6 months). Both unset → Apple sign-in stays off.
   APPLE_CLIENT_ID: z.string().optional(),
   APPLE_CLIENT_SECRET: z.string().optional(),
+  /** The iOS app's bundle ID — the audience of native Sign in with Apple tokens. */
+  APPLE_APP_BUNDLE_ID: z.string().default("com.mehditerzi.mototracker"),
   UPLOADS_DIR: z.string().default("./data/uploads"),
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
   /**

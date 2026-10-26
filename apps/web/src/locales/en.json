@@ -11,7 +11,8 @@
     "signOut": "Sign out",
     "fleet": "Fleet",
     "costs": "Costs",
-    "assistant": "Assistant"
+    "assistant": "Assistant",
+    "tools": "Shortcuts"
   },
   "map": {
     "title": "Map",
@@ -173,7 +174,7 @@
     "magicLink": "Email me a sign-in link",
     "magicLinkSubtitle": "No password — use a link emailed to you",
     "google": "Continue with Google",
-    "welcomeBack": "Welcome back",
+    "welcomeBack": "Welcome to your garage",
     "welcomeBackSub": "Sign in to your account.",
     "newAccount": "Create account",
     "newAccountSub": "Start tracking your vehicle with Garajım.",
@@ -215,7 +216,15 @@
     "resetSuccess": "Password updated — please sign in",
     "resetInvalidLink": "Invalid or expired reset link.",
     "invalidCredentials": "That email or password isn't right.",
-    "emailTaken": "That email is already registered. Try signing in."
+    "emailTaken": "That email is already registered. Try signing in.",
+    "orEmail": "or with email",
+    "createTitle": "Create your garage",
+    "tagline": "Insurance, inspection, service and costs — everything about your vehicle in one place.",
+    "legalPrefix": "By continuing you agree to:",
+    "privacy": "Privacy",
+    "terms": "Terms of Use",
+    "support": "Support",
+    "appleFailed": "Sign in with Apple couldn't finish. Please try again."
   },
   "dashboard": {
     "active": "Active vehicle",
@@ -346,7 +355,7 @@
   },
   "settings": {
     "title": "Settings",
-    "subscription": "Garage subscription",
+    "subscription": "Subscription",
     "freePlan": "Free plan — 1 vehicle",
     "vehiclesUsed": "{{used}} of {{max}} vehicles in use",
     "changePack": "Change pack",
@@ -393,7 +402,16 @@
     "nativePushTimeout": "Apple didn't respond. Push needs a real device — the Simulator can't register here.",
     "sharingNotifications": "Sharing",
     "sharingNotificationsDesc": "Get notified when someone answers an access or ownership request you sent.",
-    "sharingNotificationsAlways": "Requests about a vehicle you keep records for are always delivered, even with this off — they give you three weeks to answer. Garage invitations are sent by email to the address they are addressed to."
+    "sharingNotificationsAlways": "Requests about a vehicle you keep records for are always delivered, even with this off — they give you three weeks to answer. Garage invitations are sent by email to the address they are addressed to.",
+    "help": {
+      "title": "Help & support",
+      "support": "Support centre",
+      "email": "Email us",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Use",
+      "version": "version {{v}}"
+    },
+    "noLeadDays": "No reminder days chosen"
   },
   "capture": {
     "title": "Upload document",
@@ -976,7 +994,8 @@
     "freePlan": "Free plan",
     "scansLeft": "{{left}} scans left this month",
     "unlockCta": "Unlock Pro",
-    "garageFullSub": "Go Pro for unlimited vehicles."
+    "garageFullSub": "Go Pro for unlimited vehicles.",
+    "unlimitedVehicles": "Unlimited vehicles · {{used}} registered"
   },
   "costs": {
     "title": "Costs",

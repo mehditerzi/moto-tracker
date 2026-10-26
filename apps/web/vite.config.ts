@@ -46,6 +46,8 @@ export default defineConfig({
     },
   },
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  // Shown in Settings › Help. Keep in step with MARKETING_VERSION in the iOS project.
+  define: { __APP_VERSION__: JSON.stringify("1.4") },
   server: {
     port: 5173,
     // On the production host :8787 is the live container, so a dev API there

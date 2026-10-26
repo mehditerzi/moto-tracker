@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Bell, BellOff, LogOut, Globe, ChevronRight, Trash2, Crown, Users } from "lucide-react";
+import { Bell, BellOff, LogOut, Globe, ChevronRight, ChevronDown, Trash2, Crown, Users, LifeBuoy, Mail, ShieldCheck, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ import { usePaywall } from "@/components/paywall/PaywallContext";
 import { manageSubscriptions } from "@/lib/nativeIap";
 import { formatDate } from "@/lib/format";
 import { isProProductId } from "@mototracker/shared";
+import { hapticSelection } from "@/lib/haptics";
 
 /**
  * Subscription section: always visible so the upgrade/manage path isn't only
@@ -72,7 +73,9 @@ function SubscriptionCard() {
                     ? t("pro.activeUntil", { date: formatDate(d.expiresAt.slice(0, 10)) })
                     : d.scanLimit != null
                       ? t("pro.scansLeft", { left: Math.max(0, d.scanLimit - (d.scansUsed ?? 0)) })
-                      : t("settings.vehiclesUsed", { used: d.activeVehicles, max: d.maxVehicles })}
+                      : d.maxVehicles >= 100
+                        ? t("pro.unlimitedVehicles", { used: d.activeVehicles })
+                        : t("settings.vehiclesUsed", { used: d.activeVehicles, max: d.maxVehicles })}
             </div>
           </div>
           {pro ? (
@@ -361,6 +364,7 @@ export function SettingsPage() {
 
       <SharingNotificationsCard />
 
+      <HelpCard />
       <DeleteAccountCard />
     </motion.div>
   );
@@ -605,52 +609,83 @@ function PrefRow({ pref }: { pref: NotifPreference }) {
     }
   };
 
+  const [open, setOpen] = useState(false);
+  const summary = pref.enabled
+    ? [...pref.leadDays]
+        .sort((a, b) => b - a)
+        .map((n) => (n === 0 ? t("settings.onTheDay") : t("settings.daysBeforeShort", { count: n })))
+        .join(" · ") || t("settings.noLeadDays")
+    : t("settings.off");
+
+  // One line per reminder type: what it is, when it fires, a switch. The day
+  // chips open on demand — five always-open grids made this the longest screen
+  // in the app for a setting most people never change.
   return (
-    <div
-      className={cn(
-        "rounded-xl border p-3 transition",
-        pref.enabled
-          ? "border-border dark:border-border-dark"
-          : "border-border bg-surface/40 opacity-60 dark:border-border-dark dark:bg-surface-elev-dark/40",
-      )}
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[14px] font-medium">{t(`items.${pref.itemType}`)}</span>
+    <div className="rounded-xl border border-border transition dark:border-border-dark">
+      <div className="flex items-center gap-3 p-3">
         <button
-          onClick={toggleEnabled}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="flex min-h-[44px] min-w-0 flex-1 flex-col items-start text-left"
+        >
+          <span className="text-[14.5px] font-medium">{t(`items.${pref.itemType}`)}</span>
+          <span className={cn("num truncate text-[12.5px]", pref.enabled ? "text-muted dark:text-muted-dark" : "text-muted/70")}>
+            {summary}
+          </span>
+        </button>
+        <ChevronDown
+          aria-hidden
+          className={cn("h-4 w-4 shrink-0 text-muted transition-transform dark:text-muted-dark", open && "rotate-180")}
+        />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={pref.enabled}
+          aria-label={t(`items.${pref.itemType}`)}
+          onClick={() => void toggleEnabled()}
           className={cn(
-            "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition min-h-[44px] min-w-[44px]",
-            pref.enabled
-              ? "bg-success/15 text-success"
-              : "bg-surface text-muted dark:bg-bg-dark dark:text-muted-dark",
+            "relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors",
+            pref.enabled ? "bg-success" : "bg-border dark:bg-border-dark",
           )}
         >
-          {pref.enabled ? t("settings.on") : t("settings.off")}
+          <span
+            className={cn(
+              "absolute top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow transition-[left]",
+              pref.enabled ? "left-[22px]" : "left-[2px]",
+            )}
+          />
         </button>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {LEAD_OPTIONS.map((n) => {
-          const on = pref.leadDays.includes(n);
-          const label = n === 0 ? t("settings.onTheDay") : t("settings.daysBeforeShort", { count: n });
-          return (
-            <button
-              key={n}
-              onClick={() => toggleLead(n)}
-              disabled={!pref.enabled}
-              aria-label={n !== 0 ? t("settings.daysBefore", { n }) : undefined}
-              className={cn(
-                "num rounded-full border px-2.5 py-1 text-[11px] font-medium transition min-h-[44px]",
-                on
-                  ? "border-accent bg-accent/15 text-text dark:text-text-dark"
-                  : "border-border text-muted hover:border-text/30 dark:border-border-dark dark:text-muted-dark dark:hover:border-text-dark/30",
-                !pref.enabled && "cursor-not-allowed opacity-50 hover:border-border",
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {open && (
+        <div className="flex flex-wrap gap-1.5 border-t border-border px-3 pb-3 pt-3 dark:border-border-dark">
+          {LEAD_OPTIONS.map((n) => {
+            const on = pref.leadDays.includes(n);
+            const label = n === 0 ? t("settings.onTheDay") : t("settings.daysBeforeShort", { count: n });
+            return (
+              <button
+                key={n}
+                onClick={() => {
+                  hapticSelection();
+                  void toggleLead(n);
+                }}
+                disabled={!pref.enabled}
+                aria-pressed={on}
+                aria-label={n !== 0 ? t("settings.daysBefore", { n }) : undefined}
+                className={cn(
+                  "num min-h-[40px] rounded-full border px-3 py-1 text-[12px] font-medium transition",
+                  on
+                    ? "border-accent bg-accent/15 text-text dark:text-text-dark"
+                    : "border-border text-muted hover:border-text/30 dark:border-border-dark dark:text-muted-dark",
+                  !pref.enabled && "cursor-not-allowed opacity-50",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -677,5 +712,41 @@ function LangButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Where to get help, and the legal pages — reachable without leaving the app. */
+function HelpCard() {
+  const { t } = useTranslation();
+  const rows = [
+    { href: "/support", label: t("settings.help.support"), icon: <LifeBuoy className="h-4 w-4" /> },
+    { href: "mailto:mehditerzi32@hotmail.com?subject=Garaj%C4%B1m", label: t("settings.help.email"), icon: <Mail className="h-4 w-4" /> },
+    { href: "/privacy", label: t("settings.help.privacy"), icon: <ShieldCheck className="h-4 w-4" /> },
+    {
+      href: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+      label: t("settings.help.terms"),
+      icon: <FileText className="h-4 w-4" />,
+    },
+  ];
+  return (
+    <Card>
+      <SectionHeader icon={<LifeBuoy className="h-3.5 w-3.5" />} label={t("settings.help.title")} />
+      <CardContent className="gap-1 pt-0">
+        {rows.map((r) => (
+          <a
+            key={r.href}
+            href={r.href}
+            target={r.href.startsWith("http") ? "_blank" : undefined}
+            rel="noopener noreferrer"
+            className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 text-[14px] transition hover:bg-surface active:scale-[0.99] dark:hover:bg-surface-elev-dark"
+          >
+            <span className="text-muted dark:text-muted-dark">{r.icon}</span>
+            <span className="flex-1">{r.label}</span>
+            <ChevronRight className="h-4 w-4 text-muted dark:text-muted-dark" />
+          </a>
+        ))}
+        <p className="num mt-2 text-center text-[11.5px] text-muted dark:text-muted-dark">Garajım · {t("settings.help.version", { v: __APP_VERSION__ })}</p>
+      </CardContent>
+    </Card>
   );
 }

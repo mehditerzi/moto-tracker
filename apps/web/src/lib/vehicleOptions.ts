@@ -25,3 +25,28 @@ export function yearOptions(): string[] {
   for (let y = now + 1; y >= 1980; y--) out.push(String(y));
   return out;
 }
+
+/**
+ * One spelling per fuel. Values arrive from OCR ("BENZİNLİ"), from older model
+ * output ("gasoline") and from people; the picker should show the option they
+ * mean, not the raw string.
+ */
+export function normalizeFuel(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const s = raw
+    .toLocaleUpperCase("tr")
+    .replace(/İ/g, "I")
+    .replace(/Ş/g, "S")
+    .replace(/Ü/g, "U")
+    .replace(/Ö/g, "O")
+    .replace(/Ç/g, "C")
+    .replace(/Ğ/g, "G");
+  const lpg = /LPG/.test(s);
+  if (/BENZ|GASOL|PETROL/.test(s)) return lpg ? "Benzin + LPG" : "Benzin";
+  if (/DIZ|DIES|MOTORIN/.test(s)) return "Dizel";
+  if (lpg) return "LPG";
+  if (/ELEK|ELECT|EV\b/.test(s)) return "Elektrik";
+  if (/HIB|HYB/.test(s)) return "Hibrit";
+  if (/HIDRO|HYDRO/.test(s)) return "Hidrojen";
+  return raw;
+}

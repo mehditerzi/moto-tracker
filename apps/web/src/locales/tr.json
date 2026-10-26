@@ -11,7 +11,8 @@
     "signOut": "Çıkış",
     "fleet": "Filo",
     "costs": "Masraflar",
-    "assistant": "Asistan"
+    "assistant": "Asistan",
+    "tools": "Kısayollar"
   },
   "map": {
     "title": "Harita",
@@ -173,7 +174,7 @@
     "magicLink": "Şifresiz giriş bağlantısı gönder",
     "magicLinkSubtitle": "Şifre yerine e-postana gelen bağlantı",
     "google": "Google ile devam et",
-    "welcomeBack": "Tekrar hoş geldin",
+    "welcomeBack": "Garajına hoş geldin",
     "welcomeBackSub": "Hesabınla giriş yap.",
     "newAccount": "Hesap oluştur",
     "newAccountSub": "Garajım ile araçlarını takip etmeye başla.",
@@ -215,7 +216,15 @@
     "resetSuccess": "Şifre güncellendi — giriş yapabilirsin",
     "resetInvalidLink": "Geçersiz veya süresi dolmuş sıfırlama bağlantısı.",
     "invalidCredentials": "E-posta veya şifre hatalı.",
-    "emailTaken": "Bu e-posta zaten kayıtlı. Giriş yapmayı dene."
+    "emailTaken": "Bu e-posta zaten kayıtlı. Giriş yapmayı dene.",
+    "orEmail": "veya e-posta ile",
+    "createTitle": "Garajını oluştur",
+    "tagline": "Sigorta, muayene, bakım ve masraflar — aracınla ilgili her şey tek yerde.",
+    "legalPrefix": "Devam ederek şunları kabul edersin:",
+    "privacy": "Gizlilik",
+    "terms": "Kullanım Koşulları",
+    "support": "Destek",
+    "appleFailed": "Apple ile giriş tamamlanamadı. Lütfen tekrar dene."
   },
   "dashboard": {
     "active": "Aktif araç",
@@ -346,7 +355,7 @@
   },
   "settings": {
     "title": "Ayarlar",
-    "subscription": "Garaj aboneliği",
+    "subscription": "Abonelik",
     "freePlan": "Ücretsiz plan — 1 araç",
     "vehiclesUsed": "{{max}} araçtan {{used}} tanesi kullanımda",
     "changePack": "Paketi değiştir",
@@ -393,7 +402,16 @@
     "nativePushTimeout": "Apple yanıt vermedi. Bildirimler gerçek bir cihaz gerektirir — Simulator burada kaydolamaz.",
     "sharingNotifications": "Paylaşım",
     "sharingNotificationsDesc": "Gönderdiğin erişim veya sahiplik isteği yanıtlandığında bildirim al.",
-    "sharingNotificationsAlways": "Kayıtlarını tuttuğun bir araçla ilgili istekler, bu kapalı olsa da her zaman iletilir — yanıtlaman için üç haftan olur. Garaj davetleri, gönderildikleri e-posta adresine e-postayla iletilir."
+    "sharingNotificationsAlways": "Kayıtlarını tuttuğun bir araçla ilgili istekler, bu kapalı olsa da her zaman iletilir — yanıtlaman için üç haftan olur. Garaj davetleri, gönderildikleri e-posta adresine e-postayla iletilir.",
+    "help": {
+      "title": "Yardım ve destek",
+      "support": "Destek merkezi",
+      "email": "Bize e-posta gönder",
+      "privacy": "Gizlilik Politikası",
+      "terms": "Kullanım Koşulları",
+      "version": "sürüm {{v}}"
+    },
+    "noLeadDays": "Hatırlatma günü seçilmedi"
   },
   "capture": {
     "title": "Belge yükle",
@@ -976,7 +994,8 @@
     "freePlan": "Ücretsiz plan",
     "scansLeft": "Bu ay {{left}} tarama hakkın kaldı",
     "unlockCta": "Pro'nun kilidini aç",
-    "garageFullSub": "Pro ile sınırsız araç ekleyebilirsin."
+    "garageFullSub": "Pro ile sınırsız araç ekleyebilirsin.",
+    "unlimitedVehicles": "Sınırsız araç · {{used}} araç kayıtlı"
   },
   "costs": {
     "title": "Masraflar",

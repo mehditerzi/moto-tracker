@@ -13,3 +13,15 @@ describe("formatDate", () => {
     expect(formatDate("not-a-date", "tr")).toBe("not-a-date");
   });
 });
+
+import { normalizeFuel } from "./vehicleOptions";
+describe("normalizeFuel", () => {
+  it("maps every spelling onto the picker's options", () => {
+    expect(normalizeFuel("gasoline")).toBe("Benzin");
+    expect(normalizeFuel("BENZİNLİ")).toBe("Benzin");
+    expect(normalizeFuel("benzin/lpg")).toBe("Benzin + LPG");
+    expect(normalizeFuel("DİZEL")).toBe("Dizel");
+    expect(normalizeFuel("Elektrik")).toBe("Elektrik");
+    expect(normalizeFuel("")).toBe("");
+  });
+});

@@ -53,6 +53,10 @@ function makeAuth() {
             apple: {
               clientId: config.APPLE_CLIENT_ID,
               clientSecret: config.APPLE_CLIENT_SECRET,
+              // Two kinds of Apple identity token reach us: the web flow's,
+              // issued to the Services ID, and the iOS app's native sheet's,
+              // issued to the bundle ID. Both are ours.
+              audience: [config.APPLE_CLIENT_ID, config.APPLE_APP_BUNDLE_ID],
             },
           }
         : {}),

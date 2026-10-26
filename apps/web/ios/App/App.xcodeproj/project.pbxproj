@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		7A00000000000000000000A2 /* StoreKitPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A00000000000000000000A1 /* StoreKitPlugin.swift */; };
 		7A00000000000000000000B2 /* WidgetBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A00000000000000000000B1 /* WidgetBridgePlugin.swift */; };
+		7A000000000000000000FF02 /* AppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A000000000000000000FF01 /* AppleSignInPlugin.swift */; };
 		7A000000000000000000EE02 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A000000000000000000EE01 /* SceneDelegate.swift */; };
 		7A000000000000000000DD02 /* DocumentScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A000000000000000000DD01 /* DocumentScannerPlugin.swift */; };
 		7A00000000000000000000C2 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A00000000000000000000C1 /* MainViewController.swift */; };
@@ -35,6 +36,7 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		7A00000000000000000000A1 /* StoreKitPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitPlugin.swift; sourceTree = "<group>"; };
 		7A00000000000000000000B1 /* WidgetBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridgePlugin.swift; sourceTree = "<group>"; };
+		7A000000000000000000FF01 /* AppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInPlugin.swift; sourceTree = "<group>"; };
 		7A000000000000000000EE01 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7A000000000000000000DD01 /* DocumentScannerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentScannerPlugin.swift; sourceTree = "<group>"; };
 		7A00000000000000000000C1 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 				7A00000000000000000000B1 /* WidgetBridgePlugin.swift */,
 				7A000000000000000000DD01 /* DocumentScannerPlugin.swift */,
 				7A000000000000000000EE01 /* SceneDelegate.swift */,
+				7A000000000000000000FF01 /* AppleSignInPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -178,6 +181,7 @@
 				7A00000000000000000000B2 /* WidgetBridgePlugin.swift in Sources */,
 				7A000000000000000000DD02 /* DocumentScannerPlugin.swift in Sources */,
 				7A000000000000000000EE02 /* SceneDelegate.swift in Sources */,
+				7A000000000000000000FF02 /* AppleSignInPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

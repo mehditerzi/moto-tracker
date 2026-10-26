@@ -45,5 +45,6 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(StoreKitPlugin())
         bridge?.registerPluginInstance(WidgetBridgePlugin())
         bridge?.registerPluginInstance(DocumentScannerPlugin())
+        bridge?.registerPluginInstance(AppleSignInPlugin())
     }
 }

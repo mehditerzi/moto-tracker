@@ -58,7 +58,7 @@ describe("ruhsat layout reader", () => {
     expect(p.engineNo).toBe("N701E099999");
     expect(p.chassisNo).toBe("JYARN296000099999"); // WMI "JVA" repaired to Yamaha's "JYA"
     expect(p.cylinderCc).toBe(847);
-    expect(p.fuelType).toBe("BENZİN");
+    expect(p.fuelType).toBe("Benzin");
     expect(p.color).toBe("SİYAH");
     expect(p.dates.muayeneExpiresOn).toBe("2026-08-19");
     expect(p.confidence).toBeGreaterThanOrEqual(0.7);

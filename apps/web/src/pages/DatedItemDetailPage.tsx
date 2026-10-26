@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api";
 import { statusFor, statusColorClass } from "@/lib/datedItems";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { useBike } from "@/hooks/useBikes";
 
 /**
  * "Renew" used to open an empty date picker, making the user scroll a calendar
@@ -35,6 +36,7 @@ export function DatedItemDetailPage() {
   const { id } = useParams();
   const item = useDatedItem(id);
   const history = useDatedItemsForBike(item.data?.bikeId);
+  const bike = useBike(item.data?.bikeId);
 
   if (item.isLoading) {
     return (
@@ -89,8 +91,9 @@ export function DatedItemDetailPage() {
 
       <Card>
         <CardHeader>
+          {/* Which vehicle this is for — "active vehicle" said nothing here. */}
           <div className="label-micro text-muted dark:text-muted-dark">
-            {t("dashboard.active")}
+            {bike.data ? [bike.data.nickname, bike.data.plate].filter(Boolean).join(" · ") : "\u00a0"}
           </div>
           <CardTitle className="text-[22px] tracking-tight">
             {t(`items.${item.data.type}`)}

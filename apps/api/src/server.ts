@@ -29,6 +29,7 @@ import { mechanicsRouter, sosContactsRouter } from "./routes/assistant.js";
 import { attachmentsRouter } from "./routes/attachments.js";
 import { iapRouter, iapWebhookRouter } from "./routes/iap.js";
 import { privacyRouter } from "./routes/privacy.js";
+import { supportRouter } from "./routes/support.js";
 import { orgsRouter } from "./routes/orgs.js";
 import { orgInvitesRouter, orgMembersRouter } from "./routes/orgMembers.js";
 import { orgFleetRouter } from "./routes/orgFleet.js";
@@ -314,6 +315,8 @@ export function buildApp(opts: BuildAppOptions = {}): Express {
   // reviewers can open without authenticating). Mounted before the SPA static
   // block so /privacy resolves to this page rather than the index.html fallback.
   app.use("/privacy", privacyRouter);
+  // The App Store Support URL — public, no login (Guideline 1.5).
+  app.use("/support", supportRouter);
 
   // ---- Static SPA hosting (single-origin production mode) ----
   // If WEB_ROOT points at a built React dist, serve it and fall back to

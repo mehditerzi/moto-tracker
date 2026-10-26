@@ -10,6 +10,11 @@ import {
   Map as MapIcon,
   LayoutDashboard,
   Building2,
+  Fuel,
+  FolderLock,
+  Wrench,
+  MapPin,
+  Siren,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BrandMark } from "@/components/BrandMark";
@@ -34,10 +39,7 @@ const OrgTripDisclosure = lazy(() =>
 export function AppShell() {
   const { t } = useTranslation();
   const me = useMe();
-  const navigate = useNavigate();
   const location = useLocation();
-  const confirm = useConfirm();
-  const [signingOut, setSigningOut] = useState(false);
   // Fleet chrome renders ONLY for an owner/manager/staff membership. A consumer
   // gets an empty array from /api/orgs and a driver is filtered out of
   // `fleetOrgs`, so neither ever sees a fleet nav entry (docs/fleet-design.md
@@ -45,102 +47,58 @@ export function AppShell() {
   const fleet = useFleetAccess();
   const disclosure = useFleetDisclosure();
 
-  const onSignOut = async () => {
-    const confirmed = await confirm({
-      title: t("settings.signOutConfirm"),
-      confirmLabel: t("settings.signOut"),
-      destructive: true,
-    });
-    if (!confirmed) return;
-    setSigningOut(true);
-    try {
-      await signOut();
-      navigate("/sign-in");
-    } finally {
-      setSigningOut(false);
-    }
-  };
-
-  // The consumer app is a phone layout at any width. Fleet is not: a dispatch
-  // board has to be genuinely good at a desk (§6), so /fleet — and only /fleet —
-  // gets the wide container. Consumer routes keep their max-w-3xl exactly.
+  // Fleet is a desk tool (§6), so /fleet gets the wide column; consumer screens
+  // keep a readable one.
   const wide = location.pathname === "/fleet" || location.pathname.startsWith("/fleet/");
   const container = wide ? "max-w-[1400px]" : "max-w-3xl";
 
-  // The ride map is the one screen that is not a document: a rider needs the
-  // road edge to edge, so /map — and only /map — drops the header and the
-  // content column and takes the whole viewport, with its own chrome floating
-  // over the map. The tab bar stays (it is the way back), and because there is
-  // no header to navigate from at desktop widths it stops being phone-only here.
+  // The ride map is the one screen that is not a document: it takes the whole
+  // viewport (beside the sidebar on a tablet), with its own floating chrome.
   const immersive = location.pathname === "/map";
 
   return (
-    <div className={immersive ? "h-dvh overflow-hidden" : "min-h-dvh"}>
+    <div className={`${immersive ? "h-dvh overflow-hidden" : "min-h-dvh"} md:pl-64`}>
       {/* Trip recording is suspended while a monitoring notice is outstanding, so
           the acknowledgement genuinely happens BEFORE the first trip on a
           company vehicle rather than after it. */}
       {!disclosure.pending && <TripTracking />}
 
+      {me.data && <Sidebar showFleet={fleet.canSeeFleet} />}
+
+      {/* Phone header: brand and Settings only. Signing out lives in Settings —
+          a one-tap sign-out in the corner of every screen was a mis-tap waiting
+          to happen. */}
       {!immersive && (
-      <header className="sticky top-0 z-30 border-b border-border/80 bg-bg/85 backdrop-blur-md dark:border-border-dark/80 dark:bg-bg-dark/75">
-        <div className={`mx-auto flex ${container} items-center justify-between gap-2 px-4 pl-safe pr-safe pt-safe pb-3`}>
-          <Link
-            to="/dashboard"
-            className="-m-1 rounded-md p-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-          >
-            <BrandMark />
-          </Link>
-          {me.data && (
-            <>
-              <nav className="hidden items-center gap-0.5 sm:flex" aria-label={t("nav.primary")}>
-                {fleet.canSeeFleet && (
-                  <NavIconLink to="/fleet" label={t("nav.fleet")} icon={<Building2 className="h-[18px] w-[18px]" />} />
-                )}
-                <NavIconLink to="/bikes" label={t("nav.bikes")} icon={<BikeIcon className="h-[18px] w-[18px]" />} />
-                <NavIconLink to="/costs" label={t("nav.costs")} icon={<Wallet className="h-[18px] w-[18px]" />} />
-                <NavIconLink to="/map" label={t("nav.map")} icon={<MapIcon className="h-[18px] w-[18px]" />} />
-                <NavIconLink to="/assistant" label={t("nav.assistant")} icon={<Sparkles className="h-[18px] w-[18px]" />} />
-                <NavIconLink to="/settings" label={t("nav.settings")} icon={<Settings className="h-[18px] w-[18px]" />} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("nav.signOut")}
-                  onClick={onSignOut}
-                  disabled={signingOut}
-                  className="h-9 w-9"
-                >
-                  <LogOut className="h-[18px] w-[18px]" />
-                </Button>
-              </nav>
-              <div className="flex items-center gap-0.5 sm:hidden">
-                <NavIconLink to="/settings" label={t("nav.settings")} icon={<Settings className="h-[18px] w-[18px]" />} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("nav.signOut")}
-                  onClick={onSignOut}
-                  disabled={signingOut}
-                  className="h-10 w-10"
-                >
-                  <LogOut className="h-[18px] w-[18px]" />
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </header>
+        <header className="sticky top-0 z-30 border-b border-border/80 bg-bg/85 backdrop-blur-md dark:border-border-dark/80 dark:bg-bg-dark/75 md:hidden">
+          <div className={`mx-auto flex ${container} items-center justify-between gap-2 px-4 pl-safe pr-safe pt-safe pb-3`}>
+            <Link
+              to="/dashboard"
+              className="-m-1 rounded-md p-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            >
+              <BrandMark />
+            </Link>
+            {me.data && (
+              <Link
+                to="/settings"
+                aria-label={t("nav.settings")}
+                className="grid h-10 w-10 place-items-center rounded-full text-text transition active:scale-95 hover:bg-surface dark:text-text-dark dark:hover:bg-surface-elev-dark"
+              >
+                <Settings className="h-[19px] w-[19px]" />
+              </Link>
+            )}
+          </div>
+        </header>
       )}
       {immersive ? (
         // No motion wrapper: a transform on the ancestor of a live MapKit
         // canvas re-rasterises the whole map for the length of the animation.
-        <main className="fixed inset-0 overflow-hidden">
+        <main className="fixed inset-0 overflow-hidden md:left-64">
           <Outlet />
         </main>
       ) : (
         // Bottom padding is derived from the tab bar's real height
-        // (`--tabbar-clear` in styles.css) rather than a hard-coded `pb-28`,
-        // which over-reserved by ~19px and had no way of tracking the bar.
-        <main className={`mx-auto ${container} px-4 pl-safe pr-safe pb-[var(--tabbar-clear)] pt-6 sm:pb-16 sm:pt-8`}>
+        // (`--tabbar-clear` in styles.css); with the sidebar there is no bar.
+        <main className={`mx-auto ${container} px-4 pl-safe pr-safe pb-[var(--tabbar-clear)] pt-6 md:px-8 md:pb-16 md:pt-10`}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
@@ -151,7 +109,7 @@ export function AppShell() {
           </motion.div>
         </main>
       )}
-      {me.data && <MobileNav showFleet={fleet.canSeeFleet} alwaysVisible={immersive} />}
+      {me.data && <MobileNav showFleet={fleet.canSeeFleet} />}
 
       {disclosure.pending && (
         <Suspense fallback={null}>
@@ -162,6 +120,129 @@ export function AppShell() {
         </Suspense>
       )}
     </div>
+  );
+}
+
+/**
+ * Tablet / desktop navigation: the iPadOS-style sidebar. Labelled destinations
+ * (an icon row with no words is a guessing game on a 13-inch screen), the
+ * assistant's tools one tap away, and the account at the foot.
+ */
+function Sidebar({ showFleet }: { showFleet: boolean }) {
+  const { t } = useTranslation();
+  const me = useMe();
+  const navigate = useNavigate();
+  const confirm = useConfirm();
+  const [signingOut, setSigningOut] = useState(false);
+  const primary = [
+    { to: "/dashboard", label: t("nav.home"), icon: LayoutDashboard },
+    ...(showFleet ? [{ to: "/fleet", label: t("nav.fleet"), icon: Building2 }] : []),
+    { to: "/bikes", label: t("nav.bikes"), icon: BikeIcon },
+    { to: "/costs", label: t("nav.costs"), icon: Wallet },
+    { to: "/map", label: t("nav.map"), icon: MapIcon },
+    { to: "/assistant", label: t("nav.assistant"), icon: Sparkles },
+  ];
+  const tools = [
+    { to: "/fuel", label: t("dashboard.action.fuel"), icon: Fuel },
+    { to: "/glovebox", label: t("assistant.tools.glovebox.title"), icon: FolderLock },
+    { to: "/mechanics", label: t("assistant.tools.mechanics.title"), icon: Wrench },
+    { to: "/nearby", label: t("assistant.tools.nearby.title"), icon: MapPin },
+    { to: "/sos", label: t("assistant.sos"), icon: Siren },
+  ];
+  const onSignOut = async () => {
+    if (!(await confirm({ title: t("settings.signOutConfirm"), confirmLabel: t("settings.signOut"), destructive: true }))) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      navigate("/sign-in");
+    } finally {
+      setSigningOut(false);
+    }
+  };
+  return (
+    <aside
+      aria-label={t("nav.primary")}
+      className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border/80 bg-bg/95 px-3 pb-4 pl-[max(0.75rem,env(safe-area-inset-left))] pt-[max(1.25rem,env(safe-area-inset-top))] backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/95 md:flex"
+    >
+      <Link to="/dashboard" className="mb-6 px-3">
+        <BrandMark />
+      </Link>
+      <nav className="flex flex-col gap-0.5">
+        {primary.map((i) => (
+          <SideLink key={i.to} {...i} />
+        ))}
+      </nav>
+      <div className="mt-6 px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted dark:text-muted-dark">
+        {t("nav.tools")}
+      </div>
+      <nav className="flex flex-col gap-0.5">
+        {tools.map((i) => (
+          <SideLink key={i.to} {...i} small />
+        ))}
+      </nav>
+      <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-3 dark:border-border-dark">
+        <SideLink to="/settings" label={t("nav.settings")} icon={Settings} />
+        <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-medium">{me.data?.user.name || me.data?.user.email}</div>
+            {me.data?.user.name && (
+              <div className="truncate text-[11.5px] text-muted dark:text-muted-dark">{me.data.user.email}</div>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("nav.signOut")}
+            onClick={() => void onSignOut()}
+            disabled={signingOut}
+            className="h-9 w-9 shrink-0 text-muted dark:text-muted-dark"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function SideLink({
+  to,
+  label,
+  icon: Icon,
+  small = false,
+}: {
+  to: string;
+  label: string;
+  icon: typeof Wallet;
+  small?: boolean;
+}) {
+  const location = useLocation();
+  const active =
+    location.pathname === to ||
+    location.pathname.startsWith(`${to}/`) ||
+    (to === "/costs" && location.pathname === "/fuel" && !small);
+  return (
+    <Link
+      to={to}
+      aria-current={active ? "page" : undefined}
+      onClick={() => {
+        if (!active) hapticSelection();
+      }}
+      className={`relative flex items-center gap-3 rounded-xl px-3 ${small ? "py-2 text-[13.5px]" : "py-2.5 text-[14.5px]"} font-medium transition ${
+        active ? "text-text dark:text-text-dark" : "text-muted hover:bg-surface hover:text-text dark:text-muted-dark dark:hover:bg-surface-elev-dark dark:hover:text-text-dark"
+      }`}
+    >
+      {active && (
+        <motion.span
+          layoutId="side-active"
+          aria-hidden
+          className="absolute inset-0 rounded-xl bg-surface ring-1 ring-border dark:bg-surface-elev-dark dark:ring-border-dark"
+          transition={{ type: "spring", stiffness: 500, damping: 40 }}
+        />
+      )}
+      <Icon className={`relative ${small ? "h-4 w-4" : "h-[18px] w-[18px]"} ${active ? "text-accent-dim dark:text-accent" : ""}`} />
+      <span className="relative truncate">{label}</span>
+    </Link>
   );
 }
 
@@ -177,41 +258,10 @@ function TripTracking() {
   return null;
 }
 
-function NavIconLink({
-  to,
-  label,
-  icon,
-}: {
-  to: string;
-  label: string;
-  icon: React.ReactNode;
-}) {
-  const location = useLocation();
-  const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
-  return (
-    <Button
-      asChild
-      variant="ghost"
-      size="icon"
-      aria-label={label}
-      className={active ? "h-9 w-9 bg-surface-elev dark:bg-surface-elev-dark" : "h-9 w-9"}
-    >
-      <Link to={to} aria-current={active ? "page" : undefined}>{icon}</Link>
-    </Button>
-  );
-}
-
 /** Screens reached from the Assistant hub — its tab stays lit on them. */
 const ASSISTANT_ROUTES = ["/mechanics", "/glovebox", "/warning-lights", "/nearby", "/sos", "/trips", "/groups"];
 
-function MobileNav({
-  showFleet,
-  alwaysVisible = false,
-}: {
-  showFleet: boolean;
-  /** On the full-screen map there is no header, so the tab bar is the only nav. */
-  alwaysVisible?: boolean;
-}) {
+function MobileNav({ showFleet }: { showFleet: boolean }) {
   const { t } = useTranslation();
   const location = useLocation();
   const items = [
@@ -232,9 +282,7 @@ function MobileNav({
     // If `pt-1.5` or `min-h-[52px]` below change, update `--tabbar-h` too.
     <nav
       aria-label={t("nav.primary")}
-      className={`fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-bg/90 px-safe pb-[var(--tabbar-pb)] backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/90 ${
-        alwaysVisible ? "" : "sm:hidden"
-      }`}
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-bg/90 px-safe pb-[var(--tabbar-pb)] backdrop-blur-xl dark:border-border-dark/80 dark:bg-bg-dark/90 md:hidden"
     >
       <div
         className={`mx-auto grid max-w-md px-2 pt-1.5 ${showFleet ? "grid-cols-6" : "grid-cols-5"}`}
